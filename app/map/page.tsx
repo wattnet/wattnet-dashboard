@@ -24,7 +24,7 @@ export default function MapPage() {
   const fetchWorldGeoJSON = async (): Promise<FeatureCollection> => {
     if (worldGeoJSONRef.current) return worldGeoJSONRef.current;
 
-    const res = await fetch("/maps/world.geojson");
+    const res = await fetch("/maps/wattnet.geojson");
     const geojson = await res.json();
     worldGeoJSONRef.current = geojson;
     return geojson;

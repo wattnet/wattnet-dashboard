@@ -3,7 +3,7 @@
   "sources": {
     "world-zones": {
       "type": "geojson",
-      "data": "maps/world.geojson"
+      "data": "maps/wattnet.geojson"
     }
   },
   "layers": [
