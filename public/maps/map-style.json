@@ -1,0 +1,29 @@
+{
+  "version": 8,
+  "sources": {
+    "world-zones": {
+      "type": "geojson",
+      "data": "maps/world.geojson"
+    }
+  },
+  "layers": [
+    {
+      "id": "world-fill",
+      "type": "fill",
+      "source": "world-zones",
+      "paint": {
+        "fill-color": "#CFCFCF",
+        "fill-opacity": 0.5
+      }
+    },
+    {
+      "id": "world-outline",
+      "type": "line",
+      "source": "world-zones",
+      "paint": {
+        "line-color": "#000000",
+        "line-width": 1
+      }
+    }
+  ]
+}
