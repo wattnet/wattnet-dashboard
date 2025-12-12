@@ -1,3 +1,17 @@
+<div align="left">
+  <picture>
+    <source media="(prefers-color-scheme: dark)"
+            srcset="https://github.com/wattnet/.github/raw/main/images/wattnet-logo-full-dark-transparent-cropped.png" />
+    <source media="(prefers-color-scheme: light)"
+            srcset="https://github.com/wattnet/.github/raw/main/images/wattnet-logo-full-light-transparent-cropped.png" />
+    <img src="https://github.com/wattnet/.github/raw/main/images/wattnet-logo-full-light-transparent-cropped.png"
+         alt="Wattnet Logo"
+         width="300" />
+  </picture>
+</div>
+
+# Web Dashboard
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
