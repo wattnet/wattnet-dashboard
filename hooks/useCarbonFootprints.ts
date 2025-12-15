@@ -1,46 +1,24 @@
 'use client';
 
+import useSWR from 'swr';
 import { Footprint } from '@/types/footprints';
 import { FootprintQueryParams } from '@/types/queryParams';
-import { useState, useEffect } from 'react';
+
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 export function useCarbonFootprints(params: FootprintQueryParams) {
-  const [data, setData] = useState<Footprint[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined) query.append(key, String(value));
+  });
 
-  useEffect(() => {
-    const controller = new AbortController();
-    const { signal } = controller;
-
-    async function loadData() {
-      try {
-        setLoading(true);
-
-        const query = new URLSearchParams();
-        Object.entries(params).forEach(([key, value]) => {
-          if (value !== undefined) query.append(key, String(value));
-        });
-
-        const res = await fetch(`/api/footprints?${query.toString()}`, {
-          signal,
-        });
-        if (!res.ok) throw new Error(`Error: ${res.status}`);
-
-        const json = await res.json();
-
-        setData(json);
-      } catch (err) {
-        setError((err as Error).message);
-      } finally {
-        setLoading(false);
-      }
+  const { data, error, isLoading } = useSWR<Footprint[]>(
+    `/api/carbon?${query}`,
+    fetcher,
+    {
+      revalidateOnFocus: false,
     }
+  );
 
-    loadData();
-
-    return () => controller.abort();
-  }, [params.start, params.end, JSON.stringify(params)]);
-
-  return { data, loading, error };
+  return { data: data ?? [], loading: isLoading, error };
 }

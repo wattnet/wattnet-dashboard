@@ -1,21 +1,21 @@
 import { FootprintQueryParams } from '@/types/queryParams';
-import { endpoints } from './endpoints';
 import { Footprint } from '@/types/footprints';
+import { endpoints } from '@/lib/endpoints';
+import { getAccessToken } from '@/lib/token';
 
 export async function fetchCarbonFootprints(
   params: FootprintQueryParams
 ): Promise<Footprint[]> {
-  const TOKEN = process.env.API_TOKEN;
-  if (!TOKEN) throw new Error('Falta API_TOKEN en las variables de entorno');
-
-  const url = endpoints.footprints(params);
-
   try {
+    const token = await getAccessToken();
+
+    const url = endpoints.footprints(params);
+
     const res = await fetch(url, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${TOKEN}`,
+        Authorization: `Bearer ${token}`,
       },
     });
 
@@ -25,8 +25,8 @@ export async function fetchCarbonFootprints(
 
     const data: Footprint[] = await res.json();
     return data;
-  } catch (error) {
-    console.error('fetchCarbonFootprints error:', error);
+  } catch (err) {
+    console.error('fetchCarbonFootprints error:', err);
     return [];
   }
 }
