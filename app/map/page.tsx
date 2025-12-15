@@ -1,25 +1,33 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useCarbonFootprints } from "@/hooks/useCarbonFootprints";
 import { FeatureCollection } from "geojson";
 import { COLORS } from "@/lib/colors";
+import DateSelector from "@/components/map/dateSelector";
 
 export default function MapPage() {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<maplibregl.Map | null>(null);
   const worldGeoJSONRef = useRef<FeatureCollection | null>(null);
 
-  const { data, loading, error } = useCarbonFootprints({
-    footprint_type: "carbon",
-    scope: "life-cycle",
-    start: "2025-12-09T00:00:00",
-    end: "2025-12-09T23:00:00",
-    aggregate: false,
-    use_global: true,
-  });
+  const [selectedDate, setSelectedDate] = useState(new Date("2025-12-01")); // TODO: change to current date
+  const [selectedTimeIndex, setSelectedTimeIndex] = useState(0);
+
+  const dateKey = selectedDate.toISOString().split("T")[0];
+  const { data, loading, error } = useCarbonFootprints(
+    {
+      footprint_type: "carbon",
+      scope: "life-cycle",
+      start: `${dateKey}T00:00:00`,
+      end: `${dateKey}T23:45:00`,
+      aggregate: false,
+      use_global: true,
+    },
+    dateKey
+  );
 
   const fetchWorldGeoJSON = async (): Promise<FeatureCollection> => {
     if (worldGeoJSONRef.current) return worldGeoJSONRef.current;
@@ -31,25 +39,21 @@ export default function MapPage() {
   };
 
   const mergeCarbonValues = (geojson: FeatureCollection) => {
-    // Map zone -> carbon value
-    // TODO: currently it uses the first value of the series
     const carbonByZone: Record<string, number> = {};
+    // TODO: currently only shows first array of values (valid: true)
     data.forEach((d) => {
-      const first = d.series?.[0]?.values?.[0];
-      if (!first) return;
-      carbonByZone[d.zone] = first[1];
+      const valueAtIndex = d.series?.[0]?.values?.[selectedTimeIndex]?.[1];
+      if (!valueAtIndex) return;
+      carbonByZone[d.zone] = valueAtIndex;
     });
 
-    geojson.features = geojson.features.map((f: any) => {
-      const iso = f.properties.zoneName;
-      return {
-        ...f,
-        properties: {
-          ...f.properties,
-          carbon_value: carbonByZone[iso] ?? null,
-        },
-      };
-    });
+    geojson.features = geojson.features.map((f: any) => ({
+      ...f,
+      properties: {
+        ...f.properties,
+        carbon_value: carbonByZone[f.properties.zoneName] ?? null,
+      },
+    }));
 
     return geojson;
   };
@@ -146,6 +150,13 @@ export default function MapPage() {
         </p>
       )}
       <div ref={mapContainer} className="w-full h-full" />
+      <DateSelector
+        selectedDate={selectedDate}
+        setSelectedDate={setSelectedDate}
+        selectedTimeIndex={selectedTimeIndex}
+        setSelectedTimeIndex={setSelectedTimeIndex}
+        data={data}
+      />
     </div>
   );
 }
