@@ -1,4 +1,3 @@
-// lib/colors.ts
 export const COLORS = {
   carbon: {
     0: '#7AE83A',
@@ -9,6 +8,7 @@ export const COLORS = {
     1000: '#E83A3A',
     noData: '#CFCFCF',
   },
-  primary: '#92cc2e',
-  secondary: '#0a6f38',
+  primary: '#0a6f38',
+  secondary: '#92cc2e',
+  white: '#FFFFFF',
 };
