@@ -1,6 +1,7 @@
 "use client";
 
 import { Footprint } from "@/types/footprints";
+import { useTranslation } from "react-i18next";
 
 interface DateSelectorProps {
   selectedDate: Date;
@@ -17,12 +18,14 @@ export default function DateSelector({
   setSelectedTimeIndex,
   data,
 }: DateSelectorProps) {
+  const { t } = useTranslation();
+
   const maxIndex = (data?.[0]?.series?.[0]?.values?.length ?? 1) - 1;
 
   return (
     <div className="absolute top-2 left-2 z-10 bg-white p-2 rounded shadow">
       <label>
-        Día:
+        {t("dateSelector.date")}
         <input
           type="date"
           value={selectedDate.toISOString().split("T")[0]}
@@ -35,7 +38,8 @@ export default function DateSelector({
       </label>
 
       <label className="ml-4">
-        Hora:
+        {t("dateSelector.time")}
+
         <input
           type="range"
           min={0}

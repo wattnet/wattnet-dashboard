@@ -7,8 +7,11 @@ import { useCarbonFootprints } from "@/hooks/useCarbonFootprints";
 import { FeatureCollection } from "geojson";
 import { COLORS } from "@/lib/colors";
 import DateSelector from "@/components/map/dateSelector";
+import { useTranslation } from "react-i18next";
 
 export default function MapPage() {
+  const { t } = useTranslation();
+
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<maplibregl.Map | null>(null);
   const worldGeoJSONRef = useRef<FeatureCollection | null>(null);
@@ -141,7 +144,7 @@ export default function MapPage() {
     <div className="w-full h-screen relative">
       {loading && (
         <p className="absolute top-2 left-2 bg-white p-2 z-10">
-          Cargando datos...
+          {t("general.loading")}
         </p>
       )}
       {error && (
