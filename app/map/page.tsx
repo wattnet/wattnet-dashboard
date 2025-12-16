@@ -138,7 +138,7 @@ export default function MapPage() {
       // Add layer
       addCarbonLayer(map);
     });
-  }, [data, loading, error]);
+  }, [data, selectedTimeIndex, loading, error]);
 
   return (
     <div className="w-full h-screen relative">

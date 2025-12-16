@@ -1,6 +1,8 @@
 "use client";
 
 import { Footprint } from "@/types/footprints";
+import { Slider } from "@mui/material";
+import { DateCalendar } from "@mui/x-date-pickers";
 import { useTranslation } from "react-i18next";
 
 interface DateSelectorProps {
@@ -26,28 +28,32 @@ export default function DateSelector({
     <div className="absolute top-2 left-2 z-10 bg-white p-2 rounded shadow">
       <label>
         {t("dateSelector.date")}
-        <input
-          type="date"
-          value={selectedDate.toISOString().split("T")[0]}
-          onChange={(e) => {
-            setSelectedDate(new Date(e.target.value));
+
+        <DateCalendar
+          value={selectedDate}
+          onChange={(newDate) => {
+            if (!newDate) return;
+            setSelectedDate(newDate);
             setSelectedTimeIndex(0);
           }}
-          className="ml-2 border rounded px-1"
         />
       </label>
 
       <label className="ml-4">
         {t("dateSelector.time")}
 
-        <input
-          type="range"
+        <Slider
+          aria-label="Time"
+          value={selectedTimeIndex}
+          onChange={(_, value) => {
+            if (typeof value === "number") setSelectedTimeIndex(value);
+          }}
+          valueLabelDisplay="off"
+          step={1}
           min={0}
           max={maxIndex}
-          value={selectedTimeIndex}
-          onChange={(e) => setSelectedTimeIndex(Number(e.target.value))}
-          className="ml-2"
         />
+
         <span className="ml-2">
           {data?.[0]?.series?.[0]?.values?.[selectedTimeIndex]?.[0] ?? "--:--"}
         </span>
