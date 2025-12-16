@@ -8,6 +8,7 @@ import { FeatureCollection } from "geojson";
 import { COLORS } from "@/lib/colors";
 import DateSelector from "@/components/map/dateSelector";
 import { useTranslation } from "react-i18next";
+import Legend from "@/components/map/legend";
 
 export default function MapPage() {
   const { t } = useTranslation();
@@ -16,9 +17,18 @@ export default function MapPage() {
   const mapInstance = useRef<maplibregl.Map | null>(null);
   const worldGeoJSONRef = useRef<FeatureCollection | null>(null);
 
+  /* Date selector */
   const [selectedDate, setSelectedDate] = useState(new Date("2025-12-01")); // TODO: change to current date
   const [selectedTimeIndex, setSelectedTimeIndex] = useState(0);
 
+  /* Legend */
+  const [legendName, setLegendName] = useState("Carbon Footprint");
+  const [legendUnit, setLegendUnit] = useState("gCO₂eq/kWh");
+  const [legendColors, setlegendColors] = useState(
+    Object.values(COLORS.carbon)
+  );
+
+  /* Data */
   const dateKey = selectedDate.toISOString().split("T")[0];
   const { data, loading, error } = useCarbonFootprints(
     {
@@ -63,6 +73,7 @@ export default function MapPage() {
 
   const addCarbonLayer = (map: maplibregl.Map) => {
     if (!map.getLayer("carbon-fill")) {
+      // Color fill layer
       map.addLayer({
         id: "carbon-fill",
         type: "fill",
@@ -71,7 +82,7 @@ export default function MapPage() {
           "fill-color": [
             "case",
             ["==", ["get", "carbon_value"], null],
-            COLORS.carbon["noData"], // no data
+            COLORS.map["noData"],
             [
               "interpolate",
               ["linear"],
@@ -93,6 +104,18 @@ export default function MapPage() {
           "fill-opacity": 0.8,
         },
       });
+
+      // Border layer
+      map.addLayer({
+        id: "carbon-borders",
+        type: "line",
+        source: "world",
+        paint: {
+          "line-color": COLORS.map["border"],
+          "line-width": 0.2,
+          "line-opacity": 0.9,
+        },
+      });
     }
   };
 
@@ -104,7 +127,7 @@ export default function MapPage() {
       container: mapContainer.current,
       style: "maps/map-style.json",
       center: [10, 50],
-      zoom: 2,
+      zoom: 3,
     });
 
     map.addControl(new maplibregl.NavigationControl());
@@ -159,6 +182,14 @@ export default function MapPage() {
         selectedTimeIndex={selectedTimeIndex}
         setSelectedTimeIndex={setSelectedTimeIndex}
         data={data}
+      />
+      <Legend
+        title={legendName}
+        unitOfMeasure={legendUnit}
+        min={0}
+        max={1000}
+        step={200}
+        colors={legendColors}
       />
     </div>
   );
