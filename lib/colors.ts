@@ -1,11 +1,11 @@
 export const COLORS = {
   carbon: {
-    0: '#99F763',
-    50: '#AAEE5F',
-    100: '#BCE45B',
-    200: '#CCDB58',
-    500: '#D6A23A',
-    1000: '#895129',
+    0: '#7DD438',
+    50: '#BDD12A',
+    100: '#FFCE1B',
+    200: '#E86100',
+    500: '#6D3B07',
+    1000: '#2E1C0E',
   },
   map: {
     noData: '#CFCFCF',
@@ -14,4 +14,5 @@ export const COLORS = {
   primary: '#0a6f38',
   secondary: '#92cc2e',
   white: '#FFFFFF',
+  whiteTransparent: 'rgba(255, 255, 255, 0.5)',
 };

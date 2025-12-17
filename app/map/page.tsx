@@ -7,12 +7,10 @@ import { useCarbonFootprints } from "@/hooks/useCarbonFootprints";
 import { FeatureCollection } from "geojson";
 import { COLORS } from "@/lib/colors";
 import DateSelector from "@/components/map/dateSelector";
-import { useTranslation } from "react-i18next";
 import Legend from "@/components/map/legend";
+import { Box, CircularProgress } from "@mui/material";
 
 export default function MapPage() {
-  const { t } = useTranslation();
-
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<maplibregl.Map | null>(null);
   const worldGeoJSONRef = useRef<FeatureCollection | null>(null);
@@ -165,17 +163,33 @@ export default function MapPage() {
 
   return (
     <div className="w-full h-screen relative">
+      <div ref={mapContainer} className="w-full h-full" />
+
       {loading && (
-        <p className="absolute top-2 left-2 bg-white p-2 z-10">
-          {t("general.loading")}
-        </p>
+        <Box
+          sx={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: COLORS.whiteTransparent,
+            zIndex: 10,
+          }}
+        >
+          <CircularProgress size={100} />
+        </Box>
       )}
+
       {error && (
-        <p className="absolute top-2 left-2 bg-red-500 text-white p-2 z-10">
+        <p className="absolute top-2 left-2 bg-red-500 text-white p-2 z-20">
           Error: {error}
         </p>
       )}
-      <div ref={mapContainer} className="w-full h-full" />
+
       <DateSelector
         selectedDate={selectedDate}
         setSelectedDate={setSelectedDate}
@@ -183,6 +197,7 @@ export default function MapPage() {
         setSelectedTimeIndex={setSelectedTimeIndex}
         data={data}
       />
+
       <Legend
         title={legendName}
         unitOfMeasure={legendUnit}
