@@ -1,25 +1,44 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useCarbonFootprints } from "@/hooks/useCarbonFootprints";
 import { FeatureCollection } from "geojson";
 import { COLORS } from "@/lib/colors";
+import DateSelector from "@/components/map/dateSelector";
+import Legend from "@/components/map/legend";
+import { Box, CircularProgress } from "@mui/material";
 
 export default function MapPage() {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<maplibregl.Map | null>(null);
   const worldGeoJSONRef = useRef<FeatureCollection | null>(null);
 
-  const { data, loading, error } = useCarbonFootprints({
-    footprint_type: "carbon",
-    scope: "life-cycle",
-    start: "2025-12-09T00:00:00",
-    end: "2025-12-09T23:00:00",
-    aggregate: false,
-    use_global: true,
-  });
+  /* Date selector */
+  const [selectedDate, setSelectedDate] = useState(() => new Date());
+  const [selectedTimeIndex, setSelectedTimeIndex] = useState(0);
+
+  /* Legend */
+  const [legendName, setLegendName] = useState("Carbon Footprint");
+  const [legendUnit, setLegendUnit] = useState("gCO₂eq/kWh");
+  const [legendColors, setlegendColors] = useState(
+    Object.values(COLORS.carbon)
+  );
+
+  /* Data */
+  const dateKey = selectedDate.toISOString().split("T")[0];
+  const { data, loading, error } = useCarbonFootprints(
+    {
+      footprint_type: "carbon",
+      scope: "life-cycle",
+      start: `${dateKey}T00:00:00`,
+      end: `${dateKey}T23:45:00`,
+      aggregate: false,
+      use_global: true,
+    },
+    dateKey
+  );
 
   const fetchWorldGeoJSON = async (): Promise<FeatureCollection> => {
     if (worldGeoJSONRef.current) return worldGeoJSONRef.current;
@@ -31,31 +50,28 @@ export default function MapPage() {
   };
 
   const mergeCarbonValues = (geojson: FeatureCollection) => {
-    // Map zone -> carbon value
-    // TODO: currently it uses the first value of the series
     const carbonByZone: Record<string, number> = {};
+    // TODO: currently only shows first array of values (valid: true)
     data.forEach((d) => {
-      const first = d.series?.[0]?.values?.[0];
-      if (!first) return;
-      carbonByZone[d.zone] = first[1];
+      const valueAtIndex = d.series?.[0]?.values?.[selectedTimeIndex]?.[1];
+      if (!valueAtIndex) return;
+      carbonByZone[d.zone] = valueAtIndex;
     });
 
-    geojson.features = geojson.features.map((f: any) => {
-      const iso = f.properties.zoneName;
-      return {
-        ...f,
-        properties: {
-          ...f.properties,
-          carbon_value: carbonByZone[iso] ?? null,
-        },
-      };
-    });
+    geojson.features = geojson.features.map((f: any) => ({
+      ...f,
+      properties: {
+        ...f.properties,
+        carbon_value: carbonByZone[f.properties.zoneName] ?? null,
+      },
+    }));
 
     return geojson;
   };
 
   const addCarbonLayer = (map: maplibregl.Map) => {
     if (!map.getLayer("carbon-fill")) {
+      // Color fill layer
       map.addLayer({
         id: "carbon-fill",
         type: "fill",
@@ -64,7 +80,7 @@ export default function MapPage() {
           "fill-color": [
             "case",
             ["==", ["get", "carbon_value"], null],
-            COLORS.carbon["noData"], // no data
+            COLORS.map["noData"],
             [
               "interpolate",
               ["linear"],
@@ -86,6 +102,18 @@ export default function MapPage() {
           "fill-opacity": 0.8,
         },
       });
+
+      // Border layer
+      map.addLayer({
+        id: "carbon-borders",
+        type: "line",
+        source: "world",
+        paint: {
+          "line-color": COLORS.map["border"],
+          "line-width": 0.2,
+          "line-opacity": 0.9,
+        },
+      });
     }
   };
 
@@ -97,7 +125,9 @@ export default function MapPage() {
       container: mapContainer.current,
       style: "maps/map-style.json",
       center: [10, 50],
-      zoom: 2,
+      zoom: 3,
+      minZoom: 2,
+      maxZoom: 4,
     });
 
     map.addControl(new maplibregl.NavigationControl());
@@ -131,21 +161,53 @@ export default function MapPage() {
       // Add layer
       addCarbonLayer(map);
     });
-  }, [data, loading, error]);
+  }, [data, selectedTimeIndex, loading, error]);
 
   return (
     <div className="w-full h-screen relative">
+      <div ref={mapContainer} className="w-full h-full" />
+
       {loading && (
-        <p className="absolute top-2 left-2 bg-white p-2 z-10">
-          Cargando datos...
-        </p>
+        <Box
+          sx={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: COLORS.whiteTransparent,
+            zIndex: 10,
+          }}
+        >
+          <CircularProgress size={100} />
+        </Box>
       )}
+
       {error && (
-        <p className="absolute top-2 left-2 bg-red-500 text-white p-2 z-10">
+        <p className="absolute top-2 left-2 bg-red-500 text-white p-2 z-20">
           Error: {error}
         </p>
       )}
-      <div ref={mapContainer} className="w-full h-full" />
+
+      <DateSelector
+        selectedDate={selectedDate}
+        setSelectedDate={setSelectedDate}
+        selectedTimeIndex={selectedTimeIndex}
+        setSelectedTimeIndex={setSelectedTimeIndex}
+        data={data}
+      />
+
+      <Legend
+        title={legendName}
+        unitOfMeasure={legendUnit}
+        min={0}
+        max={1000}
+        step={200}
+        colors={legendColors}
+      />
     </div>
   );
 }

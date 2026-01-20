@@ -1,0 +1,9 @@
+{
+  "general": {
+    "loading": "Loading data..."
+  },
+  "dateSelector": {
+    "date": "Date",
+    "time": "Time"
+  }
+}

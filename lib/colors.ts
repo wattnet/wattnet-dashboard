@@ -1,14 +1,18 @@
-// lib/colors.ts
 export const COLORS = {
   carbon: {
-    0: '#7AE83A',
-    50: '#ABE83A',
-    100: '#E8DF3A',
-    200: '#E8B43A',
-    500: '#E87A3A',
-    1000: '#E83A3A',
-    noData: '#CFCFCF',
+    0: '#7DD438',
+    50: '#BDD12A',
+    100: '#FFCE1B',
+    200: '#E86100',
+    500: '#6D3B07',
+    1000: '#2E1C0E',
   },
-  primary: '#92cc2e',
-  secondary: '#0a6f38',
+  map: {
+    noData: '#CFCFCF',
+    border: '#FAFAFA',
+  },
+  primary: '#0a6f38',
+  secondary: '#92cc2e',
+  white: '#FFFFFF',
+  whiteTransparent: 'rgba(255, 255, 255, 0.5)',
 };
