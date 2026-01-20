@@ -1,8 +1,16 @@
 import { NextResponse } from 'next/server';
 import { FootprintQueryParams } from '@/types/queryParams';
 import { fetchCarbonFootprints } from '@/lib/api';
+import { getCurrentToken } from '@/lib/ephemeralTokens';
 
 export async function GET(request: Request) {
+  const token = request.headers.get('x-dashboard-token');
+  const currentToken = getCurrentToken();
+
+  if (!token || token !== currentToken) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const url = new URL(request.url);
 
   const params: FootprintQueryParams = {
