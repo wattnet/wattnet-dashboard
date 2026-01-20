@@ -16,7 +16,7 @@ export default function MapPage() {
   const worldGeoJSONRef = useRef<FeatureCollection | null>(null);
 
   /* Date selector */
-  const [selectedDate, setSelectedDate] = useState(new Date("2025-12-01")); // TODO: change to current date
+  const [selectedDate, setSelectedDate] = useState(() => new Date());
   const [selectedTimeIndex, setSelectedTimeIndex] = useState(0);
 
   /* Legend */
@@ -126,6 +126,8 @@ export default function MapPage() {
       style: "maps/map-style.json",
       center: [10, 50],
       zoom: 3,
+      minZoom: 2,
+      maxZoom: 4,
     });
 
     map.addControl(new maplibregl.NavigationControl());
