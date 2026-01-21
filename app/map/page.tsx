@@ -11,12 +11,13 @@ import Legend from "@/components/map/legend";
 import { Box, CircularProgress } from "@mui/material";
 import FootprintTypeSelector from "@/components/map/footprintTypeSelector";
 import ScopeSelector from "@/components/map/scopeSelector";
-import { getTodayUTC } from "@/utils/dateManager";
+import { getTodayUTC, normalizeToUTCDate } from "@/utils/dateManager";
 
 export default function MapPage() {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<maplibregl.Map | null>(null);
   const worldGeoJSONRef = useRef<FeatureCollection | null>(null);
+  const popupRef = useRef<maplibregl.Popup | null>(null);
 
   /* Date selector */
   const [selectedDate, setSelectedDate] = useState(getTodayUTC);
@@ -208,6 +209,52 @@ export default function MapPage() {
     }
   };
 
+  const addHoverPopup = (
+    map: maplibregl.Map,
+    layerId: string,
+    footprintType: "carbon" | "water"
+  ) => {
+    map.on("mousemove", layerId, (e) => {
+      if (!e.features?.length || !popupRef.current) return;
+
+      const feature = e.features[0];
+      const props = feature.properties ?? {};
+      const zoneFullName = props.countryName ?? "Unknown";
+
+      const value =
+        footprintType === "carbon" ? props.carbon_value : props.water_value;
+
+      const unit = footprintType === "carbon" ? "gCO₂eq/kWh" : "l/kWh";
+      const label =
+        footprintType === "carbon" ? "Carbon Intensity" : "Water Footprint";
+
+      popupRef.current
+        .setLngLat(e.lngLat)
+        .setHTML(
+          `
+          <div style="min-width:160px">
+            <div style="font-size:12px;color:#666">${
+              normalizeToUTCDate(selectedDate) ?? "--:--"
+            }</div>
+            <strong>${zoneFullName}</strong><br/>
+            <span style="font-size:20px;font-weight:600">
+              ${value ?? "—"}
+            </span> ${unit}
+            <div style="font-size:12px;color:#666">${label}</div>
+          </div>
+        `
+        )
+        .addTo(map);
+
+      map.getCanvas().style.cursor = "pointer";
+    });
+
+    map.on("mouseleave", layerId, () => {
+      popupRef.current?.remove();
+      map.getCanvas().style.cursor = "";
+    });
+  };
+
   // Initialize map
   useEffect(() => {
     if (!mapContainer.current || mapInstance.current) return;
@@ -223,6 +270,12 @@ export default function MapPage() {
 
     map.addControl(new maplibregl.NavigationControl());
     mapInstance.current = map;
+
+    popupRef.current = new maplibregl.Popup({
+      closeButton: false,
+      closeOnClick: false,
+      offset: 12,
+    });
 
     return () => map.remove(); // Cleanup on unmount
   }, []);
@@ -251,6 +304,7 @@ export default function MapPage() {
         const merged = mergeCarbonValues(structuredClone(geojson));
         source.setData(merged);
         addCarbonLayer(map);
+        addHoverPopup(map, "carbon-fill", "carbon");
 
         setLegendName("Carbon Footprint");
         setLegendUnit("gCO₂eq/kWh");
@@ -261,6 +315,7 @@ export default function MapPage() {
         const merged = mergeWaterValues(structuredClone(geojson));
         source.setData(merged);
         addWaterLayer(map);
+        addHoverPopup(map, "water-fill", "water");
 
         setLegendName("Water Footprint");
         setLegendUnit("l/kWh");
