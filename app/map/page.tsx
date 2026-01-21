@@ -9,6 +9,9 @@ import { COLORS } from "@/lib/colors";
 import DateSelector from "@/components/map/dateSelector";
 import Legend from "@/components/map/legend";
 import { Box, CircularProgress } from "@mui/material";
+import FootprintTypeSelector from "@/components/map/footprintTypeSelector";
+import ScopeSelector from "@/components/map/scopeSelector";
+import { getTodayUTC } from "@/utils/dateManager";
 
 export default function MapPage() {
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -16,8 +19,14 @@ export default function MapPage() {
   const worldGeoJSONRef = useRef<FeatureCollection | null>(null);
 
   /* Date selector */
-  const [selectedDate, setSelectedDate] = useState(() => new Date());
+  const [selectedDate, setSelectedDate] = useState(getTodayUTC);
   const [selectedTimeIndex, setSelectedTimeIndex] = useState(0);
+
+  /* Footprint type selector */
+  const [selectedFootprintType, setSelectedFootprintType] = useState("carbon");
+
+  /* Scope selector */
+  const [selectedScope, setSelectedScope] = useState("life-cycle");
 
   /* Legend */
   const [legendName, setLegendName] = useState("Carbon Footprint");
@@ -27,18 +36,32 @@ export default function MapPage() {
   );
 
   /* Data */
-  const dateKey = selectedDate.toISOString().split("T")[0];
+  const dateKey = [
+    selectedDate.getUTCFullYear(),
+    String(selectedDate.getUTCMonth() + 1).padStart(2, "0"),
+    String(selectedDate.getUTCDate()).padStart(2, "0"),
+  ].join("-");
   const { data, loading, error } = useCarbonFootprints(
     {
-      footprint_type: "carbon",
-      scope: "life-cycle",
-      start: `${dateKey}T00:00:00`,
-      end: `${dateKey}T23:45:00`,
+      footprint_type: selectedFootprintType,
+      scope: selectedScope,
+      start: `${dateKey}T00:00:00Z`,
+      end: `${dateKey}T23:45:00Z`,
       aggregate: false,
       use_global: true,
     },
     dateKey
   );
+
+  const removeCarbonLayers = (map: maplibregl.Map) => {
+    if (map.getLayer("carbon-fill")) map.removeLayer("carbon-fill");
+    if (map.getLayer("carbon-borders")) map.removeLayer("carbon-borders");
+  };
+
+  const removeWaterLayers = (map: maplibregl.Map) => {
+    if (map.getLayer("water-fill")) map.removeLayer("water-fill");
+    if (map.getLayer("water-borders")) map.removeLayer("water-borders");
+  };
 
   const fetchWorldGeoJSON = async (): Promise<FeatureCollection> => {
     if (worldGeoJSONRef.current) return worldGeoJSONRef.current;
@@ -63,6 +86,26 @@ export default function MapPage() {
       properties: {
         ...f.properties,
         carbon_value: carbonByZone[f.properties.zoneName] ?? null,
+      },
+    }));
+
+    return geojson;
+  };
+
+  const mergeWaterValues = (geojson: FeatureCollection) => {
+    const waterByZone: Record<string, number> = {};
+    // TODO: currently only shows first array of values (valid: true)
+    data.forEach((d) => {
+      const valueAtIndex = d.series?.[0]?.values?.[selectedTimeIndex]?.[1];
+      if (!valueAtIndex) return;
+      waterByZone[d.zone] = valueAtIndex;
+    });
+
+    geojson.features = geojson.features.map((f: any) => ({
+      ...f,
+      properties: {
+        ...f.properties,
+        water_value: waterByZone[f.properties.zoneName] ?? null,
       },
     }));
 
@@ -117,6 +160,54 @@ export default function MapPage() {
     }
   };
 
+  const addWaterLayer = (map: maplibregl.Map) => {
+    if (!map.getLayer("water-fill")) {
+      // Color fill layer
+      map.addLayer({
+        id: "water-fill",
+        type: "fill",
+        source: "world",
+        paint: {
+          "fill-color": [
+            "case",
+            ["==", ["get", "water_value"], null],
+            COLORS.map["noData"],
+            [
+              "interpolate",
+              ["linear"],
+              ["get", "water_value"],
+              0,
+              COLORS.water[0],
+              5,
+              COLORS.water[5],
+              10,
+              COLORS.water[10],
+              15,
+              COLORS.water[15],
+              20,
+              COLORS.water[20],
+              25,
+              COLORS.water[25],
+            ],
+          ],
+          "fill-opacity": 0.8,
+        },
+      });
+
+      // Border layer
+      map.addLayer({
+        id: "water-borders",
+        type: "line",
+        source: "world",
+        paint: {
+          "line-color": COLORS.map["border"],
+          "line-width": 0.2,
+          "line-opacity": 0.9,
+        },
+      });
+    }
+  };
+
   // Initialize map
   useEffect(() => {
     if (!mapContainer.current || mapInstance.current) return;
@@ -136,7 +227,7 @@ export default function MapPage() {
     return () => map.remove(); // Cleanup on unmount
   }, []);
 
-  // Update map colours with carbon data
+  // Update map colours with new data
   useEffect(() => {
     if (!mapInstance.current || loading || error) return;
 
@@ -151,17 +242,39 @@ export default function MapPage() {
         });
       }
 
-      // Merge carbon values
-      const merged = mergeCarbonValues(geojson);
-
-      // Update source
       const source = map.getSource("world") as maplibregl.GeoJSONSource;
-      source.setData(merged);
 
-      // Add layer
-      addCarbonLayer(map);
+      // Merge footprint values
+      if (selectedFootprintType === "carbon") {
+        removeWaterLayers(map);
+
+        const merged = mergeCarbonValues(structuredClone(geojson));
+        source.setData(merged);
+        addCarbonLayer(map);
+
+        setLegendName("Carbon Footprint");
+        setLegendUnit("gCO₂eq/kWh");
+        setlegendColors(Object.values(COLORS.carbon));
+      } else {
+        removeCarbonLayers(map);
+
+        const merged = mergeWaterValues(structuredClone(geojson));
+        source.setData(merged);
+        addWaterLayer(map);
+
+        setLegendName("Water Footprint");
+        setLegendUnit("l/kWh");
+        setlegendColors(Object.values(COLORS.water));
+      }
     });
-  }, [data, selectedTimeIndex, loading, error]);
+  }, [
+    data,
+    selectedTimeIndex,
+    selectedFootprintType,
+    selectedScope,
+    loading,
+    error,
+  ]);
 
   return (
     <div className="w-full h-screen relative">
@@ -199,6 +312,16 @@ export default function MapPage() {
         setSelectedTimeIndex={setSelectedTimeIndex}
         data={data}
       />
+
+      <ScopeSelector
+        selectedScope={selectedScope}
+        setSelectedScope={setSelectedScope}
+      ></ScopeSelector>
+
+      <FootprintTypeSelector
+        selectedFootprintType={selectedFootprintType}
+        setSelectedFootprintType={setSelectedFootprintType}
+      ></FootprintTypeSelector>
 
       <Legend
         title={legendName}

@@ -25,9 +25,9 @@ export default function Legend({
   }
 
   return (
-    <div className="absolute bottom-0 right-0 mb-3 mr-3 z-20 bg-white p-2 rounded shadow">
+    <div className="absolute bottom-0 right-0 mb-3 mr-3 z-20 bg-white p-2 w-56 h-20 rounded shadow">
       {/* Title */}
-      <Typography variant="body2" gutterBottom>
+      <Typography variant="body2" className="text-center" gutterBottom>
         {title} ({unitOfMeasure})
       </Typography>
 
