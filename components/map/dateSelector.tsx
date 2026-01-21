@@ -6,7 +6,7 @@ import { DateCalendar } from "@mui/x-date-pickers";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import { useTranslation } from "react-i18next";
 import { useMemo, useState, useCallback } from "react";
-import { format, parseISO } from "date-fns";
+import { normalizeToUTCDate } from "@/utils/dateManager";
 
 interface DateSelectorProps {
   selectedDate: Date;
@@ -55,12 +55,20 @@ export default function DateSelector({
   }, [data]);
 
   const formatUTC = (isoString?: string) => {
-    let formattedDate = "--:--";
-    if (isoString) {
-      const date = parseISO(isoString);
-      formattedDate = format(date, "MMM d, yyyy, HH:mm 'UTC'");
-    }
-    return formattedDate;
+    if (!isoString) return "--:--";
+
+    const date = new Date(isoString);
+
+    return (
+      date.toLocaleString("en-GB", {
+        timeZone: "UTC",
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      }) + " UTC"
+    );
   };
 
   const handleOpen = useCallback((event: React.MouseEvent<HTMLElement>) => {
@@ -107,7 +115,7 @@ export default function DateSelector({
               value={selectedDate}
               onChange={(newDate) => {
                 if (!newDate) return;
-                setSelectedDate(newDate);
+                setSelectedDate(normalizeToUTCDate(newDate));
                 setSelectedTimeIndex(0);
               }}
             />
