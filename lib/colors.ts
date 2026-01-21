@@ -7,6 +7,14 @@ export const COLORS = {
     500: '#6D3B07',
     1000: '#2E1C0E',
   },
+  water: {
+    0: '#2E0EBC',
+    5: '#0D68BD',
+    10: '#1E89A7',
+    15: '#1EA698',
+    20: '#76C491',
+    25: '#F9F087',
+  },
   map: {
     noData: '#CFCFCF',
     border: '#FAFAFA',

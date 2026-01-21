@@ -4,8 +4,8 @@ export interface FootprintQueryParams {
   zone?: string; // wattnet zone code
   lat?: number;
   lon?: number;
-  footprint_type?: 'carbon' | 'water';
-  scope?: 'operational' | 'life-cycle';
+  footprint_type?: string; // 'carbon' | 'water';
+  scope?: string; // 'operational' | 'life-cycle';
   aggregate?: boolean;
   use_global?: boolean;
 }
