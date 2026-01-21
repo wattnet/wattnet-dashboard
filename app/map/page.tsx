@@ -35,6 +35,11 @@ export default function MapPage() {
   const [legendColors, setlegendColors] = useState(
     Object.values(COLORS.carbon)
   );
+  const [legendRange, setLegendRange] = useState({
+    min: 0,
+    max: 1000,
+    step: 200,
+  });
 
   /* Data */
   const dateKey = [
@@ -42,6 +47,7 @@ export default function MapPage() {
     String(selectedDate.getUTCMonth() + 1).padStart(2, "0"),
     String(selectedDate.getUTCDate()).padStart(2, "0"),
   ].join("-");
+
   const { data, loading, error } = useCarbonFootprints(
     {
       footprint_type: selectedFootprintType,
@@ -53,6 +59,13 @@ export default function MapPage() {
     },
     dateKey
   );
+
+  const updateRange = (key: string, value: number) => {
+    setLegendRange((prev) => ({
+      ...prev,
+      [key]: value,
+    }));
+  };
 
   const removeCarbonLayers = (map: maplibregl.Map) => {
     if (map.getLayer("carbon-fill")) map.removeLayer("carbon-fill");
@@ -179,16 +192,16 @@ export default function MapPage() {
               ["get", "water_value"],
               0,
               COLORS.water[0],
-              5,
-              COLORS.water[5],
-              10,
-              COLORS.water[10],
-              15,
-              COLORS.water[15],
-              20,
-              COLORS.water[20],
-              25,
-              COLORS.water[25],
+              50,
+              COLORS.water[50],
+              100,
+              COLORS.water[100],
+              150,
+              COLORS.water[150],
+              200,
+              COLORS.water[200],
+              250,
+              COLORS.water[250],
             ],
           ],
           "fill-opacity": 0.8,
@@ -309,6 +322,9 @@ export default function MapPage() {
         setLegendName("Carbon Footprint");
         setLegendUnit("gCO₂eq/kWh");
         setlegendColors(Object.values(COLORS.carbon));
+        updateRange("min", 0);
+        updateRange("max", 1000);
+        updateRange("step", 200);
       } else {
         removeCarbonLayers(map);
 
@@ -320,6 +336,9 @@ export default function MapPage() {
         setLegendName("Water Footprint");
         setLegendUnit("l/kWh");
         setlegendColors(Object.values(COLORS.water));
+        updateRange("min", 0);
+        updateRange("max", 250);
+        updateRange("step", 50);
       }
     });
   }, [
@@ -381,9 +400,7 @@ export default function MapPage() {
       <Legend
         title={legendName}
         unitOfMeasure={legendUnit}
-        min={0}
-        max={1000}
-        step={200}
+        {...legendRange}
         colors={legendColors}
       />
     </div>
