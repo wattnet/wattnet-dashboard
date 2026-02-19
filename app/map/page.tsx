@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, useMemo } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useCarbonFootprints } from "@/hooks/useCarbonFootprints";
@@ -11,7 +11,14 @@ import Legend from "@/components/map/legend";
 import { Box, CircularProgress } from "@mui/material";
 import FootprintTypeSelector from "@/components/map/footprintTypeSelector";
 import ScopeSelector from "@/components/map/scopeSelector";
-import { getTodayUTC, normalizeToUTCDate } from "@/utils/dateManager";
+import {
+  getInitialTimeIndex,
+  getTodayUTC,
+  normalizeToUTCDate,
+} from "@/utils/dateManager";
+import { processFootprints } from "@/utils/footprintAdapter";
+import GlobalTag from "@/components/map/globalTag";
+import { ProcessedFootprint } from "@/types/footprints";
 
 export default function MapPage() {
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -21,7 +28,11 @@ export default function MapPage() {
 
   /* Date selector */
   const [selectedDate, setSelectedDate] = useState(getTodayUTC);
-  const [selectedTimeIndex, setSelectedTimeIndex] = useState(0);
+  const [selectedTimeIndex, setSelectedTimeIndex] =
+    useState(getInitialTimeIndex);
+
+  /* Global data status tag */
+  const [dataStatusTag, setDataStatusTag] = useState("Real time");
 
   /* Footprint type selector */
   const [selectedFootprintType, setSelectedFootprintType] = useState("carbon");
@@ -60,6 +71,11 @@ export default function MapPage() {
     dateKey
   );
 
+  const processedData = useMemo(() => {
+    if (!data) return [];
+    return processFootprints(data);
+  }, [data]);
+
   const updateRange = (key: string, value: number) => {
     setLegendRange((prev) => ({
       ...prev,
@@ -87,41 +103,67 @@ export default function MapPage() {
   };
 
   const mergeCarbonValues = (geojson: FeatureCollection) => {
-    const carbonByZone: Record<string, number> = {};
-    // TODO: currently only shows first array of values (valid: true)
-    data.forEach((d) => {
-      const valueAtIndex = d.series?.[0]?.values?.[selectedTimeIndex]?.[1];
-      if (!valueAtIndex) return;
-      carbonByZone[d.zone] = valueAtIndex;
+    const mergedByZone: Record<
+      string,
+      { value: number; valid: boolean; zoneStatus: string }
+    > = {};
+
+    processedData.forEach((d) => {
+      const item = d.series[selectedTimeIndex];
+      if (!item) return;
+
+      mergedByZone[d.zone] = {
+        value: item.value,
+        valid: item.valid,
+        zoneStatus: item.zoneStatus,
+      };
     });
 
-    geojson.features = geojson.features.map((f: any) => ({
-      ...f,
-      properties: {
-        ...f.properties,
-        carbon_value: carbonByZone[f.properties.zoneName] ?? null,
-      },
-    }));
+    geojson.features = geojson.features.map((f: any) => {
+      const zoneData = mergedByZone[f.properties.zoneName];
+      return {
+        ...f,
+        properties: {
+          ...f.properties,
+          carbon_value: zoneData?.value ?? null,
+          valid: zoneData?.valid ?? false,
+          zone_status: zoneData?.zoneStatus ?? "Unknown",
+        },
+      };
+    });
 
     return geojson;
   };
 
   const mergeWaterValues = (geojson: FeatureCollection) => {
-    const waterByZone: Record<string, number> = {};
-    // TODO: currently only shows first array of values (valid: true)
-    data.forEach((d) => {
-      const valueAtIndex = d.series?.[0]?.values?.[selectedTimeIndex]?.[1];
-      if (!valueAtIndex) return;
-      waterByZone[d.zone] = valueAtIndex;
+    const mergedByZone: Record<
+      string,
+      { value: number; valid: boolean; zoneStatus: string }
+    > = {};
+
+    processedData.forEach((d) => {
+      const item = d.series[selectedTimeIndex];
+      if (!item) return;
+
+      mergedByZone[d.zone] = {
+        value: item.value,
+        valid: item.valid,
+        zoneStatus: item.zoneStatus,
+      };
     });
 
-    geojson.features = geojson.features.map((f: any) => ({
-      ...f,
-      properties: {
-        ...f.properties,
-        water_value: waterByZone[f.properties.zoneName] ?? null,
-      },
-    }));
+    geojson.features = geojson.features.map((f: any) => {
+      const zoneData = mergedByZone[f.properties.zoneName];
+      return {
+        ...f,
+        properties: {
+          ...f.properties,
+          water_value: zoneData?.value ?? null,
+          valid: zoneData?.valid ?? false,
+          zone_status: zoneData?.zoneStatus ?? "Unknown",
+        },
+      };
+    });
 
     return geojson;
   };
@@ -236,10 +278,11 @@ export default function MapPage() {
 
       const value =
         footprintType === "carbon" ? props.carbon_value : props.water_value;
-
       const unit = footprintType === "carbon" ? "gCO₂eq/kWh" : "l/kWh";
       const label =
         footprintType === "carbon" ? "Carbon Intensity" : "Water Footprint";
+      const zoneStatus = props.zone_status;
+      const valid = props.valid;
 
       popupRef.current
         .setLngLat(e.lngLat)
@@ -254,6 +297,10 @@ export default function MapPage() {
               ${value ?? "—"}
             </span> ${unit}
             <div style="font-size:12px;color:#666">${label}</div>
+            <div style="font-size:12px;color:#666">Zone Status = ${zoneStatus}</div>
+            <div style="font-size:12px;color:#666">${
+              valid ? "Valid" : "Invalid"
+            }</div>
           </div>
         `
         )
@@ -350,6 +397,30 @@ export default function MapPage() {
     error,
   ]);
 
+  // Update data status tag
+  useEffect(() => {
+    if (!processedData || !processedData.length) return;
+
+    const nowUTC = new Date();
+
+    const selectedItem = processedData[0].series[selectedTimeIndex];
+
+    if (!selectedItem) return;
+
+    const selectedTime = new Date(selectedItem.timestamp);
+
+    if (selectedTime > nowUTC) {
+      setDataStatusTag("Forecasted");
+    } else if (
+      selectedTime <= nowUTC &&
+      selectedTime.getTime() + 15 * 60 * 1000 > nowUTC.getTime()
+    ) {
+      setDataStatusTag("Real time");
+    } else {
+      setDataStatusTag("Historical");
+    }
+  }, [selectedDate, selectedTimeIndex, processedData]);
+
   return (
     <div className="w-full h-screen relative">
       <div ref={mapContainer} className="w-full h-full" />
@@ -384,8 +455,10 @@ export default function MapPage() {
         setSelectedDate={setSelectedDate}
         selectedTimeIndex={selectedTimeIndex}
         setSelectedTimeIndex={setSelectedTimeIndex}
-        data={data}
+        data={processedData}
       />
+
+      <GlobalTag title={dataStatusTag} />
 
       <ScopeSelector
         selectedScope={selectedScope}

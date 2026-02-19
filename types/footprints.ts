@@ -12,3 +12,19 @@ export interface Footprint {
   coverage: string;
   series: FootprintSeries[];
 }
+
+export interface FootprintItem {
+  timestamp: string;
+  value: number | null;
+  valid: boolean;
+  zoneStatus: string;
+}
+
+export interface ProcessedFootprint {
+  footprint_type: string;
+  scope: string;
+  zone: string;
+  unit: string;
+  coverage: string;
+  series: FootprintItem[];
+}

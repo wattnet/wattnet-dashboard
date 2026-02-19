@@ -10,3 +10,13 @@ export const normalizeToUTCDate = (date: Date) => {
     Date.UTC(date.getFullYear(), date.getMonth(), date.getDate())
   );
 };
+
+export const getInitialTimeIndex = () => {
+  const nowUTC = new Date();
+  const hours = nowUTC.getUTCHours();
+  const minutes = nowUTC.getUTCMinutes();
+
+  const intervalIndex = hours * 4 + Math.floor(minutes / 15);
+
+  return Math.min(intervalIndex, 95);
+};

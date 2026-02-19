@@ -1,6 +1,6 @@
 "use client";
 
-import { Footprint } from "@/types/footprints";
+import { ProcessedFootprint } from "@/types/footprints";
 import { IconButton, Slider, Popover, Box, Typography } from "@mui/material";
 import { DateCalendar } from "@mui/x-date-pickers";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
@@ -13,7 +13,7 @@ interface DateSelectorProps {
   setSelectedDate: (date: Date) => void;
   selectedTimeIndex: number;
   setSelectedTimeIndex: (index: number) => void;
-  data: Footprint[];
+  data: ProcessedFootprint[];
 }
 
 export default function DateSelector({
@@ -28,27 +28,22 @@ export default function DateSelector({
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const isOpen = Boolean(anchorEl);
 
-  const maxIndex = useMemo(
-    () => (data?.[0]?.series?.[0]?.values?.length ?? 1) - 1,
-    [data]
-  );
+  const maxIndex = useMemo(() => (data?.[0]?.series?.length ?? 1) - 1, [data]);
 
   const marks = useMemo(() => {
-    const values = data?.[0]?.series?.[0]?.values ?? [];
-    const lastIndex = values.length - 1;
+    const series = data?.[0]?.series ?? [];
+    const lastIndex = series.length - 1;
 
-    return values
+    return series
       .map((item, index) => {
-        // Show mark every 24 entries (6 hours, 15-min intervals)
         const isIntervalMark = index % 24 === 0;
-        // Add mark for last entry (23:45)
         const isLastMark = index === lastIndex;
 
         if (!isIntervalMark && !isLastMark) return null;
 
         return {
           value: index,
-          label: item[0].split("T")[1].slice(0, 5), // HH:mm
+          label: item.timestamp.split("T")[1].slice(0, 5), // HH:mm
         };
       })
       .filter(Boolean) as { value: number; label: string }[];
@@ -106,9 +101,8 @@ export default function DateSelector({
         <Box p={3} display="flex" flexDirection={"column"}>
           <Box>
             <Typography variant="h6" mt={1} mb={1} textAlign="center">
-              {formatUTC(
-                data?.[0]?.series?.[0]?.values?.[selectedTimeIndex]?.[0]
-              ) ?? "--:--"}
+              {formatUTC(data?.[0]?.series?.[selectedTimeIndex]?.timestamp) ??
+                "--:--"}
             </Typography>
 
             <DateCalendar
