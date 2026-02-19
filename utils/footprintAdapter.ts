@@ -56,7 +56,7 @@ export const processFootprints = (data: Footprint[]): ProcessedFootprint[] => {
 
     // Create a map by timestamp to check if all intervals have data
     const byTimestamp = new Map(
-      flattened.map((item) => [item.timestamp, item])
+      flattened.map((item) => [new Date(item.timestamp).getTime(), item])
     );
 
     // Generate full day intervals based on the first timestamp's date
@@ -64,15 +64,17 @@ export const processFootprints = (data: Footprint[]): ProcessedFootprint[] => {
     const fullDayIntervals = generateDayIntervals(baseDate);
 
     // For each interval, use the existing data or fill in a placeholder if missing
-    const completedSeries: FootprintItem[] = fullDayIntervals.map(
-      (timestamp) =>
-        byTimestamp.get(timestamp) ?? {
-          timestamp,
+    const completedSeries: FootprintItem[] = fullDayIntervals.map((ts) => {
+      const tMs = new Date(ts).getTime();
+      return (
+        byTimestamp.get(tMs) ?? {
+          timestamp: ts,
           value: null,
           valid: false,
           zoneStatus: 'missing',
         }
-    );
+      );
+    });
 
     return {
       footprint_type: fp.footprint_type,

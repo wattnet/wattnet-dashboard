@@ -105,7 +105,7 @@ export default function MapPage() {
   const mergeCarbonValues = (geojson: FeatureCollection) => {
     const mergedByZone: Record<
       string,
-      { value: number; valid: boolean; zoneStatus: string }
+      { value: number | null; valid: boolean; zoneStatus: string }
     > = {};
 
     processedData.forEach((d) => {
@@ -138,7 +138,7 @@ export default function MapPage() {
   const mergeWaterValues = (geojson: FeatureCollection) => {
     const mergedByZone: Record<
       string,
-      { value: number; valid: boolean; zoneStatus: string }
+      { value: number | null; valid: boolean; zoneStatus: string }
     > = {};
 
     processedData.forEach((d) => {
