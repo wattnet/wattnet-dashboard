@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { generateNewToken } from '@/lib/ephemeralTokens';
+import { generateNewToken } from '@/src/lib/auth/ephemeralTokens';
 
 export async function GET() {
   const token = generateNewToken();

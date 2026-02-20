@@ -1,11 +1,12 @@
+import { FeatureCollection } from 'geojson';
 import {
   Footprint,
   ProcessedFootprint,
   FootprintItem,
-} from '@/types/footprints';
+} from '../types/footprints';
 
-/*
- *  Generates an array of ISO timestamps for every 15-minute interval in the day of the given date.
+/**
+ * Generates an array of ISO timestamps for every 15-minute interval in the day of the given date.
  */
 const generateDayIntervals = (date: Date) => {
   const intervals: string[] = [];
@@ -30,8 +31,8 @@ const generateDayIntervals = (date: Date) => {
   return intervals;
 };
 
-/*
- * Transforms raw footprint data into a structured format with complete 15-minute intervals for the day.
+/**
+ * Transforms raw footprint data into a structured format with complete 15-minute intervals.
  */
 export const processFootprints = (data: Footprint[]): ProcessedFootprint[] => {
   return data.map((fp) => {
@@ -77,12 +78,61 @@ export const processFootprints = (data: Footprint[]): ProcessedFootprint[] => {
     });
 
     return {
-      footprint_type: fp.footprint_type,
-      scope: fp.scope,
-      zone: fp.zone,
-      unit: fp.unit,
-      coverage: fp.coverage,
+      ...fp,
       series: completedSeries,
     };
   });
 };
+
+/**
+ * Merge carbon or water values into the GeoJSON features based on the processed footprint data and selected time index.
+ */
+const mergeValues = (
+  geojson: FeatureCollection,
+  processedData: ProcessedFootprint[],
+  timeIndex: number,
+  valueKey: 'carbon_value' | 'water_value'
+) => {
+  const mergedByZone: Record<
+    string,
+    { value: number | null; valid: boolean; zoneStatus: string }
+  > = {};
+
+  processedData.forEach((d) => {
+    const item = d.series[timeIndex];
+    if (!item) return;
+
+    mergedByZone[d.zone] = {
+      value: item.value,
+      valid: item.valid,
+      zoneStatus: item.zoneStatus,
+    };
+  });
+
+  geojson.features = geojson.features.map((f: any) => {
+    const zoneData = mergedByZone[f.properties.zoneName];
+    return {
+      ...f,
+      properties: {
+        ...f.properties,
+        [valueKey]: zoneData?.value ?? null,
+        valid: zoneData?.valid ?? false,
+        zone_status: zoneData?.zoneStatus ?? 'Unknown',
+      },
+    };
+  });
+
+  return geojson;
+};
+
+export const mergeCarbonValues = (
+  geojson: FeatureCollection,
+  data: ProcessedFootprint[],
+  timeIndex: number
+) => mergeValues(geojson, data, timeIndex, 'carbon_value');
+
+export const mergeWaterValues = (
+  geojson: FeatureCollection,
+  data: ProcessedFootprint[],
+  timeIndex: number
+) => mergeValues(geojson, data, timeIndex, 'water_value');

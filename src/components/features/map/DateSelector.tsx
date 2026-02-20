@@ -1,12 +1,12 @@
 "use client";
 
-import { ProcessedFootprint } from "@/types/footprints";
+import { ProcessedFootprint } from "@/src/types/footprints";
 import { IconButton, Slider, Popover, Box, Typography } from "@mui/material";
 import { DateCalendar } from "@mui/x-date-pickers";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import { useTranslation } from "react-i18next";
 import { useMemo, useState, useCallback } from "react";
-import { normalizeToUTCDate } from "@/utils/dateManager";
+import { normalizeToUTCDate } from "@/src/utils/dateManager";
 
 interface DateSelectorProps {
   selectedDate: Date;

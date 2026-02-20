@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { FootprintQueryParams } from '@/types/queryParams';
-import { fetchCarbonFootprints } from '@/lib/api';
-import { getCurrentToken } from '@/lib/ephemeralTokens';
+import { FootprintQueryParams } from '@/src/types/queryParams';
+import { fetchCarbonFootprints } from '@/src/lib/api/api';
+import { getCurrentToken } from '@/src/lib/auth/ephemeralTokens';
 
 export async function GET(request: Request) {
   const token = request.headers.get('x-dashboard-token');

@@ -2,14 +2,14 @@
 
 import { SWRConfig } from "swr";
 import { I18nextProvider } from "react-i18next";
-import i18n from "./i18n/config";
+import i18n from "../i18n/config";
 
 import { LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 
 import { es, enGB } from "date-fns/locale";
 import { ThemeProvider } from "@mui/material/styles";
-import { muiTheme } from "@/lib/muiTheme";
+import { muiTheme } from "@/src/lib/theme/muiTheme";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (

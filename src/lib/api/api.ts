@@ -1,7 +1,7 @@
-import { FootprintQueryParams } from '@/types/queryParams';
-import { Footprint } from '@/types/footprints';
-import { endpoints } from '@/lib/endpoints';
-import { getAccessToken } from '@/lib/token';
+import { FootprintQueryParams } from '@/src/types/queryParams';
+import { Footprint } from '@/src/types/footprints';
+import { endpoints } from '@/src/lib/api/endpoints';
+import { getAccessToken } from '@/src/lib/auth/token';
 
 export async function fetchCarbonFootprints(
   params: FootprintQueryParams

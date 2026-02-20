@@ -1,4 +1,4 @@
-import { FootprintQueryParams } from '@/types/queryParams';
+import { FootprintQueryParams } from '@/src/types/queryParams';
 
 export const endpoints = {
   footprints: (params: FootprintQueryParams) => {

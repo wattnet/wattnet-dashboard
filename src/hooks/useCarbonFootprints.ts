@@ -1,6 +1,6 @@
 import useSWR from 'swr';
-import { Footprint } from '@/types/footprints';
-import { FootprintQueryParams } from '@/types/queryParams';
+import { Footprint } from '@/src/types/footprints';
+import { FootprintQueryParams } from '@/src/types/queryParams';
 import { useEffect, useState } from 'react';
 
 export function useCarbonFootprints(
