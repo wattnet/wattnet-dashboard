@@ -4,7 +4,11 @@ import { FeatureCollection } from 'geojson';
 import { COLORS } from '../lib/theme/colors';
 import { normalizeToUTCDate } from '../utils/dateManager';
 
-export function useMapLayers(map: maplibregl.Map | null, selectedDate: Date) {
+export function useMapLayers(
+  map: maplibregl.Map | null,
+  selectedDate: Date,
+  onZoneClick?: (zoneName: string) => void,
+) {
   const popupRef = useRef<maplibregl.Popup | null>(null);
 
   useEffect(() => {
@@ -109,6 +113,17 @@ export function useMapLayers(map: maplibregl.Map | null, selectedDate: Date) {
   const setupHoverEffect = (layerId: string, type: 'carbon' | 'water') => {
     if (!map) return;
 
+    map.on('click', layerId, (e) => {
+      if (!e.features?.length) return;
+      const props = e.features[0].properties;
+      const zoneFullName = props.countryName ?? 'Unknown';
+
+      if (onZoneClick) {
+        console.log(`Zone clicked: ${zoneFullName}`);
+        onZoneClick(zoneFullName);
+      }
+    });
+
     map.on('mousemove', layerId, (e) => {
       if (!e.features?.length || !popupRef.current) return;
 
@@ -139,7 +154,7 @@ export function useMapLayers(map: maplibregl.Map | null, selectedDate: Date) {
                       valid ? 'Valid' : 'Invalid'
                     }</div>
                   </div>
-                `
+                `,
         )
         .addTo(map);
 

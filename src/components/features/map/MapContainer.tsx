@@ -19,6 +19,7 @@ interface MapContainerProps {
   selectedDate: Date;
   selectedTimeIndex: number;
   selectedFootprintType: string;
+  onZoneClick?: (zoneName: string) => void;
 }
 
 export default function MapContainer({
@@ -27,13 +28,18 @@ export default function MapContainer({
   selectedDate,
   selectedTimeIndex,
   selectedFootprintType,
+  onZoneClick,
 }: MapContainerProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<maplibregl.Map | null>(null);
   const worldGeoJSONRef = useRef<FeatureCollection | null>(null);
   const [isStyleLoaded, setIsStyleLoaded] = useState(false);
 
-  const { updateMapData } = useMapLayers(mapInstance.current, selectedDate);
+  const { updateMapData } = useMapLayers(
+    mapInstance.current,
+    selectedDate,
+    onZoneClick,
+  );
 
   useEffect(() => {
     if (!mapContainer.current || mapInstance.current) return;
