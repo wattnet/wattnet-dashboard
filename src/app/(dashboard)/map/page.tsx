@@ -1,19 +1,26 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useCarbonFootprints } from "@/src/hooks/useCarbonFootprints";
 import { COLORS } from "@/src/lib/theme/colors";
-import DateSelector from "@/src/components/features/map/DateSelector";
+import DateSelector from "@/src/components/features/sidenav/DateSelector";
 import Legend from "@/src/components/features/map/Legend";
-import FootprintTypeSelector from "@/src/components/features/map/FootprintTypeSelector";
-import ScopeSelector from "@/src/components/features/map/ScopeSelector";
+import FootprintTypeSelector from "@/src/components/features/sidenav/FootprintTypeSelector";
+import ScopeSelector from "@/src/components/features/sidenav/ScopeSelector";
 import { getInitialTimeIndex, getTodayUTC } from "@/src/utils/dateManager";
 import { processFootprints } from "@/src/utils/footprintAdapter";
 import GlobalTag from "@/src/components/features/map/GlobalTag";
 import MapContainer from "@/src/components/features/map/MapContainer";
+import ZoneDrawer from "@/src/components/features/drawer/ZoneDrawer";
 
 export default function MapPage() {
+  /* Drawer state */
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [selectedZone, setSelectedZone] = useState<string | undefined>(
+    undefined,
+  );
+
   /* Date selector */
   const [selectedDate, setSelectedDate] = useState(getTodayUTC);
   const [selectedTimeIndex, setSelectedTimeIndex] =
@@ -40,7 +47,7 @@ export default function MapPage() {
         ? { min: 0, max: 1000, step: 200 }
         : { min: 0, max: 250, step: 50 },
     }),
-    [footprintType]
+    [footprintType],
   );
 
   const dateKey = useMemo(() => {
@@ -60,7 +67,7 @@ export default function MapPage() {
       aggregate: false,
       use_global: true,
     },
-    dateKey
+    dateKey,
   );
 
   const processedData = useMemo(() => {
@@ -76,6 +83,16 @@ export default function MapPage() {
         selectedDate={selectedDate}
         selectedTimeIndex={selectedTimeIndex}
         selectedFootprintType={selectedFootprintType}
+        onZoneClick={(zoneName: string) => {
+          setSelectedZone(zoneName);
+          setDrawerOpen(true);
+        }}
+      />
+
+      <ZoneDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        zoneName={selectedZone}
       />
 
       {error && (
