@@ -11,9 +11,10 @@
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
-    "@mui/icons-material": "^7.3.6",
-    "@mui/material": "^7.3.6",
+    "@mui/icons-material": "^7.3.9",
+    "@mui/material": "^7.3.9",
     "@mui/x-date-pickers": "^8.22.0",
+    "@toolpad/core": "^0.16.0",
     "date-fns": "^4.1.0",
     "i18next": "^25.7.3",
     "i18next-browser-languagedetector": "^8.2.0",
