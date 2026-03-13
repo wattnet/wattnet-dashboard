@@ -6035,7 +6035,7 @@
       "properties": {
         "zoneName": "RU",
         "countryKey": "RU",
-        "countryName": "Russian Federation"
+        "countryName": "Russia"
       },
       "geometry": {
         "type": "MultiPolygon",
@@ -7079,7 +7079,7 @@
       "properties": {
         "zoneName": "RU_KGD",
         "countryKey": "RU",
-        "countryName": "Russian Federation"
+        "countryName": "Kaliningrad (Russia)"
       },
       "geometry": {
         "type": "MultiPolygon",

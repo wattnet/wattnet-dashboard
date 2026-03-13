@@ -14,7 +14,7 @@ const redHatDisplay = Red_Hat_Display({
 });
 
 export const metadata: Metadata = {
-  title: "Wattnet Dashboard",
+  title: "Dashboard - wattnet.eu",
   description:
     "Interactive dashboard for wattnet, visualizing energy generation, CO₂ emissions, and environmental footprint metrics.",
 };
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode;
+  readonly children: React.ReactNode;
 }) {
   return (
     <html lang="en">

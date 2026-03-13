@@ -5,9 +5,9 @@ import { Box, IconButton, styled, Typography } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 
 interface ZoneDrawerProps {
-  open: boolean;
-  onClose: () => void;
-  zoneName?: string;
+  readonly open: boolean;
+  readonly onClose: () => void;
+  readonly zoneName?: string;
 }
 
 const DrawerHeader = styled("div")(({ theme }) => ({
