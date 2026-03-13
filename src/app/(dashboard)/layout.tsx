@@ -23,6 +23,9 @@ import {
   useCanvasRect,
 } from "@/src/components/features/sidebar/context/DashboardContext";
 import { useInteractionMode } from "@/src/hooks/useInteractionMode";
+import SidebarContent, {
+  SidebarCopyright,
+} from "@/src/components/features/sidebar/SidebarContent";
 
 export const MOBILE_TOP_BAR_H = 48;
 export const MOBILE_PEEK_H = 64;
@@ -31,17 +34,13 @@ const BORDER = "rgba(255,255,255,0.08)";
 const BACKDROP = "blur(20px)";
 const PANEL_BG = "rgba(11,18,30,0.88)";
 const COLLAPSED_W = 56;
-const SIDEBAR_W = 320;
+const SIDEBAR_W = 400;
 
 const panelSx = {
   bgcolor: PANEL_BG,
   backdropFilter: BACKDROP,
   WebkitBackdropFilter: BACKDROP,
 };
-
-function SidebarContent() {
-  return <Box sx={{ flex: 1 }} />;
-}
 
 function CollapseBtn({
   onClick,
@@ -84,7 +83,7 @@ function DragHandle() {
   );
 }
 
-// ── Shared zone data display ───────────────────────────────────────────────
+// ── Zone data display ──────────────────────────────────────────────────────
 function ZoneDataContent() {
   const { zoneData } = useZonePanel();
   if (!zoneData)
@@ -99,9 +98,7 @@ function ZoneDataContent() {
         No data available.
       </Typography>
     );
-
   const valStr = zoneData.value != null ? zoneData.value.toFixed(1) : "—";
-
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
       {zoneData.date && (
@@ -190,7 +187,6 @@ function Sidebar({
   const { sidebarCollapsed, toggleSidebar, expandSidebar } = useSidebar();
   const { zonePanelOpen, closeZonePanel } = useZonePanel();
   const theme = useTheme();
-  // Tablet breakpoint still uses screen size for sidebar width — that's fine
   const isNarrow = useMediaQuery(theme.breakpoints.down("lg"));
 
   return (
@@ -221,10 +217,10 @@ function Sidebar({
           }}
         >
           <Image
-            src="/images/wattnet-logo-icon.png"
+            src="/images/wattnet-logo-icon-color-transparent.svg"
             alt="wattnet"
-            width={28}
-            height={28}
+            width={40}
+            height={40}
           />
           <CollapseBtn
             onClick={() => {
@@ -235,18 +231,33 @@ function Sidebar({
           />
         </Box>
       ) : (
+        // Expanded: SidebarContent fills, copyright + collapse btn at bottom
         <>
-          <SidebarContent />
+          <Box
+            sx={{
+              flex: 1,
+              minHeight: 0,
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+            }}
+          >
+            <SidebarContent />
+          </Box>
+          {/* Bottom bar: copyright left, collapse btn right */}
           <Box
             sx={{
               px: 2,
-              py: 1.5,
+              py: 1.25,
               borderTop: `1px solid ${BORDER}`,
               display: "flex",
-              justifyContent: "flex-end",
+              alignItems: "center",
+              justifyContent: "space-between",
               flexShrink: 0,
+              gap: 1,
             }}
           >
+            <SidebarCopyright />
             <CollapseBtn
               onClick={toggleSidebar}
               icon={<ChevronLeftIcon fontSize="small" />}
@@ -464,12 +475,10 @@ function MobileTopSheet({
           <Box
             sx={{
               flex: 1,
-              overflowY: "auto",
-              px: 2,
-              pt: 1,
-              pb: 0,
-              scrollbarWidth: "thin",
-              scrollbarColor: "rgba(255,255,255,0.1) transparent",
+              minHeight: 0,
+              overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
             }}
           >
             <SidebarContent />
@@ -497,7 +506,6 @@ function MobileBottomSheet({ onExpand }: Readonly<{ onExpand: () => void }>) {
     useZonePanel();
   const dragStartY = React.useRef<number | null>(null);
 
-  // Open to mid directly so the value is immediately visible
   React.useEffect(() => {
     if (openCount > 0) setBottomSheetState("mid");
   }, [openCount, setBottomSheetState]);
@@ -671,10 +679,8 @@ function DashboardLayoutInner({
   const theme = useTheme();
   const isNarrow = useMediaQuery(theme.breakpoints.down("lg"));
 
-  // Touch device → mobile sheet layout regardless of screen size
   if (isTouch) return <MobileLayout>{children}</MobileLayout>;
 
-  // Pointer device → desktop layout, sidebar width adapts to screen size
   const sidebarExpandedWidth = isNarrow ? "50vw" : `${SIDEBAR_W}px`;
   const zonePanelExpandedWidth = isNarrow ? "50vw" : "40vw";
 
