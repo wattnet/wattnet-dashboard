@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Box, IconButton } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
@@ -13,6 +13,7 @@ import { getInitialTimeIndex, getTodayUTC } from "@/src/utils/dateManager";
 import { processFootprints } from "@/src/utils/footprintAdapter";
 import GlobalTag from "@/src/components/features/map/GlobalTag";
 import MapContainer from "@/src/components/features/map/MapContainer";
+import { ColorStop } from "@/src/utils/legendHelper";
 import {
   ZoneData,
   useSidebarControls,
@@ -42,17 +43,12 @@ const zoomBtnSx = {
 };
 
 function mobileLegendBottom(sheetState: string): number {
-  if (sheetState === "peek") {
-    return MOBILE_PEEK_H + LEGEND_MARGIN;
-  }
-  return LEGEND_MARGIN;
+  return sheetState === "peek" ? MOBILE_PEEK_H + LEGEND_MARGIN : LEGEND_MARGIN;
 }
 
 import type { Map } from "maplibre-gl";
 
-type ZoomButtonsProps = {
-  mapRef: React.RefObject<Map | null>;
-};
+type ZoomButtonsProps = { mapRef: React.RefObject<Map | null> };
 
 const ZoomButtons = ({ mapRef }: ZoomButtonsProps) => (
   <>
@@ -87,16 +83,22 @@ export default function MapPage() {
   const [selectedTimeIndex, setSelectedTimeIndex] =
     useState(getInitialTimeIndex);
 
+  // Legend scale stops
+  const [scaleStops, setScaleStops] = useState<ColorStop[]>([]);
+
+  const handleScaleReady = useCallback((stops: ColorStop[]) => {
+    setScaleStops(stops);
+  }, []);
+
   const isCarbon = footprintType === "carbon";
 
   const legendConfig = useMemo(
     () => ({
       title: isCarbon ? "Carbon Footprint" : "Water Footprint",
       unit: isCarbon ? "gCO₂eq/kWh" : "l/kWh",
-      colors: Object.values(isCarbon ? COLORS.carbon : COLORS.water),
-      range: isCarbon
-        ? { min: 0, max: 1000, step: 200 }
-        : { min: 0, max: 250, step: 50 },
+      colors: Object.values(
+        isCarbon ? COLORS.carbon : COLORS.water,
+      ) as string[],
     }),
     [isCarbon],
   );
@@ -150,6 +152,18 @@ export default function MapPage() {
   const mobileLegendBot = mobileLegendBottom(bottomSheetState);
   const showDesktopOverlay = !isTouch && canvasRect.width > 0;
 
+  // Shared legend element for both mobile and desktop
+  const legendEl = (
+    <Legend
+      title={legendConfig.title}
+      unitOfMeasure={legendConfig.unit}
+      stops={scaleStops}
+      colors={legendConfig.colors}
+      min={0}
+      max={isCarbon ? 1000 : 250}
+    />
+  );
+
   return (
     <>
       <Box sx={{ position: "fixed", inset: 0, zIndex: 0 }}>
@@ -164,6 +178,7 @@ export default function MapPage() {
           onMapReady={(m) => {
             mapRef.current = m;
           }}
+          onScaleReady={handleScaleReady}
         />
       </Box>
 
@@ -204,12 +219,7 @@ export default function MapPage() {
               transition: "bottom 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
             }}
           >
-            <Legend
-              title={legendConfig.title}
-              unitOfMeasure={legendConfig.unit}
-              colors={legendConfig.colors}
-              {...legendConfig.range}
-            />
+            {legendEl}
           </Box>
           {error && (
             <Box
@@ -276,12 +286,7 @@ export default function MapPage() {
               pointerEvents: "auto",
             }}
           >
-            <Legend
-              title={legendConfig.title}
-              unitOfMeasure={legendConfig.unit}
-              colors={legendConfig.colors}
-              {...legendConfig.range}
-            />
+            {legendEl}
           </Box>
           {error && (
             <Box

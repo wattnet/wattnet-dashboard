@@ -4,6 +4,11 @@ import { FeatureCollection } from 'geojson';
 import { COLORS } from '../lib/theme/colors';
 import { normalizeToUTCDate } from '../utils/dateManager';
 import { ZoneData } from '../components/features/sidebar/context/DashboardContext';
+import {
+  ColorStop,
+  buildQuantileScale,
+  buildMapExpression,
+} from '../utils/legendHelper';
 
 interface ZoneFeatureProperties {
   countryName?: string;
@@ -47,6 +52,32 @@ function isTouchDevice(): boolean {
   return globalThis.matchMedia('(hover: none) and (pointer: coarse)').matches;
 }
 
+/**
+ * Extract all values from a GeoJSON FeatureCollection for a given property.
+ * Used to compute the quantile scale directly from the data already on the map.
+ */
+function extractGeoJSONValues(
+  geojson: FeatureCollection,
+  property: 'carbon_value' | 'water_value',
+): number[] {
+  const values: number[] = [];
+  for (const feature of geojson.features) {
+    const v = (feature.properties as Record<string, unknown>)?.[property];
+    if (v !== null && v !== undefined && isFinite(Number(v))) {
+      values.push(Number(v));
+    }
+  }
+  return values;
+}
+
+export interface MapLayersResult {
+  updateMapData: (
+    geojson: FeatureCollection,
+    type: string,
+    onScaleReady?: (stops: ColorStop[]) => void,
+  ) => void;
+}
+
 export function useMapLayers(
   map: maplibregl.Map | null,
   selectedDate: Date,
@@ -75,36 +106,27 @@ export function useMapLayers(
     };
   }, [map]);
 
-  const renderLayers = (type: string) => {
+  const renderLayers = (
+    geojson: FeatureCollection,
+    type: string,
+    onScaleReady?: (stops: ColorStop[]) => void,
+  ) => {
     if (!map) return;
 
     const isCarbon = type === 'carbon';
-    const config = {
-      id: isCarbon ? 'carbon' : 'water',
-      property: isCarbon ? 'carbon_value' : 'water_value',
-      colors: isCarbon ? COLORS.carbon : COLORS.water,
-      stops: isCarbon
-        ? [0, 50, 100, 200, 500, 1000]
-        : [0, 50, 100, 150, 200, 250],
-    };
-
-    const layerId = `${config.id}-fill`;
+    const property = isCarbon ? 'carbon_value' : 'water_value';
+    const palette = Object.values(
+      isCarbon ? COLORS.carbon : COLORS.water,
+    ) as string[];
+    const layerId = `${isCarbon ? 'carbon' : 'water'}-fill`;
     const otherId = isCarbon ? 'water' : 'carbon';
 
-    const fillColorExpr = [
-      'case',
-      ['==', ['get', config.property], null],
-      '#1a2a45',
-      [
-        'interpolate',
-        ['linear'],
-        ['get', config.property],
-        ...config.stops.flatMap((stop) => [
-          stop,
-          (config.colors as Record<number, string>)[stop],
-        ]),
-      ],
-    ];
+    const values = extractGeoJSONValues(geojson, property);
+    const { stops } = buildQuantileScale(values, palette);
+
+    onScaleReady?.(stops);
+
+    const fillColorExpr = buildMapExpression(stops, property);
 
     if (map.getLayer(layerId)) {
       map.setPaintProperty(layerId, 'fill-color', fillColorExpr);
@@ -114,7 +136,7 @@ export function useMapLayers(
         type: 'fill',
         source: 'world',
         paint: {
-          'fill-color': fillColorExpr,
+          'fill-color': fillColorExpr as maplibregl.ExpressionSpecification,
           'fill-opacity': 0.85,
           'fill-outline-color': 'rgba(180,210,255,0.28)',
         },
@@ -126,12 +148,16 @@ export function useMapLayers(
     if (map.getLayer(`${otherId}-fill`)) map.removeLayer(`${otherId}-fill`);
   };
 
-  const updateMapData = (geojson: FeatureCollection, type: string) => {
+  const updateMapData = (
+    geojson: FeatureCollection,
+    type: string,
+    onScaleReady?: (stops: ColorStop[]) => void,
+  ) => {
     if (!map?.isStyleLoaded()) return;
     const source = map.getSource('world') as maplibregl.GeoJSONSource;
     if (source) {
       source.setData(geojson);
-      renderLayers(type);
+      renderLayers(geojson, type, onScaleReady);
     }
   };
 
@@ -143,7 +169,8 @@ export function useMapLayers(
     const rawValue = isCarbon ? props.carbon_value : props.water_value;
     return {
       zoneName: props.countryName ?? 'Unknown',
-      value: rawValue === null || rawValue === undefined ? null : Number(rawValue),
+      value:
+        rawValue === null || rawValue === undefined ? null : Number(rawValue),
       unit: isCarbon ? 'gCO₂eq/kWh' : 'l/kWh',
       label: isCarbon ? 'Carbon Intensity' : 'Water Footprint',
       zoneStatus: props.zone_status,
