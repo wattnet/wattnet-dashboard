@@ -12,7 +12,6 @@ import {
   mergeCarbonValues,
   mergeWaterValues,
 } from "@/src/utils/footprintAdapter";
-import { ZoneData } from "@/src/components/features/sidebar/context/DashboardContext";
 
 const SKY_COLORS: { hour: number; color: [number, number, number] }[] = [
   { hour: 0, color: [20, 50, 98] },
@@ -53,7 +52,11 @@ function injectMapStyles() {
   if (document.getElementById("wn-map-style")) return;
   const style = document.createElement("style");
   style.id = "wn-map-style";
-  style.textContent = `.maplibregl-ctrl-logo,.maplibregl-ctrl-attrib,.maplibregl-ctrl-group{display:none!important}`;
+  style.textContent = `
+    .maplibregl-ctrl-logo,
+    .maplibregl-ctrl-attrib,
+    .maplibregl-ctrl-group { display: none !important; }
+  `;
   document.head.appendChild(style);
 }
 
@@ -63,7 +66,7 @@ interface MapContainerProps {
   selectedDate: Date;
   selectedTimeIndex: number;
   selectedFootprintType: string;
-  onZoneClick?: (zoneName: string, zoneData: ZoneData) => void;
+  onZoneClick?: (zoneName: string) => void;
   onEmptyClick?: () => void;
   onMapReady?: (map: maplibregl.Map) => void;
 }
@@ -77,11 +80,14 @@ export default function MapContainer({
   onZoneClick,
   onEmptyClick,
   onMapReady,
-}: Readonly<MapContainerProps>) {
+}: MapContainerProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<maplibregl.Map | null>(null);
   const worldGeoJSONRef = useRef<FeatureCollection | null>(null);
   const [isStyleLoaded, setIsStyleLoaded] = useState(false);
+  const [updateMapData, setUpdateMapData] = useState<
+    ((data: FeatureCollection, type: string) => void) | null
+  >(null);
   const totalSteps = data?.[0]?.series?.length ?? 96;
 
   const onEmptyClickRef = useRef(onEmptyClick);
@@ -89,15 +95,21 @@ export default function MapContainer({
     onEmptyClickRef.current = onEmptyClick;
   }, [onEmptyClick]);
 
-  const { updateMapData } = useMapLayers(
+  const { updateMapData: mapLayersUpdate } = useMapLayers(
     mapInstance.current,
     selectedDate,
     onZoneClick,
   );
 
   useEffect(() => {
+    setUpdateMapData(() => mapLayersUpdate);
+  }, [mapLayersUpdate]);
+
+  // Init map — no native controls
+  useEffect(() => {
     if (!mapContainer.current || mapInstance.current) return;
     injectMapStyles();
+
     const map = new maplibregl.Map({
       container: mapContainer.current,
       style: "/maps/map-style.json",
@@ -107,17 +119,20 @@ export default function MapContainer({
       maxZoom: 4,
       attributionControl: false,
     });
+
     map.on("load", () => {
       mapInstance.current = map;
       setIsStyleLoaded(true);
       onMapReady?.(map);
     });
+
     return () => {
       map.remove();
       mapInstance.current = null;
     };
-  }, [onMapReady]);
+  }, []);
 
+  // Click: zone vs empty
   useEffect(() => {
     const map = mapInstance.current;
     if (!map || !isStyleLoaded) return;
@@ -129,8 +144,8 @@ export default function MapContainer({
         onEmptyClickRef.current?.();
         return;
       }
-      if (!map.queryRenderedFeatures(e.point, { layers: existing }).length)
-        onEmptyClickRef.current?.();
+      const hits = map.queryRenderedFeatures(e.point, { layers: existing });
+      if (!hits.length) onEmptyClickRef.current?.();
     };
     map.on("click", handler);
     return () => {
@@ -138,12 +153,14 @@ export default function MapContainer({
     };
   }, [isStyleLoaded]);
 
+  // Sync data
   useEffect(() => {
     if (!mapInstance.current || !isStyleLoaded) return;
     const syncMap = async () => {
-      worldGeoJSONRef.current ??= await fetch("/maps/wattnet.geojson").then(
-        (r) => r.json(),
-      );
+      if (!worldGeoJSONRef.current) {
+        const res = await fetch("/maps/wattnet.geojson");
+        worldGeoJSONRef.current = await res.json();
+      }
       const base = structuredClone(worldGeoJSONRef.current!);
       const merged: FeatureCollection =
         selectedFootprintType === "carbon"
@@ -163,6 +180,7 @@ export default function MapContainer({
     updateMapData,
   ]);
 
+  // Background colour (time-of-day)
   useEffect(() => {
     if (!mapInstance.current || !isStyleLoaded) return;
     const [r, g, b] = getBaseColor(selectedTimeIndex, totalSteps);
