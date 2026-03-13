@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useState, useCallback } from "react";
+import { useRef, useEffect, useState } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { FeatureCollection } from "geojson";
@@ -12,7 +12,6 @@ import {
   mergeCarbonValues,
   mergeWaterValues,
 } from "@/src/utils/footprintAdapter";
-import { buildQuantileScale, ColorStop } from "@/src/utils/legendHelper";
 
 const SKY_COLORS: { hour: number; color: [number, number, number] }[] = [
   { hour: 0, color: [20, 50, 98] },
@@ -61,8 +60,6 @@ function injectMapStyles() {
   document.head.appendChild(style);
 }
 
-export type ScaleStats = ReturnType<typeof buildQuantileScale>["stats"];
-
 interface MapContainerProps {
   data: ProcessedFootprint[];
   loading: boolean;
@@ -72,8 +69,6 @@ interface MapContainerProps {
   onZoneClick?: (zoneName: string) => void;
   onEmptyClick?: () => void;
   onMapReady?: (map: maplibregl.Map) => void;
-  /** Called whenever the quantile scale is (re)computed from fresh data */
-  onScaleReady?: (stops: ColorStop[]) => void;
 }
 
 export default function MapContainer({
@@ -85,7 +80,6 @@ export default function MapContainer({
   onZoneClick,
   onEmptyClick,
   onMapReady,
-  onScaleReady,
 }: MapContainerProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<maplibregl.Map | null>(null);
@@ -97,11 +91,6 @@ export default function MapContainer({
     onEmptyClickRef.current = onEmptyClick;
   }, [onEmptyClick]);
 
-  const onScaleReadyRef = useRef(onScaleReady);
-  useEffect(() => {
-    onScaleReadyRef.current = onScaleReady;
-  }, [onScaleReady]);
-
   const totalSteps = data?.[0]?.series?.length ?? 96;
 
   const { updateMapData } = useMapLayers(
@@ -109,11 +98,6 @@ export default function MapContainer({
     selectedDate,
     onZoneClick,
   );
-
-  // Stable callback wrapper so the sync effect doesn't re-run on every render
-  const handleScaleReady = useCallback((stops: ColorStop[]) => {
-    onScaleReadyRef.current?.(stops);
-  }, []);
 
   // Init map — no native controls
   useEffect(() => {
@@ -166,13 +150,11 @@ export default function MapContainer({
   // Sync data
   useEffect(() => {
     if (!mapInstance.current || !isStyleLoaded) return;
-
     const syncMap = async () => {
       if (!worldGeoJSONRef.current) {
         const res = await fetch("/maps/wattnet.geojson");
         worldGeoJSONRef.current = await res.json();
       }
-
       const base = structuredClone(worldGeoJSONRef.current!);
       const merged: FeatureCollection =
         selectedFootprintType === "carbon"
@@ -183,9 +165,8 @@ export default function MapContainer({
       if (!map.getSource("world"))
         map.addSource("world", { type: "geojson", data: merged });
 
-      updateMapData(merged, selectedFootprintType, handleScaleReady);
+      updateMapData(merged, selectedFootprintType);
     };
-
     syncMap();
   }, [
     data,
@@ -193,7 +174,6 @@ export default function MapContainer({
     selectedFootprintType,
     isStyleLoaded,
     updateMapData,
-    handleScaleReady,
   ]);
 
   // Background colour (time-of-day)

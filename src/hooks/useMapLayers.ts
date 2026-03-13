@@ -1,14 +1,9 @@
 import { useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 import { FeatureCollection } from 'geojson';
-import { COLORS } from '../lib/theme/colors';
 import { normalizeToUTCDate } from '../utils/dateManager';
 import { ZoneData } from '../components/features/sidebar/context/DashboardContext';
-import {
-  ColorStop,
-  buildQuantileScale,
-  buildMapExpression,
-} from '../utils/legendHelper';
+import { CARBON_STOPS, WATER_STOPS } from '../lib/theme/mapScales';
 
 interface ZoneFeatureProperties {
   countryName?: string;
@@ -52,32 +47,6 @@ function isTouchDevice(): boolean {
   return globalThis.matchMedia('(hover: none) and (pointer: coarse)').matches;
 }
 
-/**
- * Extract all values from a GeoJSON FeatureCollection for a given property.
- * Used to compute the quantile scale directly from the data already on the map.
- */
-function extractGeoJSONValues(
-  geojson: FeatureCollection,
-  property: 'carbon_value' | 'water_value',
-): number[] {
-  const values: number[] = [];
-  for (const feature of geojson.features) {
-    const v = (feature.properties as Record<string, unknown>)?.[property];
-    if (v !== null && v !== undefined && isFinite(Number(v))) {
-      values.push(Number(v));
-    }
-  }
-  return values;
-}
-
-export interface MapLayersResult {
-  updateMapData: (
-    geojson: FeatureCollection,
-    type: string,
-    onScaleReady?: (stops: ColorStop[]) => void,
-  ) => void;
-}
-
 export function useMapLayers(
   map: maplibregl.Map | null,
   selectedDate: Date,
@@ -106,27 +75,26 @@ export function useMapLayers(
     };
   }, [map]);
 
-  const renderLayers = (
-    geojson: FeatureCollection,
-    type: string,
-    onScaleReady?: (stops: ColorStop[]) => void,
-  ) => {
+  const renderLayers = (type: string) => {
     if (!map) return;
 
     const isCarbon = type === 'carbon';
+    const stops = isCarbon ? CARBON_STOPS : WATER_STOPS;
     const property = isCarbon ? 'carbon_value' : 'water_value';
-    const palette = Object.values(
-      isCarbon ? COLORS.carbon : COLORS.water,
-    ) as string[];
-    const layerId = `${isCarbon ? 'carbon' : 'water'}-fill`;
-    const otherId = isCarbon ? 'water' : 'carbon';
+    const layerId = isCarbon ? 'carbon-fill' : 'water-fill';
+    const otherId = isCarbon ? 'water-fill' : 'carbon-fill';
 
-    const values = extractGeoJSONValues(geojson, property);
-    const { stops } = buildQuantileScale(values, palette);
-
-    onScaleReady?.(stops);
-
-    const fillColorExpr = buildMapExpression(stops, property);
+    const fillColorExpr = [
+      'case',
+      ['==', ['get', property], null],
+      '#1a2a45',
+      [
+        'interpolate',
+        ['linear'],
+        ['get', property],
+        ...stops.mapValues.flatMap((value, i) => [value, stops.colors[i]]),
+      ],
+    ];
 
     if (map.getLayer(layerId)) {
       map.setPaintProperty(layerId, 'fill-color', fillColorExpr);
@@ -141,23 +109,18 @@ export function useMapLayers(
           'fill-outline-color': 'rgba(180,210,255,0.28)',
         },
       });
-
       setupInteractions(layerId, type as 'carbon' | 'water');
     }
 
-    if (map.getLayer(`${otherId}-fill`)) map.removeLayer(`${otherId}-fill`);
+    if (map.getLayer(otherId)) map.removeLayer(otherId);
   };
 
-  const updateMapData = (
-    geojson: FeatureCollection,
-    type: string,
-    onScaleReady?: (stops: ColorStop[]) => void,
-  ) => {
+  const updateMapData = (geojson: FeatureCollection, type: string) => {
     if (!map?.isStyleLoaded()) return;
     const source = map.getSource('world') as maplibregl.GeoJSONSource;
     if (source) {
       source.setData(geojson);
-      renderLayers(geojson, type, onScaleReady);
+      renderLayers(type);
     }
   };
 

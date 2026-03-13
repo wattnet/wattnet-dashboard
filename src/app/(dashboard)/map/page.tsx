@@ -1,19 +1,23 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Box, IconButton } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import { useCarbonFootprints } from "@/src/hooks/useCarbonFootprints";
-import { COLORS } from "@/src/lib/theme/colors";
 import DateSelector from "@/src/components/features/sidebar/DateSelector";
 import Legend from "@/src/components/features/map/Legend";
 import { getInitialTimeIndex, getTodayUTC } from "@/src/utils/dateManager";
 import { processFootprints } from "@/src/utils/footprintAdapter";
 import GlobalTag from "@/src/components/features/map/GlobalTag";
 import MapContainer from "@/src/components/features/map/MapContainer";
-import { ColorStop } from "@/src/utils/legendHelper";
+import {
+  CARBON_STOPS,
+  WATER_STOPS,
+  CARBON_LEGEND_COLORS,
+  WATER_LEGEND_COLORS,
+} from "@/src/lib/theme/mapScales";
 import {
   ZoneData,
   useSidebarControls,
@@ -24,6 +28,7 @@ import {
 } from "@/src/components/features/sidebar/context/DashboardContext";
 import { useInteractionMode } from "@/src/hooks/useInteractionMode";
 import { MOBILE_TOP_BAR_H, MOBILE_PEEK_H } from "@/src/app/(dashboard)/layout";
+import type { Map } from "maplibre-gl";
 
 const BORDER = "rgba(255,255,255,0.08)";
 const BACKDROP = "blur(20px)";
@@ -45,8 +50,6 @@ const zoomBtnSx = {
 function mobileLegendBottom(sheetState: string): number {
   return sheetState === "peek" ? MOBILE_PEEK_H + LEGEND_MARGIN : LEGEND_MARGIN;
 }
-
-import type { Map } from "maplibre-gl";
 
 type ZoomButtonsProps = { mapRef: React.RefObject<Map | null> };
 
@@ -83,22 +86,14 @@ export default function MapPage() {
   const [selectedTimeIndex, setSelectedTimeIndex] =
     useState(getInitialTimeIndex);
 
-  // Legend scale stops
-  const [scaleStops, setScaleStops] = useState<ColorStop[]>([]);
-
-  const handleScaleReady = useCallback((stops: ColorStop[]) => {
-    setScaleStops(stops);
-  }, []);
-
   const isCarbon = footprintType === "carbon";
 
   const legendConfig = useMemo(
     () => ({
       title: isCarbon ? "Carbon Footprint" : "Water Footprint",
       unit: isCarbon ? "gCO₂eq/kWh" : "l/kWh",
-      colors: Object.values(
-        isCarbon ? COLORS.carbon : COLORS.water,
-      ) as string[],
+      labels: isCarbon ? CARBON_STOPS.labels : WATER_STOPS.labels,
+      legendColors: isCarbon ? CARBON_LEGEND_COLORS : WATER_LEGEND_COLORS,
     }),
     [isCarbon],
   );
@@ -157,10 +152,8 @@ export default function MapPage() {
     <Legend
       title={legendConfig.title}
       unitOfMeasure={legendConfig.unit}
-      stops={scaleStops}
-      colors={legendConfig.colors}
-      min={0}
-      max={isCarbon ? 1000 : 250}
+      labels={legendConfig.labels}
+      legendColors={legendConfig.legendColors}
     />
   );
 
@@ -178,7 +171,6 @@ export default function MapPage() {
           onMapReady={(m) => {
             mapRef.current = m;
           }}
-          onScaleReady={handleScaleReady}
         />
       </Box>
 
