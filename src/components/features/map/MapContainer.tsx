@@ -13,12 +13,30 @@ import {
   mergeWaterValues,
 } from "@/src/utils/footprintAdapter";
 
+// Static neutral dark background — matches dashboard bg (#0c1219)
+const MAP_BG = "rgb(37, 53, 68)";
+
+function injectMapStyles() {
+  if (document.getElementById("wn-map-style")) return;
+  const style = document.createElement("style");
+  style.id = "wn-map-style";
+  style.textContent = `
+    .maplibregl-ctrl-logo,
+    .maplibregl-ctrl-attrib,
+    .maplibregl-ctrl-group { display: none !important; }
+  `;
+  document.head.appendChild(style);
+}
+
 interface MapContainerProps {
   data: ProcessedFootprint[];
   loading: boolean;
   selectedDate: Date;
   selectedTimeIndex: number;
   selectedFootprintType: string;
+  onZoneClick?: (zoneName: string) => void;
+  onEmptyClick?: () => void;
+  onMapReady?: (map: maplibregl.Map) => void;
 }
 
 export default function MapContainer({
@@ -27,31 +45,55 @@ export default function MapContainer({
   selectedDate,
   selectedTimeIndex,
   selectedFootprintType,
+  onZoneClick,
+  onEmptyClick,
+  onMapReady,
 }: MapContainerProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<maplibregl.Map | null>(null);
   const worldGeoJSONRef = useRef<FeatureCollection | null>(null);
   const [isStyleLoaded, setIsStyleLoaded] = useState(false);
 
-  const { updateMapData } = useMapLayers(mapInstance.current, selectedDate);
+  const onEmptyClickRef = useRef(onEmptyClick);
+  useEffect(() => {
+    onEmptyClickRef.current = onEmptyClick;
+  }, [onEmptyClick]);
 
+  const { updateMapData } = useMapLayers(
+    mapInstance.current,
+    selectedDate,
+    onZoneClick,
+    selectedTimeIndex,
+  );
+
+  // Init map
   useEffect(() => {
     if (!mapContainer.current || mapInstance.current) return;
+    injectMapStyles();
 
     const map = new maplibregl.Map({
       container: mapContainer.current,
       style: "/maps/map-style.json",
-      center: [10, 50],
+      center: [12, 58],
       zoom: 3,
-      minZoom: 2,
-      maxZoom: 4,
+      minZoom: 3,
+      maxZoom: 7,
+      attributionControl: false,
+      renderWorldCopies: false,
+      maxBounds: [
+        [-60, 0],
+        [82, 80],
+      ],
     });
-
-    map.addControl(new maplibregl.NavigationControl());
 
     map.on("load", () => {
       mapInstance.current = map;
+
+      // Set static background once — no dynamic updates needed
+      map.setPaintProperty("background", "background-color", MAP_BG);
+
       setIsStyleLoaded(true);
+      onMapReady?.(map);
     });
 
     return () => {
@@ -60,36 +102,47 @@ export default function MapContainer({
     };
   }, []);
 
+  // Click: zone vs empty
+  useEffect(() => {
+    const map = mapInstance.current;
+    if (!map || !isStyleLoaded) return;
+    const handler = (e: maplibregl.MapMouseEvent) => {
+      const existing = ["carbon-fill", "water-fill"].filter(
+        (id) => !!map.getLayer(id),
+      );
+      if (!existing.length) {
+        onEmptyClickRef.current?.();
+        return;
+      }
+      const hits = map.queryRenderedFeatures(e.point, { layers: existing });
+      if (!hits.length) onEmptyClickRef.current?.();
+    };
+    map.on("click", handler);
+    return () => {
+      map.off("click", handler);
+    };
+  }, [isStyleLoaded]);
+
+  // Sync data
   useEffect(() => {
     if (!mapInstance.current || !isStyleLoaded) return;
-
     const syncMap = async () => {
       if (!worldGeoJSONRef.current) {
         const res = await fetch("/maps/wattnet.geojson");
         worldGeoJSONRef.current = await res.json();
       }
-
-      const geojsonBase = structuredClone(worldGeoJSONRef.current!);
-      let mergedGeojson: FeatureCollection;
-
-      if (selectedFootprintType === "carbon") {
-        mergedGeojson = mergeCarbonValues(geojsonBase, data, selectedTimeIndex);
-      } else {
-        mergedGeojson = mergeWaterValues(geojsonBase, data, selectedTimeIndex);
-      }
+      const base = structuredClone(worldGeoJSONRef.current!);
+      const merged: FeatureCollection =
+        selectedFootprintType === "carbon"
+          ? mergeCarbonValues(base, data, selectedTimeIndex)
+          : mergeWaterValues(base, data, selectedTimeIndex);
 
       const map = mapInstance.current!;
+      if (!map.getSource("world"))
+        map.addSource("world", { type: "geojson", data: merged });
 
-      if (!map.getSource("world")) {
-        map.addSource("world", {
-          type: "geojson",
-          data: mergedGeojson,
-        });
-      }
-
-      updateMapData(mergedGeojson, selectedFootprintType);
+      updateMapData(merged, selectedFootprintType);
     };
-
     syncMap();
   }, [
     data,
@@ -102,20 +155,16 @@ export default function MapContainer({
   return (
     <Box sx={{ width: "100%", height: "100%", position: "relative" }}>
       <div ref={mapContainer} style={{ width: "100%", height: "100%" }} />
-
       {loading && (
         <Box
           sx={{
             position: "absolute",
-            top: 0,
-            left: 0,
-            width: "100%",
-            height: "100%",
+            inset: 0,
+            zIndex: 10,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             backgroundColor: COLORS.whiteTransparent,
-            zIndex: 10,
           }}
         >
           <CircularProgress size={80} />

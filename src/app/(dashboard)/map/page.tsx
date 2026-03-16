@@ -1,0 +1,345 @@
+"use client";
+
+import { useState, useMemo, useEffect, useRef } from "react";
+import "maplibre-gl/dist/maplibre-gl.css";
+import { Box, IconButton } from "@mui/material";
+import AddIcon from "@mui/icons-material/Add";
+import RemoveIcon from "@mui/icons-material/Remove";
+import { useCarbonFootprints } from "@/src/hooks/useCarbonFootprints";
+import DateSelector from "@/src/components/features/sidebar/DateSelector";
+import Legend from "@/src/components/features/map/Legend";
+import { getInitialTimeIndex, getTodayUTC } from "@/src/utils/dateManager";
+import { processFootprints } from "@/src/utils/footprintAdapter";
+import GlobalTag from "@/src/components/features/map/GlobalTag";
+import MapContainer from "@/src/components/features/map/MapContainer";
+import {
+  CARBON_STOPS,
+  WATER_STOPS,
+  CARBON_LEGEND_COLORS,
+  WATER_LEGEND_COLORS,
+} from "@/src/lib/theme/mapScales";
+import {
+  ZoneData,
+  useSidebarControls,
+  useMapControls,
+  useZonePanel,
+  useCanvasRect,
+  useBottomSheet,
+  useFlowTracing,
+} from "@/src/components/features/sidebar/context/DashboardContext";
+import { useInteractionMode } from "@/src/hooks/useInteractionMode";
+import { MOBILE_TOP_BAR_H, MOBILE_PEEK_H } from "@/src/app/(dashboard)/layout";
+import type { Map } from "maplibre-gl";
+
+const BORDER = "rgba(255,255,255,0.08)";
+const BACKDROP = "blur(20px)";
+const PANEL_BG = "rgba(11,18,30,0.88)";
+const LEGEND_MARGIN = 16;
+
+const zoomBtnSx = {
+  width: 32,
+  height: 32,
+  bgcolor: PANEL_BG,
+  backdropFilter: BACKDROP,
+  WebkitBackdropFilter: BACKDROP,
+  border: `1px solid ${BORDER}`,
+  borderRadius: "8px",
+  color: "rgba(255,255,255,0.6)",
+  "&:hover": { color: "#fff", bgcolor: "rgba(255,255,255,0.1)" },
+};
+
+function mobileLegendBottom(sheetState: string): number {
+  return sheetState === "peek" ? MOBILE_PEEK_H + LEGEND_MARGIN : LEGEND_MARGIN;
+}
+
+type ZoomButtonsProps = { mapRef: React.RefObject<Map | null> };
+
+const ZoomButtons = ({ mapRef }: ZoomButtonsProps) => (
+  <>
+    <IconButton
+      onClick={() => mapRef.current?.zoomIn()}
+      size="small"
+      sx={zoomBtnSx}
+    >
+      <AddIcon sx={{ fontSize: 16 }} />
+    </IconButton>
+    <IconButton
+      onClick={() => mapRef.current?.zoomOut()}
+      size="small"
+      sx={zoomBtnSx}
+    >
+      <RemoveIcon sx={{ fontSize: 16 }} />
+    </IconButton>
+  </>
+);
+
+export default function MapPage() {
+  const setSidebarControls = useSidebarControls();
+  const { footprintType, scope } = useMapControls();
+  const { flowTracing } = useFlowTracing();
+  const { openZonePanel, closeZonePanel } = useZonePanel();
+  const { canvasRect } = useCanvasRect();
+  const { bottomSheetState } = useBottomSheet();
+  const { isTouch } = useInteractionMode();
+
+  const mapRef = useRef<Map | null>(null);
+
+  const [selectedDate, setSelectedDate] = useState(getTodayUTC);
+  const [selectedTimeIndex, setSelectedTimeIndex] =
+    useState(getInitialTimeIndex);
+
+  const isCarbon = footprintType === "carbon";
+
+  const legendConfig = useMemo(
+    () => ({
+      title: isCarbon ? "Carbon Footprint" : "Water Footprint",
+      unit: isCarbon ? "gCO\u2082eq/kWh" : "l/kWh",
+      labels: isCarbon ? CARBON_STOPS.labels : WATER_STOPS.labels,
+      legendColors: isCarbon ? CARBON_LEGEND_COLORS : WATER_LEGEND_COLORS,
+    }),
+    [isCarbon],
+  );
+
+  const dateKey = useMemo(
+    () =>
+      [
+        selectedDate.getUTCFullYear(),
+        String(selectedDate.getUTCMonth() + 1).padStart(2, "0"),
+        String(selectedDate.getUTCDate()).padStart(2, "0"),
+      ].join("-"),
+    [selectedDate],
+  );
+
+  const { data, loading, error } = useCarbonFootprints(
+    {
+      footprint_type: footprintType,
+      scope,
+      start: `${dateKey}T00:00:00Z`,
+      end: `${dateKey}T23:45:00Z`,
+      aggregate: false,
+      use_global: flowTracing,
+    },
+    dateKey,
+  );
+
+  const processedData = useMemo(
+    () => (data ? processFootprints(data) : []),
+    [data],
+  );
+
+  const globalDataStatusTag = useMemo(() => {
+    if (processedData.length === 0 || !selectedDate) return "no-data";
+
+    const selectedItem = processedData[0].series?.[selectedTimeIndex];
+    if (selectedItem?.value === null || selectedItem?.value === undefined) {
+      return "no-data";
+    }
+
+    const now = getTodayUTC();
+
+    const currentTimestamp = Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate(),
+      now.getUTCHours(),
+      Math.floor(now.getUTCMinutes() / 15) * 15,
+    );
+
+    const selectedHours = Math.floor(selectedTimeIndex / 4);
+    const selectedMinutes = (selectedTimeIndex % 4) * 15;
+
+    const selectedTimestamp = Date.UTC(
+      selectedDate.getUTCFullYear(),
+      selectedDate.getUTCMonth(),
+      selectedDate.getUTCDate(),
+      selectedHours,
+      selectedMinutes,
+    );
+
+    if (selectedTimestamp > currentTimestamp) return "forecast";
+    if (selectedTimestamp < currentTimestamp) return "historical";
+
+    return "live";
+  }, [processedData, selectedDate, selectedTimeIndex]);
+
+  const lastSetRef = useRef<string>("");
+
+  useEffect(() => {
+    const key = `${dateKey}|${selectedTimeIndex}|${processedData.length}`;
+    if (key === lastSetRef.current) return;
+    lastSetRef.current = key;
+    setSidebarControls(
+      <DateSelector
+        selectedDate={selectedDate}
+        setSelectedDate={setSelectedDate}
+        selectedTimeIndex={selectedTimeIndex}
+        setSelectedTimeIndex={setSelectedTimeIndex}
+        data={processedData}
+      />,
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dateKey, selectedTimeIndex, processedData.length]);
+
+  useEffect(() => () => setSidebarControls(null), []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleZoneClick = (zoneName: string, zoneData: ZoneData) => {
+    openZonePanel(zoneName, zoneData);
+  };
+
+  const mobileTopOffset = MOBILE_TOP_BAR_H + 8;
+  const mobileLegendBot = mobileLegendBottom(bottomSheetState);
+  const showDesktopOverlay = !isTouch && canvasRect.width > 0;
+
+  const legendEl = (
+    <Legend
+      title={legendConfig.title}
+      unitOfMeasure={legendConfig.unit}
+      labels={legendConfig.labels}
+      legendColors={legendConfig.legendColors}
+    />
+  );
+
+  return (
+    <>
+      <Box sx={{ position: "fixed", inset: 0, zIndex: 0 }}>
+        <MapContainer
+          data={processedData}
+          loading={loading}
+          selectedDate={selectedDate}
+          selectedTimeIndex={selectedTimeIndex}
+          selectedFootprintType={footprintType}
+          onZoneClick={handleZoneClick}
+          onEmptyClick={closeZonePanel}
+          onMapReady={(m) => {
+            mapRef.current = m;
+          }}
+        />
+      </Box>
+
+      {isTouch && (
+        <Box
+          sx={{ position: "fixed", inset: 0, zIndex: 5, pointerEvents: "none" }}
+        >
+          <Box
+            sx={{
+              position: "absolute",
+              top: mobileTopOffset,
+              left: 12,
+              pointerEvents: "auto",
+            }}
+          >
+            <GlobalTag title={globalDataStatusTag} />
+          </Box>
+          <Box
+            sx={{
+              position: "absolute",
+              top: mobileTopOffset,
+              right: 16,
+              display: "flex",
+              flexDirection: "column",
+              gap: 0.5,
+              pointerEvents: "auto",
+            }}
+          >
+            <ZoomButtons mapRef={mapRef} />
+          </Box>
+          <Box
+            sx={{
+              position: "absolute",
+              bottom: mobileLegendBot,
+              right: 16,
+              pointerEvents: "auto",
+              transition: "bottom 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
+            }}
+          >
+            {legendEl}
+          </Box>
+          {error && (
+            <Box
+              sx={{
+                position: "absolute",
+                top: mobileTopOffset + 80,
+                right: 16,
+                pointerEvents: "auto",
+                bgcolor: "rgba(239,68,68,0.9)",
+                color: "#fff",
+                px: 1.5,
+                py: 0.75,
+                borderRadius: 1,
+                fontSize: 12,
+              }}
+            >
+              Error: {error}
+            </Box>
+          )}
+        </Box>
+      )}
+
+      {showDesktopOverlay && (
+        <Box
+          sx={{
+            position: "fixed",
+            top: canvasRect.top,
+            left: canvasRect.left,
+            width: canvasRect.width,
+            height: canvasRect.height,
+            zIndex: 5,
+            pointerEvents: "none",
+          }}
+        >
+          <Box
+            sx={{
+              position: "absolute",
+              top: 12,
+              left: 12,
+              pointerEvents: "auto",
+            }}
+          >
+            <GlobalTag title={globalDataStatusTag} />
+          </Box>
+          <Box
+            sx={{
+              position: "absolute",
+              top: 12,
+              right: 16,
+              display: "flex",
+              flexDirection: "column",
+              gap: 0.5,
+              pointerEvents: "auto",
+            }}
+          >
+            <ZoomButtons mapRef={mapRef} />
+          </Box>
+          <Box
+            sx={{
+              position: "absolute",
+              bottom: 24,
+              right: 16,
+              pointerEvents: "auto",
+            }}
+          >
+            {legendEl}
+          </Box>
+          {error && (
+            <Box
+              sx={{
+                position: "absolute",
+                top: 80,
+                right: 16,
+                pointerEvents: "auto",
+                bgcolor: "rgba(239,68,68,0.9)",
+                color: "#fff",
+                px: 1.5,
+                py: 0.75,
+                borderRadius: 1,
+                fontSize: 12,
+              }}
+            >
+              Error: {error}
+            </Box>
+          )}
+        </Box>
+      )}
+    </>
+  );
+}

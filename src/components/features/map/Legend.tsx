@@ -1,51 +1,81 @@
 "use client";
 
-import { Typography } from "@mui/material";
+import { Box, Typography } from "@mui/material";
+
+const BORDER = "rgba(255,255,255,0.08)";
+const BACKDROP = "blur(20px)";
+const PANEL_BG = "rgba(11,18,30,0.88)";
 
 interface LegendProps {
   title: string;
   unitOfMeasure: string;
-  min: number;
-  max: number;
-  step: number;
-  colors: string[];
+  labels: number[]; // 6 fixed breakpoint values to display
+  legendColors: string[]; // 6 colors matching those label positions
 }
 
 export default function Legend({
   title,
   unitOfMeasure,
-  min,
-  max,
-  step,
-  colors,
+  labels,
+  legendColors,
 }: LegendProps) {
-  const labels: number[] = [];
-  for (let i = min; i <= max; i += step) {
-    labels.push(i);
-  }
-
   return (
-    <div className="absolute bottom-0 right-0 mb-3 mr-3 z-20 bg-white p-2 w-56 h-20 rounded shadow">
+    <Box
+      sx={{
+        bgcolor: PANEL_BG,
+        backdropFilter: BACKDROP,
+        WebkitBackdropFilter: BACKDROP,
+        border: `1px solid ${BORDER}`,
+        borderRadius: "10px",
+        px: 1.5,
+        py: 1.25,
+        width: 260,
+        boxShadow: "0 4px 24px rgba(0,0,0,0.4)",
+      }}
+    >
       {/* Title */}
-      <Typography variant="body2" className="text-center" gutterBottom>
-        {title} ({unitOfMeasure})
+      <Typography
+        sx={{
+          fontSize: 13,
+          fontWeight: 600,
+          color: "rgba(255,255,255,0.5)",
+          fontFamily: "var(--font-sans)",
+          mb: 0.75,
+          letterSpacing: "0.04em",
+        }}
+      >
+        {title}{" "}
+        <span style={{ color: "rgba(255,255,255,0.5)", fontWeight: 500 }}>
+          ({unitOfMeasure})
+        </span>
       </Typography>
 
       {/* Gradient bar */}
-      <div
-        className="h-4 rounded"
-        style={{
-          background: `linear-gradient(to right, ${colors.join(", ")})`,
-          height: "16px",
+      <Box
+        sx={{
+          height: 10,
+          borderRadius: 4,
+          mb: 0.6,
+          background: `linear-gradient(to right, ${legendColors.join(", ")})`,
         }}
       />
 
-      {/* Labels */}
-      <div className="flex justify-between space-between text-xs mt-1">
+      <Box sx={{ display: "flex", justifyContent: "space-between" }}>
         {labels.map((v) => (
-          <span key={v}>{v}</span>
+          <Typography
+            key={v}
+            sx={{
+              fontSize: 12,
+              color: "rgba(255,255,255,0.35)",
+              fontFamily: "var(--font-sans)",
+              lineHeight: 1,
+              whiteSpace: "nowrap",
+            }}
+          >
+            {v}
+          </Typography>
         ))}
-      </div>
-    </div>
+      </Box>
+    </Box>
   );
 }
