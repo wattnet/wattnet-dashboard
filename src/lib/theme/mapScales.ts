@@ -1,8 +1,8 @@
 import { COLORS } from './colors';
 
 export const CARBON_STOPS = {
-  mapValues: [0, 8, 16, 32, 64, 128, 256, 320, 512, 1000],
-  labels: [0, 16, 64, 256, 512, 1000],
+  mapValues: [0, 100, 200, 300, 400, 500, 600, 700, 800, 1000],
+  labels: [0, 200, 400, 600, 800, 1000],
   colors: [
     COLORS.carbon[0],
     COLORS.carbon[1],
