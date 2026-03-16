@@ -21,7 +21,7 @@ export function useCarbonFootprints(
   }, []);
 
   const swrKey = ephemeralToken
-    ? `carbon-footprints-${dateKey}-${params.footprint_type}-${params.scope}`
+    ? `carbon-footprints-${dateKey}-${params.footprint_type}-${params.scope}-${params.use_global}`
     : null;
 
   const { data, error, isLoading } = useSWR<Footprint[]>(

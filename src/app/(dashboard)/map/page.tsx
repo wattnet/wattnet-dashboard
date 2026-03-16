@@ -25,6 +25,7 @@ import {
   useZonePanel,
   useCanvasRect,
   useBottomSheet,
+  useFlowTracing,
 } from "@/src/components/features/sidebar/context/DashboardContext";
 import { useInteractionMode } from "@/src/hooks/useInteractionMode";
 import { MOBILE_TOP_BAR_H, MOBILE_PEEK_H } from "@/src/app/(dashboard)/layout";
@@ -75,6 +76,7 @@ const ZoomButtons = ({ mapRef }: ZoomButtonsProps) => (
 export default function MapPage() {
   const setSidebarControls = useSidebarControls();
   const { footprintType, scope } = useMapControls();
+  const { flowTracing } = useFlowTracing();
   const { openZonePanel, closeZonePanel } = useZonePanel();
   const { canvasRect } = useCanvasRect();
   const { bottomSheetState } = useBottomSheet();
@@ -129,7 +131,7 @@ export default function MapPage() {
       start: `${dateKey}T00:00:00Z`,
       end: `${dateKey}T23:45:00Z`,
       aggregate: false,
-      use_global: true,
+      use_global: flowTracing,
     },
     dateKey,
   );
