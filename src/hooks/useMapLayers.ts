@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 import { FeatureCollection } from 'geojson';
 import { normalizeToUTCDate } from '../utils/dateManager';
@@ -75,100 +75,108 @@ export function useMapLayers(
     };
   }, [map]);
 
-  const renderLayers = (type: string) => {
-    if (!map) return;
+  const renderLayers = useCallback(
+    (type: string) => {
+      if (!map) return;
 
-    const isCarbon = type === 'carbon';
-    const stops = isCarbon ? CARBON_STOPS : WATER_STOPS;
-    const property = isCarbon ? 'carbon_value' : 'water_value';
-    const layerId = isCarbon ? 'carbon-fill' : 'water-fill';
-    const otherId = isCarbon ? 'water-fill' : 'carbon-fill';
+      const isCarbon = type === 'carbon';
+      const stops = isCarbon ? CARBON_STOPS : WATER_STOPS;
+      const property = isCarbon ? 'carbon_value' : 'water_value';
+      const layerId = isCarbon ? 'carbon-fill' : 'water-fill';
+      const otherId = isCarbon ? 'water-fill' : 'carbon-fill';
 
-    const fillColorExpr = [
-      'case',
-      ['==', ['get', property], null],
-      '#1a2a45',
-      [
-        'interpolate',
-        ['linear'],
-        ['get', property],
-        ...stops.mapValues.flatMap((value, i) => [value, stops.colors[i]]),
-      ],
-    ];
+      const fillColorExpr = [
+        'case',
+        ['==', ['get', property], null],
+        '#1a2a45',
+        [
+          'interpolate',
+          ['linear'],
+          ['get', property],
+          ...stops.mapValues.flatMap((value, i) => [value, stops.colors[i]]),
+        ],
+      ];
 
-    if (map.getLayer(layerId)) {
-      map.setPaintProperty(layerId, 'fill-color', fillColorExpr);
-    } else {
-      map.addLayer({
-        id: layerId,
-        type: 'fill',
-        source: 'world',
-        paint: {
-          'fill-color': fillColorExpr as maplibregl.ExpressionSpecification,
-          'fill-opacity': 0.85,
-          'fill-outline-color': 'rgba(180,210,255,0.28)',
-        },
-      });
-      setupInteractions(layerId, type as 'carbon' | 'water');
-    }
+      if (map.getLayer(layerId)) {
+        map.setPaintProperty(layerId, 'fill-color', fillColorExpr);
+      } else {
+        map.addLayer({
+          id: layerId,
+          type: 'fill',
+          source: 'world',
+          paint: {
+            'fill-color': fillColorExpr as maplibregl.ExpressionSpecification,
+            'fill-opacity': 0.85,
+            'fill-outline-color': 'rgba(180,210,255,0.28)',
+          },
+        });
+        setupInteractions(layerId, type as 'carbon' | 'water');
+      }
 
-    if (map.getLayer(otherId)) map.removeLayer(otherId);
-  };
+      if (map.getLayer(otherId)) map.removeLayer(otherId);
+    },
+    [map],
+  );
 
-  const updateMapData = (geojson: FeatureCollection, type: string) => {
-    if (!map?.isStyleLoaded()) return;
-    const source = map.getSource('world') as maplibregl.GeoJSONSource;
-    if (source) {
-      source.setData(geojson);
-      renderLayers(type);
-    }
-  };
+  const updateMapData = useCallback(
+    (geojson: FeatureCollection, type: string) => {
+      if (!map) return;
 
-  const buildZoneData = (
-    props: ZoneFeatureProperties,
-    type: 'carbon' | 'water',
-  ): ZoneData => {
-    const isCarbon = type === 'carbon';
-    const rawValue = isCarbon ? props.carbon_value : props.water_value;
-    return {
-      zoneName: props.countryName ?? 'Unknown',
-      value:
-        rawValue === null || rawValue === undefined ? null : Number(rawValue),
-      unit: isCarbon ? 'gCO₂eq/kWh' : 'l/kWh',
-      label: isCarbon ? 'Carbon Intensity' : 'Water Footprint',
-      zoneStatus: props.zone_status,
-      valid: props.valid,
-      date:
-        normalizeToUTCDate(selectedDate)?.toISOString().split('T')[0] ?? '--',
-    };
-  };
+      const source = map.getSource('world') as maplibregl.GeoJSONSource;
+      if (source) {
+        source.setData(geojson);
+        renderLayers(type);
+      }
+    },
+    [map, renderLayers],
+  );
 
-  const setupInteractions = (layerId: string, type: 'carbon' | 'water') => {
-    if (!map) return;
+  const buildZoneData = useCallback(
+    (props: ZoneFeatureProperties, type: 'carbon' | 'water'): ZoneData => {
+      const isCarbon = type === 'carbon';
+      const rawValue = isCarbon ? props.carbon_value : props.water_value;
+      return {
+        zoneName: props.countryName ?? 'Unknown',
+        value:
+          rawValue === null || rawValue === undefined ? null : Number(rawValue),
+        unit: isCarbon ? 'gCO₂eq/kWh' : 'l/kWh',
+        label: isCarbon ? 'Carbon Intensity' : 'Water Footprint',
+        zoneStatus: props.zone_status,
+        valid: props.valid,
+        date:
+          normalizeToUTCDate(selectedDate)?.toISOString().split('T')[0] ?? '--',
+      };
+    },
+    [selectedDate],
+  );
 
-    // Click — always fires, passes ZoneData
-    map.on('click', layerId, (e) => {
-      if (!e.features?.length) return;
-      const props = e.features[0].properties as ZoneFeatureProperties;
-      const data = buildZoneData(props, type);
-      onZoneClick?.(data.zoneName, data);
-    });
+  const setupInteractions = useCallback(
+    (layerId: string, type: 'carbon' | 'water') => {
+      if (!map) return;
 
-    // Hover popup — desktop only
-    if (!isTouch.current) {
-      map.on('mousemove', layerId, (e) => {
-        if (!e.features?.length || !popupRef.current) return;
+      // Click — always fires, passes ZoneData
+      map.on('click', layerId, (e) => {
+        if (!e.features?.length) return;
         const props = e.features[0].properties as ZoneFeatureProperties;
         const data = buildZoneData(props, type);
-        const valStr =
-          data.value === null || data.value === undefined
-            ? '—'
-            : data.value.toFixed(1);
+        onZoneClick?.(data.zoneName, data);
+      });
 
-        popupRef.current
-          .setLngLat(e.lngLat)
-          .setHTML(
-            `
+      // Hover popup — desktop only
+      if (!isTouch.current) {
+        map.on('mousemove', layerId, (e) => {
+          if (!e.features?.length || !popupRef.current) return;
+          const props = e.features[0].properties as ZoneFeatureProperties;
+          const data = buildZoneData(props, type);
+          const valStr =
+            data.value === null || data.value === undefined
+              ? '—'
+              : data.value.toFixed(1);
+
+          popupRef.current
+            .setLngLat(e.lngLat)
+            .setHTML(
+              `
             <div class="wn-popup-date">${data.date}</div>
             <div class="wn-popup-zone">${data.zoneName}</div>
             <div>
@@ -178,26 +186,28 @@ export function useMapLayers(
             <div class="wn-popup-label">${data.label}</div>
             <div class="wn-popup-meta">Status: ${data.zoneStatus ?? '—'} · ${data.valid ? 'Valid' : 'Invalid'}</div>
           `,
-          )
-          .addTo(map);
+            )
+            .addTo(map);
 
-        map.getCanvas().style.cursor = 'pointer';
-      });
+          map.getCanvas().style.cursor = 'pointer';
+        });
 
-      map.on('mouseleave', layerId, () => {
-        popupRef.current?.remove();
-        map.getCanvas().style.cursor = '';
-      });
-    } else {
-      // Touch: just show pointer cursor on tap
-      map.on('mousemove', layerId, () => {
-        map.getCanvas().style.cursor = 'pointer';
-      });
-      map.on('mouseleave', layerId, () => {
-        map.getCanvas().style.cursor = '';
-      });
-    }
-  };
+        map.on('mouseleave', layerId, () => {
+          popupRef.current?.remove();
+          map.getCanvas().style.cursor = '';
+        });
+      } else {
+        // Touch: just show pointer cursor on tap
+        map.on('mousemove', layerId, () => {
+          map.getCanvas().style.cursor = 'pointer';
+        });
+        map.on('mouseleave', layerId, () => {
+          map.getCanvas().style.cursor = '';
+        });
+      }
+    },
+    [map, buildZoneData, onZoneClick],
+  );
 
   return { updateMapData };
 }
