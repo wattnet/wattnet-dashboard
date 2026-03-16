@@ -18,8 +18,8 @@ export const CARBON_STOPS = {
 };
 
 export const WATER_STOPS = {
-  mapValues: [0, 0.5, 1, 3, 7, 13, 21, 33, 45, 60],
-  labels: [0, 1, 7, 21, 45, 60],
+  mapValues: [0, 0.5, 1, 3, 7, 13, 21, 33, 45, 200],
+  labels: [0, 1, 7, 21, 45, 200],
   colors: [
     COLORS.water[0],
     COLORS.water[1],
