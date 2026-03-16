@@ -93,7 +93,7 @@ export default function MapPage() {
   const legendConfig = useMemo(
     () => ({
       title: isCarbon ? "Carbon Footprint" : "Water Footprint",
-      unit: isCarbon ? "gCO₂eq/kWh" : "l/kWh",
+      unit: isCarbon ? "gCO\u2082eq/kWh" : "l/kWh",
       labels: isCarbon ? CARBON_STOPS.labels : WATER_STOPS.labels,
       legendColors: isCarbon ? CARBON_LEGEND_COLORS : WATER_LEGEND_COLORS,
     }),
@@ -130,6 +130,11 @@ export default function MapPage() {
   const globalDataStatusTag = useMemo(() => {
     if (processedData.length === 0 || !selectedDate) return "no-data";
 
+    const selectedItem = processedData[0].series?.[selectedTimeIndex];
+    if (selectedItem?.value === null || selectedItem?.value === undefined) {
+      return "no-data";
+    }
+
     const now = getTodayUTC();
 
     const currentTimestamp = Date.UTC(
@@ -155,9 +160,14 @@ export default function MapPage() {
     if (selectedTimestamp < currentTimestamp) return "historical";
 
     return "live";
-  }, [processedData.length, selectedDate, selectedTimeIndex]);
+  }, [processedData, selectedDate, selectedTimeIndex]);
+
+  const lastSetRef = useRef<string>("");
 
   useEffect(() => {
+    const key = `${dateKey}|${selectedTimeIndex}|${processedData.length}`;
+    if (key === lastSetRef.current) return;
+    lastSetRef.current = key;
     setSidebarControls(
       <DateSelector
         selectedDate={selectedDate}
@@ -167,9 +177,10 @@ export default function MapPage() {
         data={processedData}
       />,
     );
-  }, [selectedDate, selectedTimeIndex, processedData, setSidebarControls]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dateKey, selectedTimeIndex, processedData.length]);
 
-  useEffect(() => () => setSidebarControls(null), [setSidebarControls]);
+  useEffect(() => () => setSidebarControls(null), []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleZoneClick = (zoneName: string, zoneData: ZoneData) => {
     openZonePanel(zoneName, zoneData);
@@ -179,7 +190,6 @@ export default function MapPage() {
   const mobileLegendBot = mobileLegendBottom(bottomSheetState);
   const showDesktopOverlay = !isTouch && canvasRect.width > 0;
 
-  // Shared legend element for both mobile and desktop
   const legendEl = (
     <Legend
       title={legendConfig.title}
@@ -206,7 +216,6 @@ export default function MapPage() {
         />
       </Box>
 
-      {/* Touch overlays — fixed, offset below top bar */}
       {isTouch && (
         <Box
           sx={{ position: "fixed", inset: 0, zIndex: 5, pointerEvents: "none" }}
@@ -266,7 +275,6 @@ export default function MapPage() {
         </Box>
       )}
 
-      {/* Pointer/desktop overlays — anchored to canvas rect */}
       {showDesktopOverlay && (
         <Box
           sx={{

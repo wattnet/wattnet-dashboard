@@ -13,40 +13,8 @@ import {
   mergeWaterValues,
 } from "@/src/utils/footprintAdapter";
 
-const SKY_COLORS: { hour: number; color: [number, number, number] }[] = [
-  { hour: 0, color: [20, 50, 98] },
-  { hour: 4, color: [20, 50, 98] },
-  { hour: 6, color: [30, 65, 115] },
-  { hour: 10, color: [62, 96, 150] },
-  { hour: 14, color: [62, 96, 150] },
-  { hour: 18, color: [40, 75, 125] },
-  { hour: 21, color: [25, 58, 108] },
-  { hour: 24, color: [20, 50, 98] },
-];
-
-function lerp(a: number, b: number, t: number) {
-  return Math.round(a + (b - a) * t);
-}
-
-function getBaseColor(
-  timeIndex: number,
-  totalSteps: number,
-): [number, number, number] {
-  const hour = (timeIndex / Math.max(totalSteps - 1, 1)) * 24;
-  for (let i = 0; i < SKY_COLORS.length - 1; i++) {
-    const from = SKY_COLORS[i],
-      to = SKY_COLORS[i + 1];
-    if (hour >= from.hour && hour <= to.hour) {
-      const t = (hour - from.hour) / (to.hour - from.hour);
-      return [
-        lerp(from.color[0], to.color[0], t),
-        lerp(from.color[1], to.color[1], t),
-        lerp(from.color[2], to.color[2], t),
-      ];
-    }
-  }
-  return [20, 50, 98];
-}
+// Static neutral dark background — matches dashboard bg (#0c1219)
+const MAP_BG = "rgb(37, 53, 68)";
 
 function injectMapStyles() {
   if (document.getElementById("wn-map-style")) return;
@@ -91,15 +59,14 @@ export default function MapContainer({
     onEmptyClickRef.current = onEmptyClick;
   }, [onEmptyClick]);
 
-  const totalSteps = data?.[0]?.series?.length ?? 96;
-
   const { updateMapData } = useMapLayers(
     mapInstance.current,
     selectedDate,
     onZoneClick,
+    selectedTimeIndex,
   );
 
-  // Init map — no native controls
+  // Init map
   useEffect(() => {
     if (!mapContainer.current || mapInstance.current) return;
     injectMapStyles();
@@ -107,15 +74,24 @@ export default function MapContainer({
     const map = new maplibregl.Map({
       container: mapContainer.current,
       style: "/maps/map-style.json",
-      center: [10, 50],
+      center: [12, 58],
       zoom: 3,
-      minZoom: 2,
-      maxZoom: 4,
+      minZoom: 3,
+      maxZoom: 7,
       attributionControl: false,
+      renderWorldCopies: false,
+      maxBounds: [
+        [-60, 0],
+        [82, 80],
+      ],
     });
 
     map.on("load", () => {
       mapInstance.current = map;
+
+      // Set static background once — no dynamic updates needed
+      map.setPaintProperty("background", "background-color", MAP_BG);
+
       setIsStyleLoaded(true);
       onMapReady?.(map);
     });
@@ -175,17 +151,6 @@ export default function MapContainer({
     isStyleLoaded,
     updateMapData,
   ]);
-
-  // Background colour (time-of-day)
-  useEffect(() => {
-    if (!mapInstance.current || !isStyleLoaded) return;
-    const [r, g, b] = getBaseColor(selectedTimeIndex, totalSteps);
-    mapInstance.current.setPaintProperty(
-      "background",
-      "background-color",
-      `rgb(${r},${g},${b})`,
-    );
-  }, [selectedTimeIndex, isStyleLoaded, totalSteps]);
 
   return (
     <Box sx={{ width: "100%", height: "100%", position: "relative" }}>

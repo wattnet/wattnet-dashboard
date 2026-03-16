@@ -1,8 +1,9 @@
 "use client";
 
-import { Box, Typography, Slider, Popover } from "@mui/material";
+import { Box, Typography, Slider, Collapse } from "@mui/material";
 import { DateCalendar } from "@mui/x-date-pickers";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import { useTranslation } from "react-i18next";
 import { useMemo, useState } from "react";
 import { normalizeToUTCDate } from "@/src/utils/dateManager";
@@ -16,31 +17,24 @@ interface DateSelectorProps {
   data: ProcessedFootprint[];
 }
 
-// ── Palette (mirrors SidebarContent) ──────────────────────────────────────
+// ── Palette ────────────────────────────────────────────────────────────────
 const BORDER = "rgba(255,255,255,0.1)";
-const TEXT_DIM = "rgba(255,255,255,0.7)";
-const TEXT_MID = "rgba(255,255,255,0.5)";
-const TEXT_ON = "rgba(255,255,255,0.9)";
+const BORDER_OPEN = "rgba(148,206,36,0.35)";
+const TEXT_HI = "rgba(255,255,255,0.92)"; // primary text
+const TEXT_DIM = "rgba(255,255,255,0.6)"; // secondary / labels
+const TEXT_LOW = "rgba(255,255,255,0.28)"; // weekday headers, outside days
 const ACCENT = "#94ce24";
+const ACCENT_BG = "rgba(148,206,36,0.06)";
+const ACCENT_HOVER = "rgba(148,206,36,0.18)";
 
-// ── Shared label style (mirrors sectionLabelSx) ────────────────────────────
-const sectionLabelSx = {
-  fontSize: 12,
-  fontWeight: 800,
-  letterSpacing: "0.09em",
+const subLabelSx = {
+  fontSize: 11,
+  fontWeight: 700,
+  letterSpacing: "0.08em",
   textTransform: "uppercase" as const,
   color: TEXT_DIM,
-  fontFamily: "var(--font-display)",
-  mb: 1.25,
-};
-
-// ── Sub-label (mirrors "Footprint Metric" label style) ─────────────────────
-const subLabelSx = {
-  fontSize: 12.5,
-  fontWeight: 600,
-  color: TEXT_DIM,
   fontFamily: "var(--font-sans)",
-  mb: 1,
+  mb: 0.75,
 };
 
 export default function DateSelector({
@@ -51,12 +45,7 @@ export default function DateSelector({
   data,
 }: DateSelectorProps) {
   const { t } = useTranslation();
-  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
-  const open = Boolean(anchorEl);
-
-  const handleOpen = (e: React.MouseEvent<HTMLElement>) =>
-    setAnchorEl(e.currentTarget);
-  const handleClose = () => setAnchorEl(null);
+  const [calOpen, setCalOpen] = useState(false);
 
   const maxIndex = useMemo(() => (data?.[0]?.series?.length ?? 1) - 1, [data]);
 
@@ -82,106 +71,209 @@ export default function DateSelector({
       }) + " UTC"
     : "--:-- UTC";
 
-  const dateParts = selectedDate
-    ? {
-        weekday: selectedDate.toLocaleDateString("en-GB", {
-          timeZone: "UTC",
-          weekday: "long",
-        }),
-        day: selectedDate.toLocaleDateString("en-GB", {
-          timeZone: "UTC",
-          day: "numeric",
-        }),
-        month: selectedDate.toLocaleDateString("en-GB", {
-          timeZone: "UTC",
-          month: "long",
-        }),
-        year: selectedDate.toLocaleDateString("en-GB", {
-          timeZone: "UTC",
-          year: "numeric",
-        }),
-      }
-    : null;
+  const formattedDate = selectedDate
+    ? selectedDate.toLocaleDateString("en-GB", {
+        timeZone: "UTC",
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      })
+    : "Select date";
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 2.75 }}>
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
       {/* ── DATE ── */}
       <Box>
         <Typography sx={subLabelSx}>Date</Typography>
 
         <Box
-          onClick={handleOpen}
           sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            px: 1.5,
-            py: 1,
-            borderRadius: "5px",
-            border: `1px solid ${open ? "rgba(148,206,36,0.4)" : BORDER}`,
-            bgcolor: open ? "rgba(148,206,36,0.08)" : "transparent",
-            cursor: "pointer",
-            transition: "background-color 0.15s, border-color 0.15s",
-            "&:hover": {
-              bgcolor: "rgba(148,206,36,0.06)",
-              borderColor: "rgba(148,206,36,0.3)",
-            },
+            borderRadius: "6px",
+            border: `1px solid ${calOpen ? BORDER_OPEN : BORDER}`,
+            bgcolor: calOpen ? ACCENT_BG : "transparent",
+            transition: "background-color 0.18s, border-color 0.18s",
+            overflow: "hidden",
+            "&:hover": !calOpen
+              ? { borderColor: "rgba(255,255,255,0.18)" }
+              : {},
           }}
         >
-          <Box>
-            {dateParts ? (
-              <>
-                <Typography
-                  sx={{
-                    fontSize: 11.5,
-                    fontWeight: 600,
-                    color: ACCENT,
-                    fontFamily: "var(--font-sans)",
-                    lineHeight: 1,
-                    mb: 0.5,
-                    letterSpacing: "0.04em",
-                  }}
-                >
-                  {dateParts.weekday}
-                </Typography>
-                <Typography
-                  sx={{
-                    fontSize: 13,
-                    fontWeight: 600,
-                    color: TEXT_ON,
-                    fontFamily: "var(--font-sans)",
-                    lineHeight: 1,
-                  }}
-                >
-                  {dateParts.day} {dateParts.month}{" "}
-                  <Box
-                    component="span"
-                    sx={{ color: TEXT_MID, fontWeight: 400 }}
-                  >
-                    {dateParts.year}
-                  </Box>
-                </Typography>
-              </>
-            ) : (
+          {/* Trigger row */}
+          <Box
+            onClick={() => setCalOpen((v) => !v)}
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              px: 1.5,
+              py: 1.1,
+              cursor: "pointer",
+            }}
+          >
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <CalendarMonthIcon
+                sx={{
+                  fontSize: 13,
+                  color: calOpen ? ACCENT : TEXT_DIM,
+                  transition: "color 0.18s",
+                  flexShrink: 0,
+                }}
+              />
               <Typography
                 sx={{
                   fontSize: 13,
-                  color: TEXT_MID,
+                  fontWeight: 600,
+                  color: selectedDate ? TEXT_HI : TEXT_DIM,
                   fontFamily: "var(--font-sans)",
+                  lineHeight: 1,
+                  letterSpacing: "0.01em",
+                  transition: "font-weight 0.15s, color 0.15s",
                 }}
               >
-                Select date
+                {formattedDate}
               </Typography>
-            )}
+            </Box>
+            <KeyboardArrowDownIcon
+              sx={{
+                fontSize: 15,
+                color: calOpen ? ACCENT : TEXT_DIM,
+                transition: "transform 0.25s, color 0.18s",
+                transform: calOpen ? "rotate(180deg)" : "rotate(0deg)",
+                flexShrink: 0,
+              }}
+            />
           </Box>
 
-          <CalendarMonthIcon
-            sx={{
-              fontSize: 15,
-              color: open ? ACCENT : TEXT_MID,
-              transition: "color 0.15s",
-            }}
-          />
+          {/* Inline calendar */}
+          <Collapse in={calOpen} timeout={260}>
+            <Box
+              sx={{
+                borderTop: `1px solid ${BORDER}`,
+                pb: 1.5,
+
+                "& .MuiDateCalendar-root": {
+                  width: "100%",
+                  maxHeight: "none !important",
+                  height: "auto !important",
+                  bgcolor: "transparent",
+                },
+
+                "& .MuiDayCalendar-slideTransition": {
+                  minHeight: "unset !important",
+                  height: "auto !important",
+                  overflow: "visible !important",
+                  "& .MuiDayCalendar-monthContainer": {
+                    position: "relative !important",
+                    top: "unset !important",
+                    left: "unset !important",
+                    right: "unset !important",
+                  },
+                  "& [class*='slideEnter'], & [class*='slideExit']": {
+                    animation: "none !important",
+                    transition: "none !important",
+                    transform: "none !important",
+                    opacity: "1 !important",
+                    position: "relative !important",
+                  },
+                },
+
+                // Header alignment
+                "& .MuiPickersCalendarHeader-root": {
+                  px: "12px",
+                  mb: 0,
+                },
+                "& .MuiDayCalendar-header": {
+                  px: "12px",
+                  justifyContent: "space-between",
+                },
+                "& .MuiDayCalendar-weekContainer": {
+                  px: "12px",
+                  justifyContent: "space-between",
+                  margin: "2px 0",
+                },
+
+                // Month + year label
+                "& .MuiPickersCalendarHeader-label": {
+                  fontSize: 12.5,
+                  fontWeight: 600,
+                  color: TEXT_HI,
+                  fontFamily: "var(--font-sans)",
+                  letterSpacing: "0.01em",
+                },
+
+                // Nav arrows
+                "& .MuiPickersArrowSwitcher-button": {
+                  color: TEXT_DIM,
+                  padding: "4px",
+                  borderRadius: "4px",
+                  "&:hover": {
+                    bgcolor: "rgba(255,255,255,0.07)",
+                    color: TEXT_HI,
+                  },
+                },
+
+                // Weekday labels (Mo Tu We…)
+                "& .MuiDayCalendar-weekDayLabel": {
+                  fontSize: 12,
+                  fontWeight: 600,
+                  letterSpacing: "0.06em",
+                  color: TEXT_LOW,
+                  width: 32,
+                  height: 28,
+                  fontFamily: "var(--font-sans)",
+                },
+
+                // Day cells
+                "& .MuiPickersDay-root": {
+                  fontSize: 13,
+                  fontWeight: 500,
+                  width: 32,
+                  height: 32,
+                  borderRadius: "10px",
+                  color: TEXT_DIM,
+                  fontFamily: "var(--font-sans)",
+                  transition: "background-color 0.1s, color 0.1s",
+                  "&:hover": {
+                    bgcolor: "rgba(255,255,255,0.07)",
+                    color: TEXT_HI,
+                  },
+                },
+
+                // Today
+                "& .MuiPickersDay-today": {
+                  border: `1px solid #3a78e0 !important`,
+                  color: `#3a78e0 !important`,
+                  fontWeight: 600,
+                },
+
+                // Selected
+                "& .Mui-selected": {
+                  bgcolor: `rgba(148,206,36,0.15) !important`,
+                  color: `${ACCENT} !important`,
+                  border: `1px solid ${BORDER_OPEN} !important`,
+                  fontWeight: 600,
+                  "&:hover": { bgcolor: `${ACCENT_HOVER} !important` },
+                },
+
+                // Outside month
+                "& .MuiPickersDay-dayOutsideMonth": {
+                  color: TEXT_LOW,
+                },
+              }}
+            >
+              <DateCalendar
+                value={selectedDate}
+                reduceAnimations
+                onChange={(newDate) => {
+                  if (!newDate) return;
+                  setSelectedDate(normalizeToUTCDate(newDate));
+                  setSelectedTimeIndex(0);
+                  setCalOpen(false);
+                }}
+              />
+            </Box>
+          </Collapse>
         </Box>
       </Box>
 
@@ -195,22 +287,23 @@ export default function DateSelector({
             mb: 1,
           }}
         >
-          <Typography sx={subLabelSx}>
+          <Typography sx={{ ...subLabelSx, mb: 0 }}>
             {t("dateSelector.time", { defaultValue: "Time" })}
           </Typography>
           <Typography
             sx={{
               fontFamily: "var(--font-sans)",
-              fontSize: 12,
-              color: TEXT_MID,
-              fontWeight: 500,
+              fontSize: 13,
+              fontWeight: 600,
+              color: TEXT_HI,
+              letterSpacing: "0.03em",
             }}
           >
             {formattedTime}
           </Typography>
         </Box>
 
-        <Box sx={{ px: 0.5, pt: 0.5 }}>
+        <Box sx={{ px: 2, pt: 1, pb: 0.5 }}>
           <Slider
             aria-label={t("dateSelector.time")}
             value={selectedTimeIndex}
@@ -220,15 +313,16 @@ export default function DateSelector({
             step={1}
             min={0}
             max={maxIndex}
-            marks={marks}
+            marks={marks} // tu array de {value, label}
             sx={{
               color: ACCENT,
               height: 2,
+              px: 0, // quitar padding extra del slider para que los extremos coincidan con el track
               "& .MuiSlider-thumb": {
-                width: 12,
-                height: 12,
+                width: 11,
+                height: 11,
                 "&:hover, &.Mui-focusVisible": {
-                  boxShadow: "0 0 0 6px rgba(163,230,53,0.15)",
+                  boxShadow: "0 0 0 6px rgba(163,230,53,0.12)",
                 },
               },
               "& .MuiSlider-track": { border: "none" },
@@ -237,119 +331,36 @@ export default function DateSelector({
                 opacity: 1,
               },
               "& .MuiSlider-mark": {
-                bgcolor: "rgba(255,255,255,0.2)",
-                width: 2,
-                height: 2,
+                bgcolor: "rgba(255,255,255,0.18)",
+                width: 1.5,
+                height: 3,
               },
               "& .MuiSlider-markLabel": {
-                fontSize: 9,
-                color: "rgba(255,255,255,0.3)",
-                top: 22,
+                fontSize: 12,
+                mt: 0.5,
+                color: TEXT_DIM,
+                top: 20,
+                fontFamily: "var(--font-sans)",
+                // Primer label alineado al inicio
+                "&:first-of-type": {
+                  transform: "translateX(0%)",
+                  textAlign: "left",
+                },
+                // Último label alineado al final
+                "&:last-of-type": {
+                  transform: "translateX(-100%)",
+                  textAlign: "right",
+                },
+                // Intermedios centrados
+                "&:not(:first-of-type):not(:last-of-type)": {
+                  transform: "translateX(-50%)",
+                  textAlign: "center",
+                },
               },
             }}
           />
         </Box>
       </Box>
-
-      {/* ── CALENDAR POPOVER ── */}
-      <Popover
-        open={open}
-        anchorEl={anchorEl}
-        onClose={handleClose}
-        anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
-        transformOrigin={{ vertical: "top", horizontal: "left" }}
-        slotProps={{
-          paper: {
-            sx: {
-              mt: 0.75,
-              bgcolor: "#0b1825",
-              border: `1px solid ${BORDER}`,
-              borderRadius: "8px",
-              boxShadow: "0 16px 48px rgba(0,0,0,0.6)",
-              p: "8px 6px 8px",
-              width: 264,
-              overflow: "hidden",
-            },
-          },
-        }}
-      >
-        <Box
-          sx={{
-            "& .MuiDateCalendar-root": {
-              width: "100%",
-              maxHeight: 265,
-              bgcolor: "transparent",
-            },
-            "& .MuiPickersCalendarHeader-root": {
-              px: 0.75,
-              minHeight: 36,
-              mb: 0,
-            },
-            "& .MuiPickersCalendarHeader-label": {
-              fontSize: 12.5,
-              fontWeight: 600,
-              color: TEXT_DIM,
-              fontFamily: "var(--font-sans)",
-            },
-            "& .MuiPickersArrowSwitcher-button": {
-              color: TEXT_MID,
-              padding: "4px",
-              "&:hover": {
-                bgcolor: "rgba(255,255,255,0.06)",
-                color: TEXT_DIM,
-              },
-            },
-            "& .MuiDayCalendar-weekDayLabel": {
-              fontSize: 9,
-              fontWeight: 600,
-              letterSpacing: "0.06em",
-              color: "rgba(255,255,255,0.2)",
-              width: 32,
-              height: 22,
-              fontFamily: "var(--font-sans)",
-            },
-            "& .MuiPickersDay-root": {
-              fontSize: 12,
-              fontWeight: 500,
-              width: 32,
-              height: 32,
-              borderRadius: "5px",
-              color: TEXT_MID,
-              fontFamily: "var(--font-sans)",
-              transition: "background-color 0.12s, color 0.12s",
-              "&:hover": {
-                bgcolor: "rgba(255,255,255,0.06)",
-                color: TEXT_DIM,
-              },
-            },
-            "& .MuiPickersDay-today": {
-              border: `1px solid rgba(148,206,36,0.45) !important`,
-              color: `${ACCENT} !important`,
-            },
-            "& .Mui-selected": {
-              bgcolor: `rgba(148,206,36,0.13) !important`,
-              color: `${ACCENT} !important`,
-              border: `1px solid rgba(148,206,36,0.4) !important`,
-              fontWeight: 600,
-              "&:hover": { bgcolor: "rgba(148,206,36,0.2) !important" },
-            },
-            "& .MuiPickersDay-dayOutsideMonth": {
-              color: "rgba(255,255,255,0.12)",
-            },
-            "& .MuiDayCalendar-slideTransition": { minHeight: 196 },
-          }}
-        >
-          <DateCalendar
-            value={selectedDate}
-            onChange={(newDate) => {
-              if (!newDate) return;
-              setSelectedDate(normalizeToUTCDate(newDate));
-              setSelectedTimeIndex(0);
-              handleClose();
-            }}
-          />
-        </Box>
-      </Popover>
     </Box>
   );
 }

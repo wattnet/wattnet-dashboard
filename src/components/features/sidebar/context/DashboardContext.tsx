@@ -19,6 +19,7 @@ export interface ZoneData {
   zoneStatus?: string;
   valid?: boolean;
   date?: string;
+  isForecast?: boolean;
 }
 
 interface DashboardContextType {
@@ -35,6 +36,7 @@ interface DashboardContextType {
   zoneData: ZoneData | null;
   openCount: number;
   openZonePanel: (zoneName: string, data?: ZoneData) => void;
+  updateZoneData: (data: ZoneData) => void;
   closeZonePanel: () => void;
   sidebarCollapsed: boolean;
   toggleSidebar: () => void;
@@ -57,7 +59,7 @@ export function DashboardProvider({
 }) {
   const [footprintType, setFootprintType] = React.useState("carbon");
   const [scope, setScope] = React.useState("life-cycle");
-  const [flowTracing, setFlowTracing] = React.useState(false);
+  const [flowTracing, setFlowTracing] = React.useState(true);
   const [sidebarControls, setSidebarControls] =
     React.useState<React.ReactNode>(null);
   const [zonePanelOpen, setZonePanelOpen] = React.useState(false);
@@ -80,11 +82,16 @@ export function DashboardProvider({
     (zoneName: string, data?: ZoneData) => {
       setSelectedZone(zoneName);
       if (data) setZoneData(data);
-      setZonePanelOpen(true);
+      //setZonePanelOpen(true);
       setOpenCount((c) => c + 1);
     },
     [],
   );
+
+  // Updates zone data without re-opening the panel or incrementing openCount
+  const updateZoneData = React.useCallback((data: ZoneData) => {
+    setZoneData(data);
+  }, []);
 
   const closeZonePanel = React.useCallback(() => {
     setZonePanelOpen(false);
@@ -119,6 +126,7 @@ export function DashboardProvider({
       zoneData,
       openCount,
       openZonePanel,
+      updateZoneData,
       closeZonePanel,
       sidebarCollapsed,
       toggleSidebar,
@@ -131,27 +139,22 @@ export function DashboardProvider({
     }),
     [
       footprintType,
-      setFootprintType,
       scope,
-      setScope,
       flowTracing,
-      setFlowTracing,
       sidebarControls,
-      setSidebarControls,
       zonePanelOpen,
       selectedZone,
       zoneData,
       openCount,
       openZonePanel,
+      updateZoneData,
       closeZonePanel,
       sidebarCollapsed,
       toggleSidebar,
       collapseSidebar,
       expandSidebar,
       bottomSheetState,
-      setBottomSheetState,
       canvasRect,
-      setCanvasRect,
     ],
   );
 
@@ -190,6 +193,7 @@ export function useZonePanel() {
     zoneData,
     openCount,
     openZonePanel,
+    updateZoneData,
     closeZonePanel,
   } = useDashboard();
   return {
@@ -198,6 +202,7 @@ export function useZonePanel() {
     zoneData,
     openCount,
     openZonePanel,
+    updateZoneData,
     closeZonePanel,
   };
 }
