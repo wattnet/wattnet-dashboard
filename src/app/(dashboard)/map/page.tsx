@@ -90,20 +90,6 @@ export default function MapPage() {
 
   const isCarbon = footprintType === "carbon";
 
-  const globalDataStatusTag = useMemo(() => {
-    const now = getTodayUTC();
-
-    if (selectedDate.getDate() > now.getDate()) return "Forecasted";
-    if (selectedDate.getDate() < now.getDate()) return "Historical";
-
-    const currentIndex =
-      now.getUTCHours() * 4 + Math.floor(now.getUTCMinutes() / 15);
-    if (selectedTimeIndex > currentIndex) return "Forecasted";
-    if (selectedTimeIndex < currentIndex) return "Historical";
-
-    return "Real time";
-  }, [selectedDate, selectedTimeIndex]);
-
   const legendConfig = useMemo(
     () => ({
       title: isCarbon ? "Carbon Footprint" : "Water Footprint",
@@ -140,6 +126,36 @@ export default function MapPage() {
     () => (data ? processFootprints(data) : []),
     [data],
   );
+
+  const globalDataStatusTag = useMemo(() => {
+    if (processedData.length === 0 || !selectedDate) return "no-data";
+
+    const now = getTodayUTC();
+
+    const currentTimestamp = Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate(),
+      now.getUTCHours(),
+      Math.floor(now.getUTCMinutes() / 15) * 15,
+    );
+
+    const selectedHours = Math.floor(selectedTimeIndex / 4);
+    const selectedMinutes = (selectedTimeIndex % 4) * 15;
+
+    const selectedTimestamp = Date.UTC(
+      selectedDate.getUTCFullYear(),
+      selectedDate.getUTCMonth(),
+      selectedDate.getUTCDate(),
+      selectedHours,
+      selectedMinutes,
+    );
+
+    if (selectedTimestamp > currentTimestamp) return "forecast";
+    if (selectedTimestamp < currentTimestamp) return "historical";
+
+    return "live";
+  }, [processedData.length, selectedDate, selectedTimeIndex]);
 
   useEffect(() => {
     setSidebarControls(
