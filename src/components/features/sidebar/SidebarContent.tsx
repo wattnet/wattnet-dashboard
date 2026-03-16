@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import Image from "next/image";
 import {
   Box,
@@ -16,21 +15,21 @@ import {
 } from "@/src/components/features/sidebar/context/DashboardContext";
 
 // ── Palette ────────────────────────────────────────────────────────────────
-const BORDER = "rgba(255,255,255,0.08)";
-const TEXT_DIM = "rgba(255,255,255,0.38)";
-const TEXT_MID = "rgba(255,255,255,0.60)";
-const TEXT_ON = "rgba(255,255,255,0.88)";
+const BORDER = "rgba(255,255,255,0.1)";
+const TEXT_DIM = "rgba(255, 255, 255, 0.7)";
+const TEXT_MID = "rgba(255, 255, 255, 0.5)";
+const TEXT_ON = "rgba(255,255,255,0.9)";
 const ACCENT = "#94ce24";
 
 // ── Section label ──────────────────────────────────────────────────────────
 const sectionLabelSx = {
-  fontSize: 11,
-  fontWeight: 700,
+  fontSize: 12,
+  fontWeight: 800,
   letterSpacing: "0.09em",
   textTransform: "uppercase" as const,
   color: TEXT_DIM,
-  fontFamily: "var(--font-sans)",
-  mb: 1.5,
+  fontFamily: "var(--font-display)",
+  mb: 1.25,
 };
 
 // ── MUI ToggleButtonGroup style ────────────────────────────────────────────
@@ -111,7 +110,7 @@ function SidebarHeader() {
       <Image
         src="/images/wattnet-logo-full-dark-transparent.svg"
         alt="wattnet"
-        width={150}
+        width={160}
         height={50}
         priority
       />
@@ -150,7 +149,7 @@ function SidebarViews() {
           gap: 1.25,
           px: 1.5,
           py: 1,
-          borderRadius: "10px",
+          borderRadius: "5px",
           bgcolor: "rgba(148,206,36,0.08)",
           border: `1px solid rgba(148,206,36,0.25)`,
           cursor: "default",
@@ -201,7 +200,7 @@ function SidebarOptions() {
       <Box>
         <Typography
           sx={{
-            fontSize: 12,
+            fontSize: 12.5,
             fontWeight: 600,
             color: TEXT_DIM,
             fontFamily: "var(--font-sans)",
@@ -226,7 +225,7 @@ function SidebarOptions() {
       <Box>
         <Typography
           sx={{
-            fontSize: 12,
+            fontSize: 12.5,
             fontWeight: 600,
             color: TEXT_DIM,
             fontFamily: "var(--font-sans)",
@@ -259,7 +258,7 @@ function SidebarOptions() {
         <Box>
           <Typography
             sx={{
-              fontSize: 13,
+              fontSize: 12.5,
               fontWeight: 600,
               color: TEXT_ON,
               fontFamily: "var(--font-sans)",
@@ -361,14 +360,21 @@ function SidebarFunding() {
 // ── §5 Copyright — exported, rendered in layout bottom bar ────────────────
 export function SidebarCopyright() {
   return (
-    <Box sx={{ flex: 1 }}>
+    <Box
+      sx={{ flex: 1 }}
+      display="flex"
+      flexDirection="column"
+      alignItems="left"
+      justifyContent="center"
+      pl={0.5}
+    >
       <Typography
         sx={{
-          fontSize: 12.5,
+          fontSize: 12.25,
           color: "rgb(201, 201, 201)",
           fontFamily: "var(--font-sans)",
-          lineHeight: 2,
-          paddingTop: 0.5,
+          lineHeight: 1,
+          paddingTop: 1,
           fontWeight: 600,
         }}
       >

@@ -29,24 +29,23 @@ export default function Legend({
         borderRadius: "10px",
         px: 1.5,
         py: 1.25,
-        width: 240,
+        width: 260,
         boxShadow: "0 4px 24px rgba(0,0,0,0.4)",
       }}
     >
       {/* Title */}
       <Typography
         sx={{
-          fontSize: 11,
+          fontSize: 13,
           fontWeight: 600,
           color: "rgba(255,255,255,0.5)",
           fontFamily: "var(--font-sans)",
           mb: 0.75,
           letterSpacing: "0.04em",
-          textTransform: "uppercase",
         }}
       >
         {title}{" "}
-        <span style={{ color: "rgba(255,255,255,0.3)", fontWeight: 400 }}>
+        <span style={{ color: "rgba(255,255,255,0.5)", fontWeight: 500 }}>
           ({unitOfMeasure})
         </span>
       </Typography>
@@ -54,7 +53,7 @@ export default function Legend({
       {/* Gradient bar */}
       <Box
         sx={{
-          height: 8,
+          height: 10,
           borderRadius: 4,
           mb: 0.6,
           background: `linear-gradient(to right, ${legendColors.join(", ")})`,
@@ -66,7 +65,7 @@ export default function Legend({
           <Typography
             key={v}
             sx={{
-              fontSize: 10,
+              fontSize: 12,
               color: "rgba(255,255,255,0.35)",
               fontFamily: "var(--font-sans)",
               lineHeight: 1,
