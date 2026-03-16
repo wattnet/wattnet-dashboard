@@ -88,6 +88,20 @@ export default function MapPage() {
 
   const isCarbon = footprintType === "carbon";
 
+  const globalDataStatusTag = useMemo(() => {
+    const now = getTodayUTC();
+
+    if (selectedDate.getDate() > now.getDate()) return "Forecasted";
+    if (selectedDate.getDate() < now.getDate()) return "Historical";
+
+    const currentIndex =
+      now.getUTCHours() * 4 + Math.floor(now.getUTCMinutes() / 15);
+    if (selectedTimeIndex > currentIndex) return "Forecasted";
+    if (selectedTimeIndex < currentIndex) return "Historical";
+
+    return "Real time";
+  }, [selectedDate, selectedTimeIndex]);
+
   const legendConfig = useMemo(
     () => ({
       title: isCarbon ? "Carbon Footprint" : "Water Footprint",
@@ -187,7 +201,7 @@ export default function MapPage() {
               pointerEvents: "auto",
             }}
           >
-            <GlobalTag title="Real time" />
+            <GlobalTag title={globalDataStatusTag} />
           </Box>
           <Box
             sx={{
@@ -255,7 +269,7 @@ export default function MapPage() {
               pointerEvents: "auto",
             }}
           >
-            <GlobalTag title="Real time" />
+            <GlobalTag title={globalDataStatusTag} />
           </Box>
           <Box
             sx={{
