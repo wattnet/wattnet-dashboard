@@ -300,8 +300,8 @@ function SidebarFunding() {
           textAlign: "justify",
         }}
       >
-        This work is funded from the European Union's Horizon Europe research
-        and innovation programme through the{" "}
+        This dashboard is provided by CSIC. The work is funded from the European
+        Union's Horizon Europe research and innovation programme through the{" "}
         <Box
           component="a"
           href="https://greendigit.eu"
@@ -378,7 +378,21 @@ export function SidebarCopyright() {
           fontWeight: 600,
         }}
       >
-        © 2026 Spanish National Research Council (CSIC)
+        © 2026 - {""}
+        <Box
+          component="a"
+          href="https://advancedcomputing.ifca.es/"
+          target="_blank"
+          rel="noopener"
+          sx={{
+            color: "#3a78e0",
+            textDecoration: "none",
+            "&:hover": { textDecoration: "underline" },
+          }}
+        >
+          Advanced Computing and e-Science Group
+        </Box>{" "}
+        - Spanish National Research Council (CSIC)
       </Typography>
       <Typography
         sx={{
