@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 import { FeatureCollection } from 'geojson';
-import { normalizeToUTCDate } from '../utils/dateManager';
 import {
   ZoneData,
   useMapControls,
@@ -25,7 +24,7 @@ function injectPopupStyles() {
   style.id = 'wn-popup-style';
   style.textContent = `
     .wn-popup .maplibregl-popup-content {
-      background: rgba(10,16,28,0.96);
+      background: rgba(10,16,28,0.85);
       backdrop-filter: blur(24px);
       -webkit-backdrop-filter: blur(24px);
       border: 1px solid rgba(255,255,255,0.09);
@@ -34,7 +33,7 @@ function injectPopupStyles() {
       box-shadow: 0 8px 32px rgba(0,0,0,0.6);
       font-family: "Red Hat Text", system-ui, sans-serif;
       overflow: hidden;
-      min-width: 350px;
+      min-width: 360px;
     }
     .wn-popup .maplibregl-popup-tip { display: none; }
 
@@ -45,12 +44,12 @@ function injectPopupStyles() {
       border-right: 1px solid rgba(255,255,255,0.07);
       display: flex; flex-direction: column; gap: 5px;
     }
-    .wn-date  { font-size: 14px; color: rgba(255,255,255,0.3); letter-spacing: 0.03em; line-height: 1; }
-    .wn-zone  { font-size: 18px; font-weight: 600; color: rgba(255,255,255,0.92); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2; margin-bottom: 4px; }
+    .wn-date  { font-size: 14px; font-weight: 500; color: rgba(255,255,255,0.3); letter-spacing: 0.03em; line-height: 1; }
+    .wn-zone  { font-size: 18px; font-weight: 600; color: rgba(255,255,255,0.92); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2; margin-bottom: 5px; }
     .wn-value-row { display: flex; align-items: baseline; gap: 5px; }
     .wn-value { font-size: 34px; font-weight: 700; color: #94ce24; line-height: 1; }
     .wn-unit  { font-size: 14px; font-weight: 500; color: rgba(255,255,255,0.4); line-height: 1; }
-    .wn-label { font-size: 13px; color: rgba(255,255,255,0.5); line-height: 1; }
+    .wn-label { font-size: 15px; color: rgba(255,255,255,0.5); line-height: 1; padding-top: 7px; }
 
     .wn-right {
       padding: 14px 12px; display: flex; flex-direction: column;
@@ -173,7 +172,7 @@ function buildPopupChips(
 }
 
 function buildHTML(data: ZoneData, datetime: string, chips: ChipDef[]): string {
-  const valStr = data.value != null ? data.value.toFixed(1) : '—';
+  const valStr = data.value != null ? data.value.toFixed(2) : '—';
   return `
     <div class="wn-inner">
       <div class="wn-left">

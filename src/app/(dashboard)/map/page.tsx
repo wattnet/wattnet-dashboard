@@ -27,7 +27,7 @@ import {
   useBottomSheet,
   useFlowTracing,
 } from "@/src/components/features/sidebar/context/DashboardContext";
-import { useInteractionMode } from "@/src/hooks/useInteractionMode";
+import { useTheme, useMediaQuery } from "@mui/material";
 import { MOBILE_TOP_BAR_H, MOBILE_PEEK_H } from "@/src/app/(dashboard)/layout";
 import type { Map } from "maplibre-gl";
 
@@ -48,8 +48,8 @@ const zoomBtnSx = {
   "&:hover": { color: "#fff", bgcolor: "rgba(255,255,255,0.1)" },
 };
 
-function mobileLegendBottom(sheetState: string): number {
-  return sheetState === "peek" ? MOBILE_PEEK_H + LEGEND_MARGIN : LEGEND_MARGIN;
+function mobileLegendBottom(_sheetState: string): number {
+  return LEGEND_MARGIN;
 }
 
 type ZoomButtonsProps = { mapRef: React.RefObject<Map | null> };
@@ -80,7 +80,8 @@ export default function MapPage() {
   const { openZonePanel, closeZonePanel } = useZonePanel();
   const { canvasRect } = useCanvasRect();
   const { bottomSheetState } = useBottomSheet();
-  const { isTouch } = useInteractionMode();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
   const mapRef = useRef<Map | null>(null);
 
@@ -188,7 +189,7 @@ export default function MapPage() {
 
   const mobileTopOffset = MOBILE_TOP_BAR_H + 8;
   const mobileLegendBot = mobileLegendBottom(bottomSheetState);
-  const showDesktopOverlay = !isTouch && canvasRect.width > 0;
+  const showDesktopOverlay = !isMobile && canvasRect.width > 0;
 
   const legendEl = (
     <Legend
@@ -216,7 +217,7 @@ export default function MapPage() {
         />
       </Box>
 
-      {isTouch && (
+      {isMobile && (
         <Box
           sx={{ position: "fixed", inset: 0, zIndex: 5, pointerEvents: "none" }}
         >

@@ -28,13 +28,11 @@ const ACCENT_BG = "rgba(148,206,36,0.06)";
 const ACCENT_HOVER = "rgba(148,206,36,0.18)";
 
 const subLabelSx = {
-  fontSize: 11,
-  fontWeight: 700,
-  letterSpacing: "0.08em",
-  textTransform: "uppercase" as const,
+  fontSize: 12.5,
+  fontWeight: 600,
   color: TEXT_DIM,
   fontFamily: "var(--font-sans)",
-  mb: 0.75,
+  mb: 1,
 };
 
 export default function DateSelector({
@@ -316,7 +314,7 @@ export default function DateSelector({
             marks={marks} // tu array de {value, label}
             sx={{
               color: ACCENT,
-              height: 2,
+              height: 3,
               px: 0, // quitar padding extra del slider para que los extremos coincidan con el track
               "& .MuiSlider-thumb": {
                 width: 11,
@@ -336,7 +334,7 @@ export default function DateSelector({
                 height: 3,
               },
               "& .MuiSlider-markLabel": {
-                fontSize: 12,
+                fontSize: 12.5,
                 mt: 0.5,
                 color: TEXT_DIM,
                 top: 20,

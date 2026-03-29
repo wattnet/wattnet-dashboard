@@ -2,7 +2,7 @@
 
 import React from "react";
 
-type BottomSheetState = "hidden" | "peek" | "mid" | "full";
+type BottomSheetState = "hidden" | "full";
 
 export interface CanvasRect {
   top: number;
@@ -82,7 +82,7 @@ export function DashboardProvider({
     (zoneName: string, data?: ZoneData) => {
       setSelectedZone(zoneName);
       if (data) setZoneData(data);
-      //setZonePanelOpen(true);
+      setZonePanelOpen(false);
       setOpenCount((c) => c + 1);
     },
     [],

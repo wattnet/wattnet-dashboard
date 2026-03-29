@@ -14,7 +14,7 @@ import {
 } from "@/src/utils/footprintAdapter";
 
 // Static neutral dark background — matches dashboard bg (#0c1219)
-const MAP_BG = "rgb(37, 53, 68)";
+const MAP_BG = "rgb(29, 42, 54)";
 
 function injectMapStyles() {
   if (document.getElementById("wn-map-style")) return;

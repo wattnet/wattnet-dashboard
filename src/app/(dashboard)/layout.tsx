@@ -24,9 +24,10 @@ import {
   useMapControls,
   useFlowTracing,
 } from "@/src/components/features/sidebar/context/DashboardContext";
-import { useInteractionMode } from "@/src/hooks/useInteractionMode";
+
 import SidebarContent, {
   SidebarCopyright,
+  MobileSidebarContent,
 } from "@/src/components/features/sidebar/SidebarContent";
 
 export const MOBILE_TOP_BAR_H = 48;
@@ -596,47 +597,30 @@ function Canvas({ children }: Readonly<{ children: React.ReactNode }>) {
 }
 
 // ── Mobile top sheet ───────────────────────────────────────────────────────
-type TopSheetState = "collapsed" | "mid" | "full";
-const TOP_SHEET_H: Record<TopSheetState, string> = {
-  collapsed: `${MOBILE_TOP_BAR_H}px`,
-  mid: "50vh",
-  full: "90vh",
-};
-const TOP_STATES: TopSheetState[] = ["collapsed", "mid", "full"];
-
 function MobileTopSheet({
+  expanded,
   onCollapse,
   onExpand,
-}: Readonly<{ onCollapse: () => void; onExpand: () => void }>) {
-  const [state, setState] = React.useState<TopSheetState>("collapsed");
+}: Readonly<{
+  expanded: boolean;
+  onCollapse: () => void;
+  onExpand: () => void;
+}>) {
   const dragStartY = React.useRef<number | null>(null);
+
   const handleTouchStart = (e: React.TouchEvent) => {
     dragStartY.current = e.touches[0].clientY;
   };
   const handleTouchEnd = (e: React.TouchEvent) => {
     if (dragStartY.current === null) return;
     const delta = dragStartY.current - e.changedTouches[0].clientY;
-    const idx = TOP_STATES.indexOf(state);
-    if (delta < -40 && idx < TOP_STATES.length - 1) {
-      setState(TOP_STATES[idx + 1]);
-      onExpand();
-    } else if (delta > 40 && idx > 0) {
-      const next = TOP_STATES[idx - 1];
-      setState(next);
-      if (next === "collapsed") onCollapse();
-    }
+    if (delta < -40 && expanded) onCollapse();
+    else if (delta > 40 && !expanded) onExpand();
     dragStartY.current = null;
   };
-  const isExpanded = state !== "collapsed";
-  const handleToggle = () => {
-    if (isExpanded) {
-      setState("collapsed");
-      onCollapse();
-    } else {
-      setState("mid");
-      onExpand();
-    }
-  };
+
+  const handleToggle = () => (expanded ? onCollapse() : onExpand());
+
   return (
     <Box
       sx={{
@@ -644,10 +628,10 @@ function MobileTopSheet({
         top: 0,
         left: 0,
         right: 0,
-        height: TOP_SHEET_H[state],
+        height: expanded ? "90vh" : `${MOBILE_TOP_BAR_H}px`,
         ...panelSx,
         borderBottom: `1px solid ${BORDER}`,
-        borderRadius: isExpanded ? "0 0 16px 16px" : 0,
+        borderRadius: expanded ? "0 0 16px 16px" : 0,
         zIndex: 20,
         display: "flex",
         flexDirection: "column",
@@ -657,6 +641,7 @@ function MobileTopSheet({
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
+      {/* Bar — always visible */}
       <Box
         sx={{
           height: MOBILE_TOP_BAR_H,
@@ -677,7 +662,7 @@ function MobileTopSheet({
         <CollapseBtn
           onClick={handleToggle}
           icon={
-            isExpanded ? (
+            expanded ? (
               <KeyboardArrowUpIcon sx={{ fontSize: 18 }} />
             ) : (
               <KeyboardArrowDownIcon sx={{ fontSize: 18 }} />
@@ -685,63 +670,60 @@ function MobileTopSheet({
           }
         />
       </Box>
-      {isExpanded && (
-        <>
-          <Box
-            sx={{
-              flex: 1,
-              minHeight: 0,
-              overflow: "hidden",
-              display: "flex",
-              flexDirection: "column",
-            }}
-          >
-            <SidebarContent />
-          </Box>
-          <DragHandle />
-        </>
+
+      {/* Content — full sheet scrollable */}
+      {expanded && (
+        <Box
+          sx={{
+            flex: 1,
+            minHeight: 0,
+            overflowY: "auto",
+            scrollbarWidth: "thin",
+            scrollbarColor: "rgba(255,255,255,0.08) transparent",
+          }}
+        >
+          <MobileSidebarContent />
+        </Box>
       )}
     </Box>
   );
 }
 
 // ── Mobile bottom sheet ────────────────────────────────────────────────────
-type BottomSheetState = "hidden" | "peek" | "mid" | "full";
-const BOTTOM_SHEET_H: Record<BottomSheetState, string> = {
-  hidden: "0px",
-  peek: `${MOBILE_PEEK_H}px`,
-  mid: "50vh",
-  full: "90vh",
-};
-const BOTTOM_STATES: BottomSheetState[] = ["hidden", "peek", "mid", "full"];
-
-function MobileBottomSheet({ onExpand }: Readonly<{ onExpand: () => void }>) {
+function MobileBottomSheet() {
   const { bottomSheetState, setBottomSheetState } = useBottomSheet();
   const { selectedZone, zonePanelOpen, openCount, closeZonePanel } =
     useZonePanel();
   const dragStartY = React.useRef<number | null>(null);
+
   React.useEffect(() => {
-    if (openCount > 0) setBottomSheetState("mid");
+    if (openCount > 0) setBottomSheetState("full");
   }, [openCount, setBottomSheetState]);
+
   React.useEffect(() => {
     if (!zonePanelOpen) setBottomSheetState("hidden");
   }, [zonePanelOpen, setBottomSheetState]);
+
+  // Animate sheet closed first, then clean up panel state after transition
+  const handleClose = React.useCallback(() => {
+    setBottomSheetState("hidden");
+    setTimeout(() => closeZonePanel(), 400);
+  }, [setBottomSheetState, closeZonePanel]);
+
   const handleTouchStart = (e: React.TouchEvent) => {
     dragStartY.current = e.touches[0].clientY;
   };
   const handleTouchEnd = (e: React.TouchEvent) => {
     if (dragStartY.current === null) return;
     const delta = dragStartY.current - e.changedTouches[0].clientY;
-    const idx = BOTTOM_STATES.indexOf(bottomSheetState as BottomSheetState);
-    if (delta > 40 && idx < BOTTOM_STATES.length - 1) {
-      setBottomSheetState(BOTTOM_STATES[idx + 1]);
-      onExpand();
-    } else if (delta < -40 && idx > 0)
-      setBottomSheetState(BOTTOM_STATES[idx - 1]);
+    if (delta < -40 && bottomSheetState === "full") {
+      handleClose();
+    }
     dragStartY.current = null;
   };
+
   const isVisible = bottomSheetState !== "hidden";
-  const isExpanded = bottomSheetState === "mid" || bottomSheetState === "full";
+
   return (
     <Box
       sx={{
@@ -749,7 +731,7 @@ function MobileBottomSheet({ onExpand }: Readonly<{ onExpand: () => void }>) {
         bottom: 0,
         left: 0,
         right: 0,
-        height: BOTTOM_SHEET_H[bottomSheetState as BottomSheetState],
+        height: isVisible ? "90vh" : "0px",
         ...panelSx,
         borderTop: isVisible ? `1px solid ${BORDER}` : "none",
         borderRadius: "16px 16px 0 0",
@@ -762,71 +744,58 @@ function MobileBottomSheet({ onExpand }: Readonly<{ onExpand: () => void }>) {
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      {isVisible && <DragHandle />}
       {isVisible && (
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            px: 2,
-            flexShrink: 0,
-          }}
-        >
-          <Typography
+        <>
+          {/* Header */}
+          <Box
             sx={{
-              fontSize: 13,
-              fontWeight: 600,
-              color: "rgba(255,255,255,0.85)",
-              fontFamily: "var(--font-sans)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              px: 2,
+              pt: 1.5,
+              pb: 1,
+              flexShrink: 0,
+              borderBottom: `1px solid ${BORDER}`,
             }}
           >
-            {selectedZone ?? ""}
-          </Typography>
-          <Box sx={{ display: "flex", alignItems: "center" }}>
-            {isExpanded && (
-              <IconButton
-                onClick={closeZonePanel}
-                size="small"
-                sx={{
-                  color: "rgba(255,255,255,0.3)",
-                  "&:hover": { color: "#fff" },
-                }}
-              >
-                <CloseIcon sx={{ fontSize: 16 }} />
-              </IconButton>
-            )}
+            <Typography
+              sx={{
+                fontSize: 14,
+                fontWeight: 600,
+                color: "rgba(255,255,255,0.85)",
+                fontFamily: "var(--font-sans)",
+              }}
+            >
+              {selectedZone ?? ""}
+            </Typography>
             <IconButton
-              onClick={() => setBottomSheetState(isExpanded ? "peek" : "mid")}
+              onClick={handleClose}
               size="small"
               sx={{
                 color: "rgba(255,255,255,0.3)",
                 "&:hover": { color: "#fff" },
               }}
             >
-              {isExpanded ? (
-                <KeyboardArrowDownIcon sx={{ fontSize: 18 }} />
-              ) : (
-                <KeyboardArrowUpIcon sx={{ fontSize: 18 }} />
-              )}
+              <CloseIcon sx={{ fontSize: 16 }} />
             </IconButton>
           </Box>
-        </Box>
-      )}
-      {isExpanded && (
-        <Box
-          sx={{
-            flex: 1,
-            overflowY: "auto",
-            px: 2,
-            pt: 1.5,
-            pb: 2,
-            scrollbarWidth: "thin",
-            scrollbarColor: "rgba(255,255,255,0.1) transparent",
-          }}
-        >
-          <ZoneDataContent />
-        </Box>
+
+          {/* Scrollable content */}
+          <Box
+            sx={{
+              flex: 1,
+              overflowY: "auto",
+              px: 2,
+              pt: 2,
+              pb: 3,
+              scrollbarWidth: "thin",
+              scrollbarColor: "rgba(255,255,255,0.1) transparent",
+            }}
+          >
+            <ZoneDataContent />
+          </Box>
+        </>
       )}
     </Box>
   );
@@ -836,16 +805,25 @@ function MobileBottomSheet({ onExpand }: Readonly<{ onExpand: () => void }>) {
 function MobileLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const { setBottomSheetState } = useBottomSheet();
   const { zonePanelOpen } = useZonePanel();
-  const [topSheetKey, setTopSheetKey] = React.useState(0);
-  const handleTopSheetCollapse = React.useCallback(() => {
-    if (zonePanelOpen) setBottomSheetState("mid");
-  }, [zonePanelOpen, setBottomSheetState]);
-  const handleTopSheetExpand = React.useCallback(() => {
-    setBottomSheetState("hidden");
+  const [topExpanded, setTopExpanded] = React.useState(false);
+
+  const handleTopExpand = React.useCallback(() => {
+    setTopExpanded(true);
+    setBottomSheetState("hidden"); // hide bottom when top opens
   }, [setBottomSheetState]);
-  const handleBottomSheetExpand = React.useCallback(() => {
-    setTopSheetKey((k) => k + 1);
-  }, []);
+
+  const handleTopCollapse = React.useCallback(() => {
+    setTopExpanded(false);
+    if (zonePanelOpen) setBottomSheetState("full"); // restore bottom if zone was open
+  }, [zonePanelOpen, setBottomSheetState]);
+
+  // When bottom sheet opens (zone tapped), collapse top sheet
+  React.useEffect(() => {
+    if (zonePanelOpen && topExpanded) {
+      setTopExpanded(false);
+    }
+  }, [zonePanelOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <Box
       sx={{
@@ -859,11 +837,11 @@ function MobileLayout({ children }: Readonly<{ children: React.ReactNode }>) {
       <Background />
       <Box sx={{ position: "absolute", inset: 0 }}>{children}</Box>
       <MobileTopSheet
-        key={topSheetKey}
-        onCollapse={handleTopSheetCollapse}
-        onExpand={handleTopSheetExpand}
+        expanded={topExpanded}
+        onExpand={handleTopExpand}
+        onCollapse={handleTopCollapse}
       />
-      <MobileBottomSheet onExpand={handleBottomSheetExpand} />
+      <MobileBottomSheet />
     </Box>
   );
 }
@@ -882,10 +860,10 @@ export default function DashboardLayout({
 function DashboardLayoutInner({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const { isTouch } = useInteractionMode();
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const isNarrow = useMediaQuery(theme.breakpoints.down("lg"));
-  if (isTouch) return <MobileLayout>{children}</MobileLayout>;
+  if (isMobile) return <MobileLayout>{children}</MobileLayout>;
   const sidebarExpandedWidth = isNarrow
     ? Math.round(window.innerWidth * 0.5)
     : SIDEBAR_W;
