@@ -14,6 +14,7 @@ import {
   useFlowTracing,
   useSidebarSlot,
 } from "@/src/components/features/sidebar/context/DashboardContext";
+import packageInfo from "@/package.json";
 
 // ── Palette ────────────────────────────────────────────────────────────────
 const BORDER = "rgba(255,255,255,0.1)";
@@ -377,7 +378,7 @@ export function SidebarHeader() {
           },
         }}
       >
-        vBeta
+        v{packageInfo.version}
       </Box>
 
       <Typography
@@ -566,7 +567,7 @@ export function MobileSidebarContent() {
               },
             }}
           >
-            vBeta
+            v{packageInfo.version}
           </Box>
         </Box>
         <Box sx={{ mt: 1.5 }}>
