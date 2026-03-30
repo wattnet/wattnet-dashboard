@@ -1,0 +1,41 @@
+name: Build and Push Docker Image
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4 
+
+      - name: Get version from package.json
+        id: version
+        run: echo "VERSION=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            --build-arg API_URL=${{ secrets.API_URL }} \
+            --build-arg API_TOKEN_ENDPOINT=${{ secrets.API_TOKEN_ENDPOINT }} \
+            --build-arg API_EMAIL=${{ secrets.API_EMAIL }} \
+            --build-arg API_PASSWORD=${{ secrets.API_PASSWORD }} \
+            --build-arg DASHBOARD_API_KEY=${{ secrets.DASHBOARD_API_KEY }} \
+            --build-arg NEXT_PUBLIC_DASHBOARD_API_KEY=${{ secrets.NEXT_PUBLIC_DASHBOARD_API_KEY }} \
+            -t ${{ secrets.DOCKERHUB_USERNAME }}/wattnet-dashboard:${{ steps.version.outputs.VERSION }} \
+            .
+
+      - name: Push Docker image
+        run: |
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/wattnet-dashboard:${{ steps.version.outputs.VERSION }}
