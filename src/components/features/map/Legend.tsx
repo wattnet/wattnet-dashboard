@@ -4,7 +4,7 @@ import { Box, Typography } from "@mui/material";
 
 const BORDER = "rgba(255,255,255,0.08)";
 const BACKDROP = "blur(20px)";
-const PANEL_BG = "rgba(11,18,30,0.88)";
+const PANEL_BG = "rgba(10,16,28,0.85);";
 
 interface LegendProps {
   title: string;
