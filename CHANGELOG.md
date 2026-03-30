@@ -1,0 +1,53 @@
+# Changelog
+
+## 1.0.0 (2026-03-30)
+
+
+### Features
+
+* adapt legend to values accordingly ([4128f3c](https://github.com/wattnet/wattnet-dashboard/commit/4128f3c2abd00041f6bbddce8f4acb235765f0c5))
+* add appprovider and dashboardlayout ([91a1212](https://github.com/wattnet/wattnet-dashboard/commit/91a1212dac5ee3585a196c6546da110e5a7fb071))
+* add calendar ([b276eea](https://github.com/wattnet/wattnet-dashboard/commit/b276eeae33764e9f9cfbbb1af7c756b74190ca3c))
+* add date selector and cache requests ([4a3461a](https://github.com/wattnet/wattnet-dashboard/commit/4a3461aa90ac7fc31231f2bc6bca2efd112ae048))
+* add drawer ([1e632bb](https://github.com/wattnet/wattnet-dashboard/commit/1e632bbcfc5340ddd2838670fceba27954fd3a2b))
+* add ephemeral token to prevent api calls  outside the dashboard ([bf190f9](https://github.com/wattnet/wattnet-dashboard/commit/bf190f922850cf5e597b4a068fbbca2228efcc32))
+* add flow tracing parameter ([17f8602](https://github.com/wattnet/wattnet-dashboard/commit/17f8602b4a09526f0b16cc4da7520dd3303c2481))
+* add footprint type selector ([0645879](https://github.com/wattnet/wattnet-dashboard/commit/0645879adebcfed60326c1b944424ca6d8435c4a))
+* add Iceland to geojson map data ([fd8c749](https://github.com/wattnet/wattnet-dashboard/commit/fd8c7498321e9973e1844fa2bc69260b556734c1))
+* add legend ([179e05b](https://github.com/wattnet/wattnet-dashboard/commit/179e05b4ab934a00fcb3e53da6b1683e3bf5bc31))
+* add loader and use button to open calendar ([38c2904](https://github.com/wattnet/wattnet-dashboard/commit/38c2904073d81bd1e74f52961fd5b19930eca337))
+* add logo and update README structure ([8bbb926](https://github.com/wattnet/wattnet-dashboard/commit/8bbb926922a9b10ca011b41f60dfbf8be1832eb3))
+* add popup on zone hover ([a314d09](https://github.com/wattnet/wattnet-dashboard/commit/a314d093aab7e81f36c380b994a43c81f9c34f67))
+* add scope selector ([1f28232](https://github.com/wattnet/wattnet-dashboard/commit/1f28232db1b672edcb32d8e4c1bc4009651ed3ed))
+* add SidebarContent component with funding and options sections ([a88dff1](https://github.com/wattnet/wattnet-dashboard/commit/a88dff1413dd59e09053a554c00bb04a50e6aae9))
+* add static carbon map ([14b634f](https://github.com/wattnet/wattnet-dashboard/commit/14b634f783f39d36f52a33309acc03f06f6b1f68))
+* add translation service ([e940e2b](https://github.com/wattnet/wattnet-dashboard/commit/e940e2b6701426575f7cbca4debcbd1b85fbe3e0))
+* add water carbon selector ([18b99c8](https://github.com/wattnet/wattnet-dashboard/commit/18b99c816d3677bfe42e11e34671258abe625e75))
+* enhance map functionality and sidebar controls ([a6bb481](https://github.com/wattnet/wattnet-dashboard/commit/a6bb48197b10e4b571a524679174c79cdcdd4376))
+* enhance mobile sidebar and map styles; refactor components for improved functionality ([4118a8d](https://github.com/wattnet/wattnet-dashboard/commit/4118a8dafedcf58319c18daf51da49a5eebf4ebf))
+* fix ci/cd and add versioning ([f5e340d](https://github.com/wattnet/wattnet-dashboard/commit/f5e340db534c9d032b3b919a03ffa3cce979dc5e))
+* initialize Angular web application with basic structure and configuration ([3d64a85](https://github.com/wattnet/wattnet-dashboard/commit/3d64a853035e8dbfe50a0ddc91c19397183455f6))
+* manage token automatically from frontend ([4ca497f](https://github.com/wattnet/wattnet-dashboard/commit/4ca497f1c9254be51a4f604b439dcf99784d27d8))
+* normalize dates to UTC ([10b74f2](https://github.com/wattnet/wattnet-dashboard/commit/10b74f2517d44373be6debb2bf138f75433ebb1b))
+* refactor MapContainer for improved readability and functionality ([48e319d](https://github.com/wattnet/wattnet-dashboard/commit/48e319d301dd9c56b66c891c82070d475c660bfe))
+* remove angular project ([9239bed](https://github.com/wattnet/wattnet-dashboard/commit/9239bed163ca90acd9c809413cf05b91948817aa))
+* restructure sidebar and map components for improved UI consistency ([a7500cb](https://github.com/wattnet/wattnet-dashboard/commit/a7500cbfc020271660a9786c1cfb7bf538c57f28))
+* update map ([e54c70d](https://github.com/wattnet/wattnet-dashboard/commit/e54c70d8cda00131abbc0c08ff020e1b328ecfb8))
+* update map with new selectors ([9212487](https://github.com/wattnet/wattnet-dashboard/commit/9212487b40c82be93b70ab99fb074565605c9b08))
+* update zone names and fix water colours and legend ([ccf025b](https://github.com/wattnet/wattnet-dashboard/commit/ccf025ba139f1a8adaa4fb6a72da018d60d579b7))
+* use current date as default and limit zoom ([3024105](https://github.com/wattnet/wattnet-dashboard/commit/3024105721c7dfea9f4e3165b2adaaf1db7a7c19))
+* use mui components ([3c9e700](https://github.com/wattnet/wattnet-dashboard/commit/3c9e700f4c10c21db3e7fc1a2732e585d166fded))
+
+
+### Bug Fixes
+
+* adjust carbon legend labels ([ce66417](https://github.com/wattnet/wattnet-dashboard/commit/ce66417503281fcca636bf6fbf55f465a8224d18))
+* adjust water legend labels ([61dabd3](https://github.com/wattnet/wattnet-dashboard/commit/61dabd3530aec5d7736db140e094638a71e4d990))
+* correct panel background color in Legend component ([cd49cef](https://github.com/wattnet/wattnet-dashboard/commit/cd49ceff02e3b54f1fae125d2ed0f69c8737f418))
+* fill intervals that have an empty value and add global tag ([9e460ba](https://github.com/wattnet/wattnet-dashboard/commit/9e460ba902b5ce9c0af2d5fed4d2b2357da8a588))
+* footprint timestamps ([358ed2e](https://github.com/wattnet/wattnet-dashboard/commit/358ed2ef14a317df444544d57cc42067174b3c53))
+* global tag ([ea9ad1f](https://github.com/wattnet/wattnet-dashboard/commit/ea9ad1f536e16aa2c35a9c5dc78e8601649a3c96))
+* map colours not rendering bug ([99864d0](https://github.com/wattnet/wattnet-dashboard/commit/99864d0cddaec0b2eb4b4fb06cf938d14d8db9d9))
+* redo legend ([ac620f7](https://github.com/wattnet/wattnet-dashboard/commit/ac620f720c77c6ffaca89336a5eb007e900b8acd))
+* update acknowledgements ([2c61652](https://github.com/wattnet/wattnet-dashboard/commit/2c6165284d1d961ee6c919ecbf783be74d7512a3))
+* update global status tag ([01cb1c0](https://github.com/wattnet/wattnet-dashboard/commit/01cb1c011742addc0614416067b4a33d357bc8f0))
