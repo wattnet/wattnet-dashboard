@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/wattnet/wattnet-dashboard/compare/v1.0.0...v1.1.0) (2026-03-30)
+
+
+### Features
+
+* show version number inside sidebar ([f4e2a64](https://github.com/wattnet/wattnet-dashboard/commit/f4e2a64d60006ee22d9a741eb6c943ef1ed38df0))
+
 ## 1.0.0 (2026-03-30)
 
 
