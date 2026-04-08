@@ -7,12 +7,15 @@ import {
   useFlowTracing,
   useZonePanel,
 } from '../components/features/sidebar/context/DashboardContext';
-import { CARBON_STOPS, WATER_STOPS } from '../lib/theme/mapScales';
+import {
+  getScaleConfig,
+  MetricKey,
+  DimensionKey,
+} from '../lib/theme/mapScales';
 
 interface ZoneFeatureProperties {
   countryName?: string;
-  carbon_value?: number;
-  water_value?: number;
+  value?: number;
   zone_status?: string;
   valid?: boolean;
   [key: string]: unknown;
@@ -46,9 +49,9 @@ function injectPopupStyles() {
     }
     .wn-date  { font-size: 14px; font-weight: 500; color: rgba(255,255,255,0.3); letter-spacing: 0.03em; line-height: 1; }
     .wn-zone  { font-size: 18px; font-weight: 600; color: rgba(255,255,255,0.92); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2; margin-bottom: 5px; }
-    .wn-value-row { display: flex; align-items: baseline; gap: 5px; }
-    .wn-value { font-size: 34px; font-weight: 700; color: #94ce24; line-height: 1; }
-    .wn-unit  { font-size: 14px; font-weight: 500; color: rgba(255,255,255,0.4); line-height: 1; }
+    .wn-value-row { display: flex; align-items: flex-end; gap: 5px; }
+    .wn-value { font-size: 34px; font-weight: 700; color: rgba(255,255,255,0.92); line-height: 1; }
+    .wn-unit  { font-size: 14px; font-weight: 500; color: rgba(255,255,255,0.4); line-height: 1;}
     .wn-label { font-size: 15px; color: rgba(255,255,255,0.5); line-height: 1; padding-top: 7px; }
 
     .wn-right {
@@ -194,6 +197,7 @@ function buildHTML(data: ZoneData, datetime: string, chips: ChipDef[]): string {
 export function useMapLayers(
   map: maplibregl.Map | null,
   selectedDate: Date,
+  metric: MetricKey,
   onZoneClick?: (zoneName: string, data: ZoneData) => void,
   selectedTimeIndex = 0,
 ) {
@@ -209,12 +213,16 @@ export function useMapLayers(
     type: 'carbon' | 'water';
   } | null>(null);
 
+  const metricRef = useRef(metric);
   const scopeRef = useRef(scope);
   const flowTracingRef = useRef(flowTracing);
   const timeIndexRef = useRef(selectedTimeIndex);
   const dateRef = useRef(selectedDate);
   const zonePanelOpenRef = useRef(zonePanelOpen);
 
+  useEffect(() => {
+    metricRef.current = metric;
+  }, [metric]);
   useEffect(() => {
     scopeRef.current = scope;
   }, [scope]);
@@ -249,15 +257,16 @@ export function useMapLayers(
   }, [map]);
 
   const buildZoneData = useCallback(
-    (props: ZoneFeatureProperties, type: 'carbon' | 'water'): ZoneData => {
-      const isCarbon = type === 'carbon';
-      const rawValue = isCarbon ? props.carbon_value : props.water_value;
+    (props: ZoneFeatureProperties, type: string): ZoneData => {
+      const rawValue = props.value;
+      const config = getScaleConfig(metricRef.current, type as DimensionKey);
       const forecast = calcIsForecast(dateRef.current, timeIndexRef.current);
+
       return {
         zoneName: props.countryName ?? 'Unknown',
         value: rawValue == null ? null : Number(rawValue),
-        unit: isCarbon ? 'gCO₂eq/kWh' : 'l/kWh',
-        label: isCarbon ? 'Carbon Footprint' : 'Water Footprint',
+        unit: config.unit ?? '',
+        label: config.title,
         zoneStatus: props.zone_status,
         valid: props.valid,
         date: formatDatetime(dateRef.current, timeIndexRef.current),
@@ -279,8 +288,8 @@ export function useMapLayers(
     (type: string) => {
       if (!map) return;
       const isCarbon = type === 'carbon';
-      const stops = isCarbon ? CARBON_STOPS : WATER_STOPS;
-      const property = isCarbon ? 'carbon_value' : 'water_value';
+      const { stops } = getScaleConfig(metric, type as DimensionKey);
+      const property = 'value';
       const layerId = isCarbon ? 'carbon-fill' : 'water-fill';
       const otherId = isCarbon ? 'water-fill' : 'carbon-fill';
 
@@ -314,7 +323,7 @@ export function useMapLayers(
       if (map.getLayer(otherId)) map.removeLayer(otherId);
       // eslint-disable-next-line react-hooks/exhaustive-deps
     },
-    [map],
+    [map, metric],
   );
 
   const updateMapData = useCallback(

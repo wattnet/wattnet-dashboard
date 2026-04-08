@@ -5,19 +5,14 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { Box, IconButton } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
-import { useCarbonFootprints } from "@/src/hooks/useCarbonFootprints";
+import { useMetricData } from "@/src/hooks/useMetricData";
 import DateSelector from "@/src/components/features/sidebar/DateSelector";
 import Legend from "@/src/components/features/map/Legend";
 import { getInitialTimeIndex, getTodayUTC } from "@/src/utils/dateManager";
 import { processFootprints } from "@/src/utils/footprintAdapter";
 import GlobalTag from "@/src/components/features/map/GlobalTag";
 import MapContainer from "@/src/components/features/map/MapContainer";
-import {
-  CARBON_STOPS,
-  WATER_STOPS,
-  CARBON_LEGEND_COLORS,
-  WATER_LEGEND_COLORS,
-} from "@/src/lib/theme/mapScales";
+import { getScaleConfig, MetricKey } from "@/src/lib/theme/mapScales";
 import {
   ZoneData,
   useSidebarControls,
@@ -75,7 +70,7 @@ const ZoomButtons = ({ mapRef }: ZoomButtonsProps) => (
 
 export default function MapPage() {
   const setSidebarControls = useSidebarControls();
-  const { footprintType, scope } = useMapControls();
+  const { metric, dimension, scope } = useMapControls();
   const { flowTracing } = useFlowTracing();
   const { openZonePanel, closeZonePanel } = useZonePanel();
   const { canvasRect } = useCanvasRect();
@@ -89,16 +84,9 @@ export default function MapPage() {
   const [selectedTimeIndex, setSelectedTimeIndex] =
     useState(getInitialTimeIndex);
 
-  const isCarbon = footprintType === "carbon";
-
   const legendConfig = useMemo(
-    () => ({
-      title: isCarbon ? "Carbon Footprint" : "Water Footprint",
-      unit: isCarbon ? "gCO\u2082eq/kWh" : "l/kWh",
-      labels: isCarbon ? CARBON_STOPS.labels : WATER_STOPS.labels,
-      legendColors: isCarbon ? CARBON_LEGEND_COLORS : WATER_LEGEND_COLORS,
-    }),
-    [isCarbon],
+    () => getScaleConfig(metric, dimension),
+    [metric, dimension],
   );
 
   const dateKey = useMemo(
@@ -111,12 +99,13 @@ export default function MapPage() {
     [selectedDate],
   );
 
-  const { data, loading, error } = useCarbonFootprints(
+  const { data, loading, error } = useMetricData(
     {
-      footprint_type: footprintType,
+      metric,
+      dimension,
       scope,
       start: `${dateKey}T00:00:00Z`,
-      end: `${dateKey}T23:45:00Z`,
+      end: `${dateKey}T23:59:59Z`,
       aggregate: false,
       use_global: flowTracing,
     },
@@ -195,7 +184,7 @@ export default function MapPage() {
     <Legend
       title={legendConfig.title}
       unitOfMeasure={legendConfig.unit}
-      labels={legendConfig.labels}
+      labels={legendConfig.stops.labels}
       legendColors={legendConfig.legendColors}
     />
   );
@@ -205,10 +194,11 @@ export default function MapPage() {
       <Box sx={{ position: "fixed", inset: 0, zIndex: 0 }}>
         <MapContainer
           data={processedData}
+          metric={metric as MetricKey}
           loading={loading}
           selectedDate={selectedDate}
           selectedTimeIndex={selectedTimeIndex}
-          selectedFootprintType={footprintType}
+          selectedDimension={dimension}
           onZoneClick={handleZoneClick}
           onEmptyClick={closeZonePanel}
           onMapReady={(m) => {

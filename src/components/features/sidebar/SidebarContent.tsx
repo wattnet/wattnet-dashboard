@@ -54,6 +54,11 @@ const segmentedSx = {
       "&:hover": { bgcolor: "rgba(148,206,36,0.2)" },
     },
     "&:hover:not(.Mui-selected)": { bgcolor: "rgba(255,255,255,0.05)" },
+    "&.Mui-disabled": {
+      color: "rgba(255,255,255,0.2) !important",
+      bgcolor: "rgba(0,0,0,0.1)",
+      borderColor: "rgba(255,255,255,0.05) !important",
+    },
   },
 };
 
@@ -166,7 +171,8 @@ function LinksBar() {
 
 // ── Shared options body (no scroll wrapper) ────────────────────────────────
 function OptionsBody() {
-  const { footprintType, setFootprintType, scope, setScope } = useMapControls();
+  const { metric, setMetric, dimension, setDimension, scope, setScope } =
+    useMapControls();
   const { flowTracing, setFlowTracing } = useFlowTracing();
   const sidebarControls = useSidebarSlot();
 
@@ -186,14 +192,40 @@ function OptionsBody() {
             mb: 1,
           }}
         >
-          Footprint Metric
+          Environmental Metric
         </Typography>
         <ToggleButtonGroup
           exclusive
-          value={footprintType}
-          onChange={(_, v) => v && setFootprintType(v)}
+          value={metric}
+          onChange={(_, v) => v && setMetric(v)}
           sx={segmentedSx}
           fullWidth
+        >
+          <ToggleButton value="footprint">Footprint</ToggleButton>
+          <ToggleButton value="impact">Impact</ToggleButton>
+          <ToggleButton value="green-score">Green Score</ToggleButton>
+        </ToggleButtonGroup>
+      </Box>
+
+      <Box>
+        <Typography
+          sx={{
+            fontSize: 12.5,
+            fontWeight: 600,
+            color: TEXT_DIM,
+            fontFamily: "var(--font-sans)",
+            mb: 1,
+          }}
+        >
+          Environmental Dimension
+        </Typography>
+        <ToggleButtonGroup
+          exclusive
+          value={dimension}
+          onChange={(_, v) => v && setDimension(v)}
+          sx={segmentedSx}
+          fullWidth
+          disabled={metric === "green-score"}
         >
           <ToggleButton value="carbon">Carbon</ToggleButton>
           <ToggleButton value="water">Water</ToggleButton>
@@ -210,7 +242,7 @@ function OptionsBody() {
             mb: 1,
           }}
         >
-          Footprint Scope
+          Assessment Scope
         </Typography>
         <ToggleButtonGroup
           exclusive
@@ -279,7 +311,7 @@ function FundingBody() {
         Union's Horizon Europe research and innovation programme through the{" "}
         <Box
           component="a"
-          href="https://greendigit.eu"
+          href="https://greendigit-project.eu/"
           target="_blank"
           rel="noopener"
           sx={{
@@ -456,6 +488,22 @@ function SidebarOptions() {
           "linear-gradient(to bottom, transparent 0%, black 24px, black calc(100% - 24px), transparent 100%)",
         WebkitMaskImage:
           "linear-gradient(to bottom, transparent 0%, black 24px, black calc(100% - 24px), transparent 100%)",
+        // ── Custom Scrollbar Style ──
+        "&::-webkit-scrollbar": {
+          width: "8px",
+        },
+        "&::-webkit-scrollbar-track": {
+          background: "transparent",
+        },
+        "&::-webkit-scrollbar-thumb": {
+          backgroundColor: "rgba(255, 255, 255, 0.15)",
+          borderRadius: "10px",
+          border: "2px solid transparent",
+          backgroundClip: "padding-box",
+        },
+        "&::-webkit-scrollbar-thumb:hover": {
+          backgroundColor: "rgba(255, 255, 255, 0.3)",
+        },
       }}
     >
       <OptionsBody />

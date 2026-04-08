@@ -1,5 +1,5 @@
 export const COLORS = {
-  carbon: {
+  carbonFootprint: {
     0: '#7DD438',
     1: '#BDD12A',
     2: '#F1DE30',
@@ -11,7 +11,7 @@ export const COLORS = {
     8: '#6D3B07',
     9: '#2E1C0E',
   },
-  water: {
+  waterFootprint: {
     0: '#E0F3FF',
     1: '#B3E0FF',
     2: '#80CCFF',
@@ -22,6 +22,42 @@ export const COLORS = {
     7: '#004080',
     8: '#00264D',
     9: '#001233',
+  },
+  carbonImpact: {
+    0: '#F5E6D3',
+    1: '#E8D2B8',
+    2: '#D9B999',
+    3: '#C79D7A',
+    4: '#B5825F',
+    5: '#9E6847',
+    6: '#7E4F34',
+    7: '#5E3825',
+    8: '#42261A',
+    9: '#2B1810',
+  },
+  waterImpact: {
+    0: '#E0F7FF',
+    1: '#B3ECFF',
+    2: '#80E0FF',
+    3: '#4DD2FF',
+    4: '#1AC6FF',
+    5: '#0099CC',
+    6: '#336699',
+    7: '#4B4B8F',
+    8: '#3A2F66',
+    9: '#241A3D',
+  },
+  greenScore: {
+    0: '#0F2F1A',
+    1: '#144524',
+    2: '#1A5C2E',
+    3: '#1F7338',
+    4: '#2A8C45',
+    5: '#3BAE5A',
+    6: '#5FC378',
+    7: '#86D79A',
+    8: '#B3EAC1',
+    9: '#D9F5E3',
   },
   map: {
     noData: '#CFCFCF',
