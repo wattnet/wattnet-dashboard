@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/wattnet/wattnet-dashboard/compare/v1.1.0...v1.2.0) (2026-04-08)
+
+
+### Features
+
+* include footprint, impact and green score metrics ([40a9aff](https://github.com/wattnet/wattnet-dashboard/commit/40a9affabed6a12831cde83a8ec117dc85510afa))
+
 ## [1.1.0](https://github.com/wattnet/wattnet-dashboard/compare/v1.0.0...v1.1.0) (2026-03-30)
 
 
