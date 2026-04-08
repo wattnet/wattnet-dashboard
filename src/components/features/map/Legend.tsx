@@ -8,9 +8,9 @@ const PANEL_BG = "rgba(10,16,28,0.85);";
 
 interface LegendProps {
   title: string;
-  unitOfMeasure: string;
   labels: number[]; // 6 fixed breakpoint values to display
   legendColors: string[]; // 6 colors matching those label positions
+  unitOfMeasure?: string;
 }
 
 export default function Legend({
@@ -29,7 +29,7 @@ export default function Legend({
         borderRadius: "10px",
         px: 1.5,
         py: 1.25,
-        width: 260,
+        width: 280,
         boxShadow: "0 4px 24px rgba(0,0,0,0.4)",
       }}
     >
@@ -45,9 +45,11 @@ export default function Legend({
         }}
       >
         {title}{" "}
-        <span style={{ color: "rgba(255,255,255,0.5)", fontWeight: 500 }}>
-          ({unitOfMeasure})
-        </span>
+        {unitOfMeasure && (
+          <span style={{ color: "rgba(255,255,255,0.5)", fontWeight: 500 }}>
+            ({unitOfMeasure})
+          </span>
+        )}
       </Typography>
 
       {/* Gradient bar */}

@@ -19,8 +19,8 @@ const generateDayIntervals = (date: Date) => {
       0,
       0,
       0,
-      0
-    )
+      0,
+    ),
   );
 
   for (let i = 0; i < 96; i++) {
@@ -44,11 +44,11 @@ export const processFootprints = (data: Footprint[]): ProcessedFootprint[] => {
           value,
           valid: s.valid,
           zoneStatus: s.zone_status,
-        }))
+        })),
       )
       .sort(
         (a, b) =>
-          new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+          new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
       );
 
     if (!flattened.length) {
@@ -57,7 +57,7 @@ export const processFootprints = (data: Footprint[]): ProcessedFootprint[] => {
 
     // Create a map by timestamp to check if all intervals have data
     const byTimestamp = new Map(
-      flattened.map((item) => [new Date(item.timestamp).getTime(), item])
+      flattened.map((item) => [new Date(item.timestamp).getTime(), item]),
     );
 
     // Generate full day intervals based on the first timestamp's date
@@ -85,13 +85,12 @@ export const processFootprints = (data: Footprint[]): ProcessedFootprint[] => {
 };
 
 /**
- * Merge carbon or water values into the GeoJSON features based on the processed footprint data and selected time index.
+ * Merge the values of the active metric into the GeoJSON features based on the processed footprint data and selected time index.
  */
-const mergeValues = (
+export const mergeActiveMetricValues = (
   geojson: FeatureCollection,
   processedData: ProcessedFootprint[],
   timeIndex: number,
-  valueKey: 'carbon_value' | 'water_value'
 ) => {
   const mergedByZone: Record<
     string,
@@ -115,7 +114,7 @@ const mergeValues = (
       ...f,
       properties: {
         ...f.properties,
-        [valueKey]: zoneData?.value ?? null,
+        value: zoneData?.value ?? null,
         valid: zoneData?.valid ?? false,
         zone_status: zoneData?.zoneStatus ?? 'Unknown',
       },
@@ -124,15 +123,3 @@ const mergeValues = (
 
   return geojson;
 };
-
-export const mergeCarbonValues = (
-  geojson: FeatureCollection,
-  data: ProcessedFootprint[],
-  timeIndex: number
-) => mergeValues(geojson, data, timeIndex, 'carbon_value');
-
-export const mergeWaterValues = (
-  geojson: FeatureCollection,
-  data: ProcessedFootprint[],
-  timeIndex: number
-) => mergeValues(geojson, data, timeIndex, 'water_value');

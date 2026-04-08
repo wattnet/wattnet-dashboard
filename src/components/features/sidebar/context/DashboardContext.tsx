@@ -1,5 +1,6 @@
 "use client";
 
+import { DimensionKey, MetricKey } from "@/src/lib/theme/mapScales";
 import React from "react";
 
 type BottomSheetState = "hidden" | "full";
@@ -23,8 +24,10 @@ export interface ZoneData {
 }
 
 interface DashboardContextType {
-  footprintType: string;
-  setFootprintType: (v: string) => void;
+  metric: MetricKey;
+  setMetric: (v: MetricKey) => void;
+  dimension: DimensionKey;
+  setDimension: (v: DimensionKey) => void;
   scope: string;
   setScope: (v: string) => void;
   flowTracing: boolean;
@@ -57,7 +60,8 @@ export function DashboardProvider({
 }: {
   readonly children: React.ReactNode;
 }) {
-  const [footprintType, setFootprintType] = React.useState("carbon");
+  const [metric, setMetric] = React.useState("footprint" as MetricKey);
+  const [dimension, setDimension] = React.useState("carbon" as DimensionKey);
   const [scope, setScope] = React.useState("life-cycle");
   const [flowTracing, setFlowTracing] = React.useState(true);
   const [sidebarControls, setSidebarControls] =
@@ -113,8 +117,10 @@ export function DashboardProvider({
 
   const contextValue = React.useMemo(
     () => ({
-      footprintType,
-      setFootprintType,
+      metric,
+      setMetric,
+      dimension,
+      setDimension,
       scope,
       setScope,
       flowTracing,
@@ -138,7 +144,8 @@ export function DashboardProvider({
       setCanvasRect,
     }),
     [
-      footprintType,
+      metric,
+      dimension,
       scope,
       flowTracing,
       sidebarControls,
@@ -173,8 +180,9 @@ function useDashboard() {
 }
 
 export function useMapControls() {
-  const { footprintType, setFootprintType, scope, setScope } = useDashboard();
-  return { footprintType, setFootprintType, scope, setScope };
+  const { metric, setMetric, dimension, setDimension, scope, setScope } =
+    useDashboard();
+  return { metric, setMetric, dimension, setDimension, scope, setScope };
 }
 export function useFlowTracing() {
   const { flowTracing, setFlowTracing } = useDashboard();

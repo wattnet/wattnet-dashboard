@@ -3,10 +3,7 @@ import { Footprint } from '@/src/types/footprints';
 import { FootprintQueryParams } from '@/src/types/queryParams';
 import { useEffect, useState } from 'react';
 
-export function useCarbonFootprints(
-  params: FootprintQueryParams,
-  dateKey: string
-) {
+export function useMetricData(params: FootprintQueryParams, dateKey: string) {
   const [ephemeralToken, setEphemeralToken] = useState<string | null>(null);
 
   const fetchToken = async () => {
@@ -20,8 +17,11 @@ export function useCarbonFootprints(
     fetchToken();
   }, []);
 
+  const dimensionPart =
+    params.metric === 'green-score' ? '' : `-${params.dimension}`;
+
   const swrKey = ephemeralToken
-    ? `carbon-footprints-${dateKey}-${params.footprint_type}-${params.scope}-${params.use_global}`
+    ? `${dateKey}.${params.metric}${dimensionPart}-${params.scope}-${params.use_global}`
     : null;
 
   const { data, error, isLoading } = useSWR<Footprint[]>(
@@ -31,29 +31,25 @@ export function useCarbonFootprints(
 
       const query = new URLSearchParams();
       Object.entries(params).forEach(([key, value]) => {
+        if (key === 'dimension' && params.metric === 'green-score') return;
         if (value !== undefined) query.append(key, String(value));
       });
 
-      const res = await fetch(`/api/carbon?${query.toString()}`, {
-        headers: { 'x-dashboard-token': ephemeralToken },
-      });
-
-      // Refresh token and retry if unauthorized
-      if (res.status === 401) {
-        const newToken = await fetchToken();
-
-        const retry = await fetch(`/api/carbon?${query.toString()}`, {
-          headers: { 'x-dashboard-token': newToken },
+      const fetchWithToken = (token: string) =>
+        fetch(`/api/metrics?${query.toString()}`, {
+          headers: { 'x-dashboard-token': token },
         });
 
-        return retry.json();
+      let res = await fetchWithToken(ephemeralToken);
+
+      if (res.status === 401) {
+        const newToken = await fetchToken();
+        res = await fetchWithToken(newToken);
       }
 
       return res.json();
     },
-    {
-      keepPreviousData: true, // keep previous data while loading new
-    }
+    { keepPreviousData: true },
   );
 
   return { data: data ?? [], loading: isLoading, error };

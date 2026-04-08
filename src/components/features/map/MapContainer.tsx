@@ -8,10 +8,8 @@ import { Box, CircularProgress } from "@mui/material";
 import { useMapLayers } from "@/src/hooks/useMapLayers";
 import { COLORS } from "@/src/lib/theme/colors";
 import { ProcessedFootprint } from "@/src/types/footprints";
-import {
-  mergeCarbonValues,
-  mergeWaterValues,
-} from "@/src/utils/footprintAdapter";
+import { MetricKey } from "@/src/lib/theme/mapScales";
+import { mergeActiveMetricValues } from "@/src/utils/footprintAdapter";
 
 // Static neutral dark background — matches dashboard bg (#0c1219)
 const MAP_BG = "rgb(29, 42, 54)";
@@ -30,10 +28,11 @@ function injectMapStyles() {
 
 interface MapContainerProps {
   data: ProcessedFootprint[];
+  metric: MetricKey;
   loading: boolean;
   selectedDate: Date;
   selectedTimeIndex: number;
-  selectedFootprintType: string;
+  selectedDimension: string;
   onZoneClick?: (zoneName: string) => void;
   onEmptyClick?: () => void;
   onMapReady?: (map: maplibregl.Map) => void;
@@ -41,10 +40,11 @@ interface MapContainerProps {
 
 export default function MapContainer({
   data,
+  metric,
   loading,
   selectedDate,
   selectedTimeIndex,
-  selectedFootprintType,
+  selectedDimension,
   onZoneClick,
   onEmptyClick,
   onMapReady,
@@ -62,6 +62,7 @@ export default function MapContainer({
   const { updateMapData } = useMapLayers(
     mapInstance.current,
     selectedDate,
+    metric,
     onZoneClick,
     selectedTimeIndex,
   );
@@ -132,22 +133,24 @@ export default function MapContainer({
         worldGeoJSONRef.current = await res.json();
       }
       const base = structuredClone(worldGeoJSONRef.current!);
-      const merged: FeatureCollection =
-        selectedFootprintType === "carbon"
-          ? mergeCarbonValues(base, data, selectedTimeIndex)
-          : mergeWaterValues(base, data, selectedTimeIndex);
+      const merged: FeatureCollection = mergeActiveMetricValues(
+        base,
+        data,
+        selectedTimeIndex,
+      );
 
       const map = mapInstance.current!;
       if (!map.getSource("world"))
         map.addSource("world", { type: "geojson", data: merged });
 
-      updateMapData(merged, selectedFootprintType);
+      updateMapData(merged, selectedDimension);
     };
     syncMap();
   }, [
     data,
+    metric,
     selectedTimeIndex,
-    selectedFootprintType,
+    selectedDimension,
     isStyleLoaded,
     updateMapData,
   ]);
