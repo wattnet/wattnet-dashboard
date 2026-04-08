@@ -488,6 +488,22 @@ function SidebarOptions() {
           "linear-gradient(to bottom, transparent 0%, black 24px, black calc(100% - 24px), transparent 100%)",
         WebkitMaskImage:
           "linear-gradient(to bottom, transparent 0%, black 24px, black calc(100% - 24px), transparent 100%)",
+        // ── Custom Scrollbar Style ──
+        "&::-webkit-scrollbar": {
+          width: "8px",
+        },
+        "&::-webkit-scrollbar-track": {
+          background: "transparent",
+        },
+        "&::-webkit-scrollbar-thumb": {
+          backgroundColor: "rgba(255, 255, 255, 0.15)",
+          borderRadius: "10px",
+          border: "2px solid transparent",
+          backgroundClip: "padding-box",
+        },
+        "&::-webkit-scrollbar-thumb:hover": {
+          backgroundColor: "rgba(255, 255, 255, 0.3)",
+        },
       }}
     >
       <OptionsBody />
