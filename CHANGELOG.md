@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.0](https://github.com/wattnet/wattnet-dashboard/compare/v1.2.1...v1.3.0) (2026-04-16)
+
+
+### Features
+
+* add tooltips and improve colours ([e1704e4](https://github.com/wattnet/wattnet-dashboard/commit/e1704e4139cdf8488b9a8f212342030b8676eb5c))
+* create segmented control component and add tooltips ([24ed27e](https://github.com/wattnet/wattnet-dashboard/commit/24ed27ea7b1da6c20f1f50a119f946c8b725f327))
+
 ## [1.2.0](https://github.com/wattnet/wattnet-dashboard/compare/v1.1.0...v1.2.0) (2026-04-08)
 
 
