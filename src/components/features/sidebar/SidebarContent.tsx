@@ -2,12 +2,7 @@
 import LanguageIcon from "@mui/icons-material/Language";
 import GitHubIcon from "@mui/icons-material/GitHub";
 import Image from "next/image";
-import {
-  Box,
-  Typography,
-  ToggleButtonGroup,
-  ToggleButton,
-} from "@mui/material";
+import { Box, Typography } from "@mui/material";
 import MapIcon from "@mui/icons-material/Map";
 import {
   useMapControls,
@@ -15,11 +10,12 @@ import {
   useSidebarSlot,
 } from "@/src/components/features/sidebar/context/DashboardContext";
 import packageInfo from "@/package.json";
+import { SegmentedControl } from "../../ui/SegmentedControl";
+import { useTranslation } from "react-i18next";
 
 // ── Palette ────────────────────────────────────────────────────────────────
 const BORDER = "rgba(255,255,255,0.1)";
 const TEXT_DIM = "rgba(255, 255, 255, 0.7)";
-const TEXT_MID = "rgba(255, 255, 255, 0.5)";
 const TEXT_ON = "rgba(255,255,255,0.9)";
 const ACCENT = "#94ce24";
 
@@ -32,34 +28,6 @@ const sectionLabelSx = {
   color: TEXT_DIM,
   fontFamily: "var(--font-display)",
   mb: 1.25,
-};
-
-// ── MUI ToggleButtonGroup style ────────────────────────────────────────────
-const segmentedSx = {
-  width: "100%",
-  "& .MuiToggleButtonGroup-grouped": {
-    flex: 1,
-    py: 0.75,
-    fontSize: 13,
-    fontWeight: 600,
-    fontFamily: "var(--font-sans)",
-    color: TEXT_MID,
-    textTransform: "none",
-    borderColor: `${BORDER} !important`,
-    transition: "all 0.15s",
-    "&.Mui-selected": {
-      bgcolor: "rgba(148,206,36,0.13)",
-      color: ACCENT,
-      borderColor: `rgba(148,206,36,0.4) !important`,
-      "&:hover": { bgcolor: "rgba(148,206,36,0.2)" },
-    },
-    "&:hover:not(.Mui-selected)": { bgcolor: "rgba(255,255,255,0.05)" },
-    "&.Mui-disabled": {
-      color: "rgba(255,255,255,0.2) !important",
-      bgcolor: "rgba(0,0,0,0.1)",
-      borderColor: "rgba(255,255,255,0.05) !important",
-    },
-  },
 };
 
 // ── Apple-style toggle ─────────────────────────────────────────────────────
@@ -171,6 +139,7 @@ function LinksBar() {
 
 // ── Shared options body (no scroll wrapper) ────────────────────────────────
 function OptionsBody() {
+  const { t } = useTranslation("common");
   const { metric, setMetric, dimension, setDimension, scope, setScope } =
     useMapControls();
   const { flowTracing, setFlowTracing } = useFlowTracing();
@@ -178,83 +147,71 @@ function OptionsBody() {
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2.75 }}>
-      <Typography sx={{ ...sectionLabelSx, mb: 0 }}>Options</Typography>
+      <Typography sx={{ ...sectionLabelSx, mb: 0 }}>
+        {t("sidebar.options.title")}
+      </Typography>
 
       {sidebarControls && <Box>{sidebarControls}</Box>}
 
-      <Box>
-        <Typography
-          sx={{
-            fontSize: 12.5,
-            fontWeight: 600,
-            color: TEXT_DIM,
-            fontFamily: "var(--font-sans)",
-            mb: 1,
-          }}
-        >
-          Environmental Metric
-        </Typography>
-        <ToggleButtonGroup
-          exclusive
-          value={metric}
-          onChange={(_, v) => v && setMetric(v)}
-          sx={segmentedSx}
-          fullWidth
-        >
-          <ToggleButton value="footprint">Footprint</ToggleButton>
-          <ToggleButton value="impact">Impact</ToggleButton>
-          <ToggleButton value="green-score">Green Score</ToggleButton>
-        </ToggleButtonGroup>
-      </Box>
+      <SegmentedControl
+        label={t("sidebar.options.metric.label")}
+        value={metric}
+        onChange={setMetric}
+        options={[
+          {
+            value: "footprint",
+            label: t("sidebar.options.metric.footprint.label"),
+            tooltip: t("sidebar.options.metric.footprint.tooltip"),
+          },
+          {
+            value: "impact",
+            label: t("sidebar.options.metric.impact.label"),
+            tooltip: t("sidebar.options.metric.impact.tooltip"),
+          },
+          {
+            value: "green-score",
+            label: t("sidebar.options.metric.greenScore.label"),
+            tooltip: t("sidebar.options.metric.greenScore.tooltip"),
+          },
+        ]}
+      />
 
-      <Box>
-        <Typography
-          sx={{
-            fontSize: 12.5,
-            fontWeight: 600,
-            color: TEXT_DIM,
-            fontFamily: "var(--font-sans)",
-            mb: 1,
-          }}
-        >
-          Environmental Dimension
-        </Typography>
-        <ToggleButtonGroup
-          exclusive
-          value={dimension}
-          onChange={(_, v) => v && setDimension(v)}
-          sx={segmentedSx}
-          fullWidth
-          disabled={metric === "green-score"}
-        >
-          <ToggleButton value="carbon">Carbon</ToggleButton>
-          <ToggleButton value="water">Water</ToggleButton>
-        </ToggleButtonGroup>
-      </Box>
+      <SegmentedControl
+        label={t("sidebar.options.dimension.title")}
+        value={dimension}
+        onChange={setDimension}
+        disabled={metric === "green-score"}
+        options={[
+          {
+            value: "carbon",
+            label: t("sidebar.options.dimension.carbon.label"),
+            tooltip: t("sidebar.options.dimension.carbon.tooltip"),
+          },
+          {
+            value: "water",
+            label: t("sidebar.options.dimension.water.label"),
+            tooltip: t("sidebar.options.dimension.water.tooltip"),
+          },
+        ]}
+      />
 
-      <Box>
-        <Typography
-          sx={{
-            fontSize: 12.5,
-            fontWeight: 600,
-            color: TEXT_DIM,
-            fontFamily: "var(--font-sans)",
-            mb: 1,
-          }}
-        >
-          Assessment Scope
-        </Typography>
-        <ToggleButtonGroup
-          exclusive
-          value={scope}
-          onChange={(_, v) => v && setScope(v)}
-          sx={segmentedSx}
-          fullWidth
-        >
-          <ToggleButton value="life-cycle">Life-cycle</ToggleButton>
-          <ToggleButton value="operational">Operational</ToggleButton>
-        </ToggleButtonGroup>
-      </Box>
+      <SegmentedControl
+        label={t("sidebar.options.scope.title")}
+        value={scope}
+        onChange={setScope}
+        options={[
+          {
+            value: "life-cycle",
+            label: t("sidebar.options.scope.lifeCycle.label"),
+            tooltip: t("sidebar.options.scope.lifeCycle.tooltip"),
+          },
+          {
+            value: "operational",
+            label: t("sidebar.options.scope.operational.label"),
+            tooltip: t("sidebar.options.scope.operational.tooltip"),
+          },
+        ]}
+      />
 
       <Box
         sx={{
@@ -273,7 +230,7 @@ function OptionsBody() {
               fontFamily: "var(--font-sans)",
             }}
           >
-            Flow Tracing
+            {t("sidebar.options.flowTracing.title")}
           </Typography>
           <Typography
             sx={{
@@ -283,7 +240,7 @@ function OptionsBody() {
               mt: 0.3,
             }}
           >
-            Track cross-border energy flows
+            {t("sidebar.options.flowTracing.subtitle")}
           </Typography>
         </Box>
         <AppleToggle checked={flowTracing} onChange={setFlowTracing} />

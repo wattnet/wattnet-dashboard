@@ -164,10 +164,9 @@ export function getScaleConfig(
           stops: WATER_IMPACT_STOPS,
           legendColors: WATER_IMPACT_LEGEND_COLORS,
           title: 'Water Impact',
-          unit: 'stress-l/kWh',
+          unit: 'stress-L/kWh',
         };
   }
-  // default: footprint
   return dimension === 'carbon'
     ? {
         stops: CARBON_FOOTPRINT_STOPS,
@@ -179,6 +178,6 @@ export function getScaleConfig(
         stops: WATER_FOOTPRINT_STOPS,
         legendColors: WATER_FOOTPRINT_LEGEND_COLORS,
         title: 'Water Footprint',
-        unit: 'l/kWh',
+        unit: 'L/kWh',
       };
 }
