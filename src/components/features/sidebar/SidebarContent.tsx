@@ -12,6 +12,7 @@ import {
 import packageInfo from "@/package.json";
 import { SegmentedControl } from "../../ui/SegmentedControl";
 import { useTranslation } from "react-i18next";
+import { useEffect } from "react";
 
 // ── Palette ────────────────────────────────────────────────────────────────
 const BORDER = "rgba(255,255,255,0.1)";
@@ -145,14 +146,19 @@ function OptionsBody() {
   const { flowTracing, setFlowTracing } = useFlowTracing();
   const sidebarControls = useSidebarSlot();
 
+  useEffect(() => {
+    if (metric === "impact") {
+      setDimension("water");
+      setScope("operational");
+    }
+  }, [metric, dimension, scope, flowTracing]);
+
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2.75 }}>
       <Typography sx={{ ...sectionLabelSx, mb: 0 }}>
         {t("sidebar.options.title")}
       </Typography>
-
       {sidebarControls && <Box>{sidebarControls}</Box>}
-
       <SegmentedControl
         label={t("sidebar.options.metric.label")}
         value={metric}
@@ -186,6 +192,7 @@ function OptionsBody() {
             value: "carbon",
             label: t("sidebar.options.dimension.carbon.label"),
             tooltip: t("sidebar.options.dimension.carbon.tooltip"),
+            disabled: metric === "impact",
           },
           {
             value: "water",
@@ -199,11 +206,13 @@ function OptionsBody() {
         label={t("sidebar.options.scope.title")}
         value={scope}
         onChange={setScope}
+        disabled={metric === "green-score"}
         options={[
           {
             value: "life-cycle",
             label: t("sidebar.options.scope.lifeCycle.label"),
             tooltip: t("sidebar.options.scope.lifeCycle.tooltip"),
+            disabled: metric === "impact",
           },
           {
             value: "operational",
@@ -212,7 +221,6 @@ function OptionsBody() {
           },
         ]}
       />
-
       <Box
         sx={{
           display: "flex",

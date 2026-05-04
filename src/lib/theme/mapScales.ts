@@ -34,23 +34,6 @@ export const WATER_FOOTPRINT_STOPS = {
   ],
 };
 
-export const CARBON_IMPACT_STOPS = {
-  mapValues: [0, 100, 200, 300, 400, 500, 600, 700, 800, 1000],
-  labels: [0, 200, 400, 600, 800, 1000],
-  colors: [
-    COLORS.carbonImpact[0],
-    COLORS.carbonImpact[1],
-    COLORS.carbonImpact[2],
-    COLORS.carbonImpact[3],
-    COLORS.carbonImpact[4],
-    COLORS.carbonImpact[5],
-    COLORS.carbonImpact[6],
-    COLORS.carbonImpact[7],
-    COLORS.carbonImpact[8],
-    COLORS.carbonImpact[9],
-  ],
-};
-
 export const WATER_IMPACT_STOPS = {
   mapValues: [0, 0.5, 1, 3, 7, 13, 21, 33, 45, 200],
   labels: [0, 1, 7, 21, 45, 200],
@@ -104,15 +87,6 @@ export const WATER_FOOTPRINT_LEGEND_COLORS = [
   COLORS.waterFootprint[9],
 ];
 
-export const CARBON_IMPACT_LEGEND_COLORS = [
-  COLORS.carbonImpact[0],
-  COLORS.carbonImpact[2],
-  COLORS.carbonImpact[4],
-  COLORS.carbonImpact[6],
-  COLORS.carbonImpact[7],
-  COLORS.carbonImpact[9],
-];
-
 export const WATER_IMPACT_LEGEND_COLORS = [
   COLORS.waterImpact[0],
   COLORS.waterImpact[2],
@@ -153,19 +127,12 @@ export function getScaleConfig(
     };
   }
   if (metric === 'impact') {
-    return dimension === 'carbon'
-      ? {
-          stops: CARBON_IMPACT_STOPS,
-          legendColors: CARBON_IMPACT_LEGEND_COLORS,
-          title: 'Carbon Impact',
-          unit: 'stress-gCO2eq/kWh',
-        }
-      : {
-          stops: WATER_IMPACT_STOPS,
-          legendColors: WATER_IMPACT_LEGEND_COLORS,
-          title: 'Water Impact',
-          unit: 'stress-L/kWh',
-        };
+    return {
+      stops: WATER_IMPACT_STOPS,
+      legendColors: WATER_IMPACT_LEGEND_COLORS,
+      title: 'Water Impact',
+      unit: 'stress-L/kWh',
+    };
   }
   return dimension === 'carbon'
     ? {

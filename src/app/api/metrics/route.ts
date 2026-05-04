@@ -38,14 +38,16 @@ export async function GET(request: Request) {
     scope: url.searchParams.get('scope') as 'life-cycle' | 'operational',
     start: url.searchParams.get('start') ?? new Date().toISOString(),
     end: url.searchParams.get('end') ?? new Date().toISOString(),
-    aggregate: url.searchParams.get('aggregate') === 'true',
-    use_global: url.searchParams.get('use_global') === 'true',
-    // dimension is intentionally omitted for green-score
+    // aggregate, use_global and dimension are intentionally omitted for green-score
     ...(metric === 'footprint' && {
+      aggregate: url.searchParams.get('aggregate') === 'true',
+      use_global: url.searchParams.get('use_global') === 'true',
       footprint_type: url.searchParams.get('dimension') as 'carbon' | 'water',
     }),
     ...(metric === 'impact' && {
-      impact_type: url.searchParams.get('dimension') as 'carbon' | 'water',
+      aggregate: url.searchParams.get('aggregate') === 'true',
+      use_global: url.searchParams.get('use_global') === 'true',
+      impact_type: url.searchParams.get('dimension') as 'water',
     }),
   };
 

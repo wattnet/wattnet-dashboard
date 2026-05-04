@@ -59,6 +59,7 @@ export interface Option<T extends string> {
   value: T;
   label: string;
   tooltip?: string;
+  disabled?: boolean;
 }
 
 interface SegmentedControlProps<T extends string> {
@@ -75,7 +76,7 @@ export function SegmentedControl<T extends string>({
   value,
   onChange,
   options,
-  disabled,
+  disabled = false,
 }: SegmentedControlProps<T>) {
   return (
     <Box>
@@ -100,7 +101,11 @@ export function SegmentedControl<T extends string>({
       >
         {options.map((opt) => {
           const button = (
-            <ToggleButton key={opt.value} value={opt.value}>
+            <ToggleButton
+              key={opt.value}
+              value={opt.value}
+              disabled={opt.disabled}
+            >
               {opt.label}
             </ToggleButton>
           );
