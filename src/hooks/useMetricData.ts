@@ -1,21 +1,21 @@
 import useSWR from 'swr';
 import { Footprint } from '@/src/types/footprints';
 import { FootprintQueryParams } from '@/src/types/queryParams';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 
 export function useMetricData(params: FootprintQueryParams, dateKey: string) {
   const [ephemeralToken, setEphemeralToken] = useState<string | null>(null);
 
-  const fetchToken = async () => {
+  const fetchToken = useCallback(async (): Promise<string> => {
     const res = await fetch('/api/core');
     const data = await res.json();
     setEphemeralToken(data.token);
     return data.token;
-  };
+  }, []);
 
   useEffect(() => {
     fetchToken();
-  }, []);
+  }, [fetchToken]);
 
   const dimensionPart =
     params.metric === 'green-score' ? '' : `-${params.dimension}`;
@@ -52,5 +52,12 @@ export function useMetricData(params: FootprintQueryParams, dateKey: string) {
     { keepPreviousData: true },
   );
 
-  return { data: data ?? [], loading: isLoading, error };
+  return {
+    data: data ?? [],
+    loading: isLoading,
+    error,
+    // Exposed for useDataRefresh
+    ephemeralToken,
+    fetchToken,
+  };
 }

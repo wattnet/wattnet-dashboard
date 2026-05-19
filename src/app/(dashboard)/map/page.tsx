@@ -6,6 +6,7 @@ import { Box, IconButton } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import { useMetricData } from "@/src/hooks/useMetricData";
+import { useDataRefresh } from "@/src/hooks/useDataRefresh";
 import DateSelector from "@/src/components/features/sidebar/DateSelector";
 import Legend from "@/src/components/features/map/Legend";
 import { getInitialTimeIndex, getTodayUTC } from "@/src/utils/dateManager";
@@ -23,7 +24,7 @@ import {
   useFlowTracing,
 } from "@/src/components/features/sidebar/context/DashboardContext";
 import { useTheme, useMediaQuery } from "@mui/material";
-import { MOBILE_TOP_BAR_H, MOBILE_PEEK_H } from "@/src/app/(dashboard)/layout";
+import { MOBILE_TOP_BAR_H } from "@/src/app/(dashboard)/layout";
 import type { Map } from "maplibre-gl";
 
 const BORDER = "rgba(255,255,255,0.08)";
@@ -99,7 +100,7 @@ export default function MapPage() {
     [selectedDate],
   );
 
-  const { data, loading, error } = useMetricData(
+  const { data, loading, error, ephemeralToken, fetchToken } = useMetricData(
     {
       metric,
       dimension,
@@ -111,6 +112,33 @@ export default function MapPage() {
     },
     dateKey,
   );
+
+  const isToday = useMemo(() => {
+    const today = getTodayUTC();
+    return (
+      selectedDate.getUTCFullYear() === today.getUTCFullYear() &&
+      selectedDate.getUTCMonth() === today.getUTCMonth() &&
+      selectedDate.getUTCDate() === today.getUTCDate()
+    );
+  }, [selectedDate]);
+
+  useDataRefresh({
+    params: {
+      metric,
+      dimension,
+      scope,
+      start: `${dateKey}T00:00:00Z`,
+      end: `${dateKey}T23:59:59Z`,
+      aggregate: false,
+      use_global: flowTracing,
+    },
+    dateKey,
+    ephemeralToken,
+    fetchToken,
+    enabled: isToday,
+    selectedTimeIndex,
+    setSelectedTimeIndex,
+  });
 
   const processedData = useMemo(
     () => (data ? processFootprints(data) : []),
