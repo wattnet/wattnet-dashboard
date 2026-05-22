@@ -150,6 +150,8 @@ function OptionsBody() {
     if (metric === "impact") {
       setDimension("water");
       setScope("operational");
+    } else if (metric == "green-score") {
+      setScope("operational");
     }
   }, [metric, dimension, scope, flowTracing]);
 
