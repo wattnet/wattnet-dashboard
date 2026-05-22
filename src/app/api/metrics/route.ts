@@ -38,6 +38,7 @@ export async function GET(request: Request) {
     scope: url.searchParams.get('scope') as 'life-cycle' | 'operational',
     start: url.searchParams.get('start') ?? new Date().toISOString(),
     end: url.searchParams.get('end') ?? new Date().toISOString(),
+    zone: url.searchParams.get('zone') ?? '',
     // aggregate, use_global and dimension are intentionally omitted for green-score
     ...(metric === 'footprint' && {
       aggregate: url.searchParams.get('aggregate') === 'true',
