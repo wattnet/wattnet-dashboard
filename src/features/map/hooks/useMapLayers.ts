@@ -6,12 +6,8 @@ import {
   useMapControls,
   useFlowTracing,
   useZonePanel,
-} from '../components/features/sidebar/context/DashboardContext';
-import {
-  getScaleConfig,
-  MetricKey,
-  DimensionKey,
-} from '../lib/theme/mapScales';
+} from '../../../components/features/sidebar/context/DashboardContext';
+import { getScaleConfig, MetricKey, DimensionKey } from '../utils/mapScales';
 
 interface ZoneFeatureProperties {
   countryName?: string;

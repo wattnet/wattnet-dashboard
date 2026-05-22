@@ -1,4 +1,4 @@
-import { FootprintQueryParams } from '@/src/types/queryParams';
+import { FootprintQueryParams } from '@/src/shared/types/queryParams';
 
 const buildUrl = (
   path: string,

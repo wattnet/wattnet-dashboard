@@ -28,7 +28,7 @@ import {
 import SidebarContent, {
   SidebarCopyright,
   MobileSidebarContent,
-} from "@/src/components/features/sidebar/SidebarContent";
+} from "@/src/features/sidebar/components/SidebarContent";
 
 export const MOBILE_TOP_BAR_H = 48;
 export const MOBILE_PEEK_H = 64;

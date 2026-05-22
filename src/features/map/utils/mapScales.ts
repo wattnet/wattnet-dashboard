@@ -1,4 +1,4 @@
-import { COLORS } from './colors';
+import { COLORS } from '../../../core/theme/colors';
 
 export const CARBON_FOOTPRINT_STOPS = {
   mapValues: [0, 100, 200, 300, 400, 500, 600, 700, 800, 1000],

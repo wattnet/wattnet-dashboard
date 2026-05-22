@@ -5,11 +5,11 @@ import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { FeatureCollection } from "geojson";
 import { Box, CircularProgress } from "@mui/material";
-import { useMapLayers } from "@/src/hooks/useMapLayers";
-import { COLORS } from "@/src/lib/theme/colors";
-import { ProcessedFootprint } from "@/src/types/footprints";
-import { MetricKey } from "@/src/lib/theme/mapScales";
-import { mergeActiveMetricValues } from "@/src/utils/footprintAdapter";
+import { useMapLayers } from "@/src/features/map/hooks/useMapLayers";
+import { COLORS } from "@/src/core/theme/colors";
+import { ProcessedFootprint } from "@/src/features/map/types/footprints";
+import { MetricKey } from "@/src/features/map/utils/mapScales";
+import { mergeActiveMetricValues } from "@/src/features/map/utils/footprintAdapter";
 
 // Static neutral dark background — matches dashboard bg (#0c1219)
 const MAP_BG = "rgb(29, 42, 54)";

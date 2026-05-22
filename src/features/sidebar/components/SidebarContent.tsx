@@ -10,7 +10,7 @@ import {
   useSidebarSlot,
 } from "@/src/components/features/sidebar/context/DashboardContext";
 import packageInfo from "@/package.json";
-import { SegmentedControl } from "../../ui/SegmentedControl";
+import { SegmentedControl } from "../../../shared/components/SegmentedControl";
 import { useTranslation } from "react-i18next";
 import { useEffect } from "react";
 

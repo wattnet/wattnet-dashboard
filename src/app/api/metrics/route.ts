@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
-import { FootprintQueryParams } from '@/src/types/queryParams';
+import { FootprintQueryParams } from '@/src/shared/types/queryParams';
 import {
   fetchFootprints,
   fetchImpacts,
   fetchGreenScore,
-} from '@/src/lib/api/api';
-import { getCurrentToken } from '@/src/lib/auth/ephemeralTokens';
+} from '@/src/shared/lib/api/api';
+import { getCurrentToken } from '@/src/shared/lib/auth/ephemeralTokens';
 
 const FETCHER_BY_METRIC: Record<
   string,

@@ -5,15 +5,18 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { Box, IconButton } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
-import { useMetricData } from "@/src/hooks/useMetricData";
-import { useDataRefresh } from "@/src/hooks/useDataRefresh";
-import DateSelector from "@/src/components/features/sidebar/DateSelector";
-import Legend from "@/src/components/features/map/Legend";
-import { getInitialTimeIndex, getTodayUTC } from "@/src/utils/dateManager";
-import { processFootprints } from "@/src/utils/footprintAdapter";
-import GlobalTag from "@/src/components/features/map/GlobalTag";
-import MapContainer from "@/src/components/features/map/MapContainer";
-import { getScaleConfig, MetricKey } from "@/src/lib/theme/mapScales";
+import { useMetricData } from "@/src/features/metrics/hooks/useMetricData";
+import { useDataRefresh } from "@/src/shared/hooks/useDataRefresh";
+import DateSelector from "@/src/features/sidebar/components/DateSelector";
+import Legend from "@/src/features/map/components/Legend";
+import {
+  getInitialTimeIndex,
+  getTodayUTC,
+} from "@/src/shared/utils/dateManager";
+import { processFootprints } from "@/src/features/map/utils/footprintAdapter";
+import GlobalTag from "@/src/features/map/components/GlobalTag";
+import MapContainer from "@/src/features/map/components/MapContainer";
+import { getScaleConfig, MetricKey } from "@/src/features/map/utils/mapScales";
 import {
   ZoneData,
   useSidebarControls,

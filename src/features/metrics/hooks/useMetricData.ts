@@ -1,6 +1,6 @@
 import useSWR from 'swr';
-import { Footprint } from '@/src/types/footprints';
-import { FootprintQueryParams } from '@/src/types/queryParams';
+import { Footprint } from '@/src/features/map/types/footprints';
+import { FootprintQueryParams } from '@/src/shared/types/queryParams';
 import { useEffect, useState, useCallback } from 'react';
 
 export function useMetricData(params: FootprintQueryParams, dateKey: string) {

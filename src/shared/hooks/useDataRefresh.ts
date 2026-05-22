@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useSWRConfig } from 'swr';
-import { FootprintQueryParams } from '@/src/types/queryParams';
+import { FootprintQueryParams } from '@/src/shared/types/queryParams';
 
 const PROBE_RETRY_MS = 60_000; // 1 minute between retries when zone_status is "missing"
 const QUARTER_INTERVAL_MS = 15 * 60_000; // 15 minutes

@@ -6,8 +6,8 @@ import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import { useTranslation } from "react-i18next";
 import { useMemo, useState } from "react";
-import { normalizeToUTCDate } from "@/src/utils/dateManager";
-import { ProcessedFootprint } from "@/src/types/footprints";
+import { normalizeToUTCDate } from "@/src/shared/utils/dateManager";
+import { ProcessedFootprint } from "@/src/features/map/types/footprints";
 
 interface DateSelectorProps {
   selectedDate: Date;

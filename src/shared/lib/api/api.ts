@@ -1,7 +1,7 @@
-import { FootprintQueryParams } from '@/src/types/queryParams';
-import { Footprint } from '@/src/types/footprints';
-import { endpoints } from '@/src/lib/api/endpoints';
-import { getAccessToken } from '@/src/lib/auth/token';
+import { FootprintQueryParams } from '@/src/shared/types/queryParams';
+import { Footprint } from '@/src/features/map/types/footprints';
+import { endpoints } from '@/src/shared/lib/api/endpoints';
+import { getAccessToken } from '@/src/shared/lib/auth/token';
 
 async function fetchFromApi(url: string, label: string): Promise<Footprint[]> {
   const token = await getAccessToken();

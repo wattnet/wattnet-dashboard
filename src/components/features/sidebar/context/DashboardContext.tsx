@@ -1,6 +1,6 @@
 "use client";
 
-import { DimensionKey, MetricKey } from "@/src/lib/theme/mapScales";
+import { DimensionKey, MetricKey } from "@/src/features/map/utils/mapScales";
 import React from "react";
 
 type BottomSheetState = "hidden" | "full";
