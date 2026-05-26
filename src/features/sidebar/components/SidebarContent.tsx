@@ -4,15 +4,15 @@ import GitHubIcon from "@mui/icons-material/GitHub";
 import Image from "next/image";
 import { Box, Typography } from "@mui/material";
 import MapIcon from "@mui/icons-material/Map";
-import {
-  useMapControls,
-  useFlowTracing,
-  useSidebarSlot,
-} from "@/src/components/features/sidebar/context/DashboardContext";
+
 import packageInfo from "@/package.json";
 import { SegmentedControl } from "../../../shared/components/SegmentedControl";
 import { useTranslation } from "react-i18next";
 import { useEffect } from "react";
+import {
+  useMapControls,
+  useFlowTracing,
+} from "../../dashboard/store/useDashboardStore";
 
 // ── Palette ────────────────────────────────────────────────────────────────
 const BORDER = "rgba(255,255,255,0.1)";
@@ -144,7 +144,6 @@ function OptionsBody() {
   const { metric, setMetric, dimension, setDimension, scope, setScope } =
     useMapControls();
   const { flowTracing, setFlowTracing } = useFlowTracing();
-  const sidebarControls = useSidebarSlot();
 
   useEffect(() => {
     if (metric === "impact") {
@@ -160,7 +159,9 @@ function OptionsBody() {
       <Typography sx={{ ...sectionLabelSx, mb: 0 }}>
         {t("sidebar.options.title")}
       </Typography>
-      {sidebarControls && <Box>{sidebarControls}</Box>}
+
+      <Box id="desktop-sidebar-controls-slot" />
+
       <SegmentedControl
         label={t("sidebar.options.metric.label")}
         value={metric}
@@ -622,6 +623,7 @@ export function MobileSidebarContent() {
 
       {/* Options — flat, no scroll wrapper */}
       <Box sx={{ px: 2.5, py: 2, borderBottom: `1px solid ${BORDER}` }}>
+        <Box id="mobile-sidebar-controls-slot" sx={{ mb: 2 }} />
         <OptionsBody />
       </Box>
 

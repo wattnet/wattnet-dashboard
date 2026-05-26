@@ -17,18 +17,19 @@ import { processFootprints } from "@/src/features/map/utils/footprintAdapter";
 import GlobalTag from "@/src/features/map/components/GlobalTag";
 import MapContainer from "@/src/features/map/components/MapContainer";
 import { getScaleConfig, MetricKey } from "@/src/features/map/utils/mapScales";
-import {
-  ZoneData,
-  useSidebarControls,
-  useMapControls,
-  useZonePanel,
-  useCanvasRect,
-  useBottomSheet,
-  useFlowTracing,
-} from "@/src/components/features/sidebar/context/DashboardContext";
+
 import { useTheme, useMediaQuery } from "@mui/material";
 import { MOBILE_TOP_BAR_H } from "@/src/app/(dashboard)/layout";
 import type { Map } from "maplibre-gl";
+import {
+  useMapControls,
+  useFlowTracing,
+  useZonePanel,
+  useCanvasRect,
+  useBottomSheet,
+  ZoneData,
+} from "@/src/features/dashboard/store/useDashboardStore";
+import { Portal } from "@/src/shared/components/Portal";
 
 const BORDER = "rgba(255,255,255,0.08)";
 const BACKDROP = "blur(20px)";
@@ -73,7 +74,6 @@ const ZoomButtons = ({ mapRef }: ZoomButtonsProps) => (
 );
 
 export default function MapPage() {
-  const setSidebarControls = useSidebarControls();
   const { metric, dimension, scope } = useMapControls();
   const { flowTracing } = useFlowTracing();
   const { openZonePanel, closeZonePanel } = useZonePanel();
@@ -183,26 +183,6 @@ export default function MapPage() {
     return "live";
   }, [processedData, selectedDate, selectedTimeIndex]);
 
-  const lastSetRef = useRef<string>("");
-
-  useEffect(() => {
-    const key = `${dateKey}|${selectedTimeIndex}|${processedData.length}`;
-    if (key === lastSetRef.current) return;
-    lastSetRef.current = key;
-    setSidebarControls(
-      <DateSelector
-        selectedDate={selectedDate}
-        setSelectedDate={setSelectedDate}
-        selectedTimeIndex={selectedTimeIndex}
-        setSelectedTimeIndex={setSelectedTimeIndex}
-        data={processedData}
-      />,
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dateKey, selectedTimeIndex, processedData.length]);
-
-  useEffect(() => () => setSidebarControls(null), []); // eslint-disable-line react-hooks/exhaustive-deps
-
   const handleZoneClick = (zoneName: string, zoneData: ZoneData) => {
     openZonePanel(zoneName, zoneData);
   };
@@ -222,6 +202,22 @@ export default function MapPage() {
 
   return (
     <>
+      <Portal
+        targetId={
+          isMobile
+            ? "mobile-sidebar-controls-slot"
+            : "desktop-sidebar-controls-slot"
+        }
+      >
+        <DateSelector
+          selectedDate={selectedDate}
+          setSelectedDate={setSelectedDate}
+          selectedTimeIndex={selectedTimeIndex}
+          setSelectedTimeIndex={setSelectedTimeIndex}
+          data={processedData}
+        />
+      </Portal>
+
       <Box sx={{ position: "fixed", inset: 0, zIndex: 0 }}>
         <MapContainer
           data={processedData}

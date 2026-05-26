@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 import { FeatureCollection } from 'geojson';
+
+import { getScaleConfig, MetricKey, DimensionKey } from '../utils/mapScales';
 import {
   ZoneData,
   useMapControls,
   useFlowTracing,
   useZonePanel,
-} from '../../../components/features/sidebar/context/DashboardContext';
-import { getScaleConfig, MetricKey, DimensionKey } from '../utils/mapScales';
+} from '../../dashboard/store/useDashboardStore';
 
 interface ZoneFeatureProperties {
   countryName?: string;

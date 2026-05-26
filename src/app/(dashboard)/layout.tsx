@@ -15,20 +15,19 @@ import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
-import {
-  DashboardProvider,
-  useSidebar,
-  useZonePanel,
-  useBottomSheet,
-  useCanvasRect,
-  useMapControls,
-  useFlowTracing,
-} from "@/src/components/features/sidebar/context/DashboardContext";
 
 import SidebarContent, {
   SidebarCopyright,
   MobileSidebarContent,
 } from "@/src/features/sidebar/components/SidebarContent";
+import {
+  useBottomSheet,
+  useCanvasRect,
+  useFlowTracing,
+  useMapControls,
+  useSidebar,
+  useZonePanel,
+} from "@/src/features/dashboard/store/useDashboardStore";
 
 export const MOBILE_TOP_BAR_H = 48;
 export const MOBILE_PEEK_H = 64;
@@ -850,11 +849,7 @@ function MobileLayout({ children }: Readonly<{ children: React.ReactNode }>) {
 export default function DashboardLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  return (
-    <DashboardProvider>
-      <DashboardLayoutInner>{children}</DashboardLayoutInner>
-    </DashboardProvider>
-  );
+  return <DashboardLayoutInner>{children}</DashboardLayoutInner>;
 }
 
 function DashboardLayoutInner({
