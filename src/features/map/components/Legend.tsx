@@ -2,9 +2,15 @@
 
 import { Box, Typography } from "@mui/material";
 
-const BORDER = "rgba(255,255,255,0.08)";
+const BORDER = "var(--color-border)";
 const BACKDROP = "blur(20px)";
-const PANEL_BG = "rgba(10,16,28,0.85);";
+const PANEL_BG = "var(--color-panel)";
+const SHADOW = "var(--color-background) 40% 0px 4px 24px";
+
+const TEXT_TITLE =
+  "color-mix(in srgb, var(--color-foreground) 55%, transparent)";
+const TEXT_LABELS =
+  "color-mix(in srgb, var(--color-foreground) 40%, transparent)";
 
 interface LegendProps {
   title: string;
@@ -18,7 +24,7 @@ export default function Legend({
   unitOfMeasure,
   labels,
   legendColors,
-}: LegendProps) {
+}: Readonly<LegendProps>) {
   return (
     <Box
       sx={{
@@ -30,7 +36,7 @@ export default function Legend({
         px: 1.5,
         py: 1.25,
         width: 280,
-        boxShadow: "0 4px 24px rgba(0,0,0,0.4)",
+        boxShadow: SHADOW,
       }}
     >
       {/* Title */}
@@ -38,15 +44,14 @@ export default function Legend({
         sx={{
           fontSize: 13,
           fontWeight: 600,
-          color: "rgba(255,255,255,0.5)",
-          fontFamily: "var(--font-sans)",
+          color: TEXT_TITLE,
           mb: 0.75,
           letterSpacing: "0.04em",
         }}
       >
         {title}{" "}
         {unitOfMeasure && (
-          <span style={{ color: "rgba(255,255,255,0.5)", fontWeight: 500 }}>
+          <span style={{ color: TEXT_TITLE, fontWeight: 500 }}>
             ({unitOfMeasure})
           </span>
         )}
@@ -68,8 +73,7 @@ export default function Legend({
             key={v}
             sx={{
               fontSize: 12,
-              color: "rgba(255,255,255,0.35)",
-              fontFamily: "var(--font-sans)",
+              color: TEXT_LABELS,
               lineHeight: 1,
               whiteSpace: "nowrap",
             }}

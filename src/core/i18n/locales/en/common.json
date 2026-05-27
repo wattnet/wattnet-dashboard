@@ -44,5 +44,12 @@
         "subtitle": "Track cross-border energy flows"
       }
     }
+  },
+  "map": {
+    "themeSwitch": {
+      "light": "Switch to light mode",
+      "dark": "Switch to dark mode",
+      "contrast": "Switch to contrast mode"
+    }
   }
 }

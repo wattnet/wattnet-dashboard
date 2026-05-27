@@ -7,8 +7,8 @@ import i18n from "../i18n/config";
 import { LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { es, enGB } from "date-fns/locale";
-import { ThemeProvider } from "@mui/material/styles";
-import { muiTheme } from "@/src/core/theme/muiTheme";
+
+import { AppThemeProvider } from "../theme/ThemeContext";
 
 export function Providers({
   children,
@@ -18,8 +18,8 @@ export function Providers({
   const locale = i18n.language === "es" ? es : enGB;
 
   return (
-    <I18nextProvider i18n={i18n}>
-      <ThemeProvider theme={muiTheme}>
+    <AppThemeProvider>
+      <I18nextProvider i18n={i18n}>
         <LocalizationProvider
           dateAdapter={AdapterDateFns}
           adapterLocale={locale}
@@ -34,7 +34,7 @@ export function Providers({
             {children}
           </SWRConfig>
         </LocalizationProvider>
-      </ThemeProvider>
-    </I18nextProvider>
+      </I18nextProvider>
+    </AppThemeProvider>
   );
 }

@@ -9,7 +9,31 @@ interface GlobalTagProps {
   readonly title: string;
 }
 
-// ── Icons ──────────────────────────────────────────────────────────────────
+// ── Palette  ─────────────────────────────────────────────────────
+const PANEL_BG = "var(--color-panel)";
+const SHADOW = "0 2px 8px rgba(0,0,0,0.3)";
+
+// No Data
+const NO_DATA_COLOR =
+  "color-mix(in srgb, var(--color-foreground) 45%, transparent)";
+const NO_DATA_BORDER =
+  "color-mix(in srgb, var(--color-foreground) 20%, transparent)";
+
+// Historical
+const HISTORICAL_COLOR = "var(--color-primary)";
+const HISTORICAL_BORDER =
+  "color-mix(in srgb, var(--color-primary) 50%, transparent)";
+
+// Live
+const LIVE_COLOR = "#ef4444";
+const LIVE_BORDER = "rgba(239, 68, 68, 0.4)";
+
+// Forecast
+const FORECAST_COLOR = "var(--color-secondary)";
+const FORECAST_BORDER =
+  "color-mix(in srgb, var(--color-secondary) 50%, transparent)";
+
+// ── Icons ────────
 const NoDataIcon = () => (
   <Box
     component="svg"
@@ -22,7 +46,7 @@ const NoDataIcon = () => (
       cx="4.5"
       cy="4.5"
       r="3.5"
-      stroke="#888780"
+      stroke="currentColor"
       strokeWidth="1.4"
       fill="none"
     />
@@ -41,13 +65,13 @@ const HistoricalIcon = () => (
       cx="6.5"
       cy="6.5"
       r="5.5"
-      stroke="#94ce24"
+      stroke="currentColor"
       strokeWidth="1.2"
       fill="none"
     />
     <polyline
       points="6.5,3.5 6.5,6.8 8.8,8.2"
-      stroke="#94ce24"
+      stroke="currentColor"
       strokeWidth="1.2"
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -71,7 +95,7 @@ const LiveIcon = () => (
       animation: "wn-blink 1.8s ease-in-out infinite",
     }}
   >
-    <circle cx="4.5" cy="4.5" r="4.5" fill="#E24B4A" />
+    <circle cx="4.5" cy="4.5" r="4.5" fill="currentColor" />
   </Box>
 );
 
@@ -87,7 +111,7 @@ const ForecastIcon = () => (
       cx="6.5"
       cy="6.5"
       r="5"
-      stroke="#378ADD"
+      stroke="currentColor"
       strokeWidth="1.3"
       fill="none"
       strokeDasharray="2.5 2"
@@ -95,39 +119,33 @@ const ForecastIcon = () => (
   </Box>
 );
 
-// ── Shared base (dark translucent, like original) ──────────────────────────
-const BASE = {
-  bg: "rgba(13,21,32,0.75)",
-  shadow: "0 2px 8px rgba(0,0,0,0.3)",
-};
-
-// ── Per-status accent only ─────────────────────────────────────────────────
+// ── Per-status config ─────────────────────────────────────────────────
 const STATUS_CONFIG: Record<
   string,
   { label: string; color: string; border: string; icon: React.ReactNode }
 > = {
   "no-data": {
     label: "No data",
-    color: "#888780",
-    border: "rgba(180,180,180,0.5)",
+    color: NO_DATA_COLOR,
+    border: NO_DATA_BORDER,
     icon: <NoDataIcon />,
   },
   historical: {
     label: "Historical",
-    color: "#94ce24",
-    border: "rgba(148,206,36,0.5)",
+    color: HISTORICAL_COLOR,
+    border: HISTORICAL_BORDER,
     icon: <HistoricalIcon />,
   },
   live: {
     label: "Live",
-    color: "#E24B4A",
-    border: "rgba(226,75,74,0.5)",
+    color: LIVE_COLOR,
+    border: LIVE_BORDER,
     icon: <LiveIcon />,
   },
   forecast: {
     label: "Forecast",
-    color: "#378ADD",
-    border: "rgba(36, 137, 238, 0.5)",
+    color: FORECAST_COLOR,
+    border: FORECAST_BORDER,
     icon: <ForecastIcon />,
   },
 };
@@ -147,10 +165,12 @@ export default function GlobalTag({ title }: GlobalTagProps) {
         px: 1.75,
         py: 1,
         borderRadius: 10,
-        bgcolor: BASE.bg,
+        bgcolor: PANEL_BG,
         backdropFilter: "blur(8px)",
+        WebkitBackdropFilter: "blur(8px)",
         border: `2px solid ${cfg.border}`,
-        boxShadow: BASE.shadow,
+        boxShadow: SHADOW,
+        color: cfg.color,
       }}
     >
       {cfg.icon}
@@ -158,8 +178,7 @@ export default function GlobalTag({ title }: GlobalTagProps) {
         sx={{
           fontSize: 14,
           fontWeight: 600,
-          color: cfg.color,
-          fontFamily: "var(--font-sans)",
+          color: "inherit",
           lineHeight: 1,
         }}
       >

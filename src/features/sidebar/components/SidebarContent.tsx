@@ -13,12 +13,13 @@ import {
   useMapControls,
   useFlowTracing,
 } from "../../dashboard/store/useDashboardStore";
+import { ThemeMode, useAppTheme } from "@/src/core/theme/ThemeContext";
 
 // ── Palette ────────────────────────────────────────────────────────────────
-const BORDER = "rgba(255,255,255,0.1)";
-const TEXT_DIM = "rgba(255, 255, 255, 0.7)";
-const TEXT_ON = "rgba(255,255,255,0.9)";
-const ACCENT = "#94ce24";
+const BORDER = "var(--color-border)";
+const TEXT_DIM = "color-mix(in srgb, var(--color-foreground) 70%, transparent)";
+const TEXT_ON = "color-mix(in srgb, var(--color-foreground) 90%, transparent)";
+const ACCENT = "var(--color-primary)";
 
 // ── Section label ──────────────────────────────────────────────────────────
 const sectionLabelSx = {
@@ -145,6 +146,8 @@ function OptionsBody() {
     useMapControls();
   const { flowTracing, setFlowTracing } = useFlowTracing();
 
+  const { theme, setTheme } = useAppTheme();
+
   useEffect(() => {
     if (metric === "impact") {
       setDimension("water");
@@ -161,6 +164,17 @@ function OptionsBody() {
       </Typography>
 
       <Box id="desktop-sidebar-controls-slot" />
+
+      <SegmentedControl
+        label="Visual Theme"
+        value={theme}
+        onChange={(v) => setTheme(v as ThemeMode)}
+        options={[
+          { value: "dark", label: "Dark" },
+          { value: "light", label: "Light" },
+          { value: "colorblind", label: "Accessible" },
+        ]}
+      />
 
       <SegmentedControl
         label={t("sidebar.options.metric.label")}
@@ -283,7 +297,7 @@ function FundingBody() {
           target="_blank"
           rel="noopener"
           sx={{
-            color: "#3a78e0",
+            color: "var(--secondary)",
             textDecoration: "none",
             "&:hover": { textDecoration: "underline" },
           }}
@@ -297,7 +311,7 @@ function FundingBody() {
           target="_blank"
           rel="noopener"
           sx={{
-            color: "#3a78e0",
+            color: "var(--secondary)",
             textDecoration: "none",
             "&:hover": { textDecoration: "underline" },
           }}
@@ -422,8 +436,8 @@ function SidebarViews() {
           px: 1.5,
           py: 1,
           borderRadius: "5px",
-          bgcolor: "rgba(148,206,36,0.08)",
-          border: `1px solid rgba(148,206,36,0.25)`,
+          bgcolor: "color-mix(in srgb, var(--color-primary) 8%, transparent)",
+          border: `1px solid color-mix(in srgb, var(--color-primary) 25%, transparent)`,
           cursor: "default",
         }}
       >
@@ -516,7 +530,7 @@ export function SidebarCopyright() {
           target="_blank"
           rel="noopener noreferrer"
           sx={{
-            color: "#3a78e0",
+            color: "var(--secondary)",
             textDecoration: "none",
             "&:hover": { textDecoration: "underline" },
             fontWeight: 600,
@@ -602,8 +616,8 @@ export function MobileSidebarContent() {
             px: 1.5,
             py: 1,
             borderRadius: "5px",
-            bgcolor: "rgba(148,206,36,0.08)",
-            border: `1px solid rgba(148,206,36,0.25)`,
+            bgcolor: "color-mix(in srgb, var(--color-primary) 8%, transparent)",
+            border: `1px solid color-mix(in srgb, var(--color-primary) 25%, transparent)`,
             cursor: "default",
           }}
         >
@@ -649,7 +663,7 @@ export function MobileSidebarContent() {
             target="_blank"
             rel="noopener noreferrer"
             sx={{
-              color: "#3a78e0",
+              color: "var(--secondary)",
               textDecoration: "none",
               "&:hover": { textDecoration: "underline" },
               fontWeight: 600,

@@ -6,10 +6,24 @@ import {
   Tooltip,
 } from "@mui/material";
 
-const BORDER = "rgba(255,255,255,0.1)";
-const TEXT_DIM = "rgba(255, 255, 255, 0.7)";
-const TEXT_MID = "rgba(255, 255, 255, 0.5)";
-const ACCENT = "#94ce24";
+// ── Palette ───────────────────────────────────────────
+const BORDER = "var(--color-border)";
+const TEXT_DIM = "color-mix(in srgb, var(--color-foreground) 70%, transparent)";
+const TEXT_MID = "color-mix(in srgb, var(--color-foreground) 50%, transparent)";
+const ACCENT = "var(--color-primary)";
+
+const HOVER_BG = "color-mix(in srgb, var(--color-foreground) 5%, transparent)";
+const DISABLED_TEXT =
+  "color-mix(in srgb, var(--color-foreground) 25%, transparent)";
+const DISABLED_BG =
+  "color-mix(in srgb, var(--color-foreground) 5%, transparent)";
+const DISABLED_BORDER =
+  "color-mix(in srgb, var(--color-foreground) 10%, transparent)";
+
+const TOOLTIP_BG = "var(--color-panel)";
+const TOOLTIP_SHADOW = "var(--color-background) 40% 0px 4px 24px";
+const TOOLTIP_TEXT =
+  "color-mix(in srgb, var(--color-foreground) 95%, transparent)";
 
 const segmentedSx = {
   width: "100%",
@@ -18,39 +32,40 @@ const segmentedSx = {
     py: 0.75,
     fontSize: 13,
     fontWeight: 600,
-    fontFamily: "var(--font-sans)",
     color: TEXT_MID,
     textTransform: "none",
     borderColor: `${BORDER} !important`,
     transition: "all 0.15s",
     "&.Mui-selected": {
-      bgcolor: "rgba(148,206,36,0.13)",
+      bgcolor: "color-mix(in srgb, var(--color-primary) 13%, transparent)",
       color: ACCENT,
-      borderColor: `rgba(148,206,36,0.4) !important`,
-      "&:hover": { bgcolor: "rgba(148,206,36,0.2)" },
+      borderColor:
+        "color-mix(in srgb, var(--color-primary) 40%, transparent) !important", // Corregido el typo de las comillas extra
+      "&:hover": {
+        bgcolor: "color-mix(in srgb, var(--color-primary) 20%, transparent)",
+      },
     },
-    "&:hover:not(.Mui-selected)": { bgcolor: "rgba(255,255,255,0.05)" },
+    "&:hover:not(.Mui-selected)": { bgcolor: HOVER_BG },
     "&.Mui-disabled": {
-      color: "rgba(255,255,255,0.2) !important",
-      bgcolor: "rgba(0,0,0,0.1)",
-      borderColor: "rgba(255,255,255,0.05) !important",
+      color: `${DISABLED_TEXT} !important`,
+      bgcolor: DISABLED_BG,
+      borderColor: `${DISABLED_BORDER} !important`,
     },
   },
 };
 
 const tooltipSx = {
-  background: "rgba(10,16,28,0.85)",
+  background: TOOLTIP_BG,
   backdropFilter: "blur(24px)",
   WebkitBackdropFilter: "blur(24px)",
-  border: "1px solid rgba(255,255,255,0.09)",
+  border: `1px solid ${BORDER}`,
   borderRadius: "12px",
   p: 2,
-  boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
-  fontFamily: '"Red Hat Text", system-ui, sans-serif',
+  boxShadow: TOOLTIP_SHADOW,
   overflow: "hidden",
   fontSize: "14px",
   fontWeight: 500,
-  color: "rgba(255, 255, 255, 0.92)",
+  color: TOOLTIP_TEXT,
   lineHeight: 1.2,
 };
 
@@ -77,7 +92,7 @@ export function SegmentedControl<T extends string>({
   onChange,
   options,
   disabled = false,
-}: SegmentedControlProps<T>) {
+}: Readonly<SegmentedControlProps<T>>) {
   return (
     <Box>
       <Typography
@@ -85,7 +100,6 @@ export function SegmentedControl<T extends string>({
           fontSize: 12.5,
           fontWeight: 600,
           color: TEXT_DIM,
-          fontFamily: "var(--font-sans)",
           mb: 1,
         }}
       >

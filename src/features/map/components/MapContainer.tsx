@@ -6,13 +6,11 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { FeatureCollection } from "geojson";
 import { Box, CircularProgress } from "@mui/material";
 import { useMapLayers } from "@/src/features/map/hooks/useMapLayers";
-import { COLORS } from "@/src/core/theme/colors";
 import { ProcessedFootprint } from "@/src/features/map/types/footprints";
-import { MetricKey } from "@/src/features/map/utils/mapScales";
 import { mergeActiveMetricValues } from "@/src/features/map/utils/footprintAdapter";
+import { MetricKey } from "../hooks/useMapScales";
 
-// Static neutral dark background — matches dashboard bg (#0c1219)
-const MAP_BG = "rgb(29, 42, 54)";
+import { useAppTheme } from "@/src/core/theme/ThemeContext";
 
 function injectMapStyles() {
   if (document.getElementById("wn-map-style")) return;
@@ -48,7 +46,9 @@ export default function MapContainer({
   onZoneClick,
   onEmptyClick,
   onMapReady,
-}: MapContainerProps) {
+}: Readonly<MapContainerProps>) {
+  const { currentPalette } = useAppTheme();
+
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<maplibregl.Map | null>(null);
   const worldGeoJSONRef = useRef<FeatureCollection | null>(null);
@@ -63,8 +63,8 @@ export default function MapContainer({
     mapInstance.current,
     selectedDate,
     metric,
-    onZoneClick,
-    selectedTimeIndex,
+    onZoneClick as any, // TODO: revisar
+    selectedTimeIndex
   );
 
   // Init map
@@ -90,8 +90,11 @@ export default function MapContainer({
     map.on("load", () => {
       mapInstance.current = map;
 
-      // Set static background once — no dynamic updates needed
-      map.setPaintProperty("background", "background-color", MAP_BG);
+      map.setPaintProperty(
+        "background",
+        "background-color",
+        currentPalette.colors.background
+      );
 
       setIsStyleLoaded(true);
       onMapReady?.(map);
@@ -103,13 +106,23 @@ export default function MapContainer({
     };
   }, []);
 
+  useEffect(() => {
+    if (mapInstance.current && isStyleLoaded) {
+      mapInstance.current.setPaintProperty(
+        "background",
+        "background-color",
+        currentPalette.colors.background
+      );
+    }
+  }, [currentPalette.colors.background, isStyleLoaded]);
+
   // Click: zone vs empty
   useEffect(() => {
     const map = mapInstance.current;
     if (!map || !isStyleLoaded) return;
     const handler = (e: maplibregl.MapMouseEvent) => {
       const existing = ["carbon-fill", "water-fill"].filter(
-        (id) => !!map.getLayer(id),
+        (id) => !!map.getLayer(id)
       );
       if (!existing.length) {
         onEmptyClickRef.current?.();
@@ -136,7 +149,7 @@ export default function MapContainer({
       const merged: FeatureCollection = mergeActiveMetricValues(
         base,
         data,
-        selectedTimeIndex,
+        selectedTimeIndex
       );
 
       const map = mapInstance.current!;
@@ -167,10 +180,12 @@ export default function MapContainer({
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor: COLORS.whiteTransparent,
+            backgroundColor: "var(--color-panel)",
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
           }}
         >
-          <CircularProgress size={80} />
+          <CircularProgress size={80} sx={{ color: "var(--color-primary)" }} />
         </Box>
       )}
     </Box>

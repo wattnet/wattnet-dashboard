@@ -18,20 +18,28 @@ interface DateSelectorProps {
 }
 
 // ── Palette ────────────────────────────────────────────────────────────────
-const BORDER = "rgba(255,255,255,0.1)";
-const BORDER_OPEN = "rgba(148,206,36,0.35)";
-const TEXT_HI = "rgba(255,255,255,0.92)"; // primary text
-const TEXT_DIM = "rgba(255,255,255,0.6)"; // secondary / labels
-const TEXT_LOW = "rgba(255,255,255,0.28)"; // weekday headers, outside days
-const ACCENT = "#94ce24";
-const ACCENT_BG = "rgba(148,206,36,0.06)";
-const ACCENT_HOVER = "rgba(148,206,36,0.18)";
+const BORDER = "var(--color-border)";
+const BORDER_OPEN = "color-mix(in srgb, var(--color-primary) 35%, transparent)";
+const TEXT_HI = "color-mix(in srgb, var(--color-foreground) 90%, transparent)";
+const TEXT_DIM = "color-mix(in srgb, var(--color-foreground) 60%, transparent)";
+const TEXT_LOW = "color-mix(in srgb, var(--color-foreground) 28%, transparent)";
+const ACCENT = "var(--color-primary)";
+const ACCENT_BG = "color-mix(in srgb, var(--color-primary) 6%, transparent)";
+const ACCENT_HOVER =
+  "color-mix(in srgb, var(--color-primary) 18%, transparent)";
+
+const HOVER_BG = "color-mix(in srgb, var(--color-foreground) 7%, transparent)";
+const HOVER_BORDER =
+  "color-mix(in srgb, var(--color-foreground) 18%, transparent)";
+const MARK_BG = "color-mix(in srgb, var(--color-foreground) 18%, transparent)";
+const RAIL_BG = "color-mix(in srgb, var(--color-foreground) 10%, transparent)";
+const THUMB_SHADOW =
+  "color-mix(in srgb, var(--color-primary) 12%, transparent)";
 
 const subLabelSx = {
   fontSize: 12.5,
   fontWeight: 600,
   color: TEXT_DIM,
-  fontFamily: "var(--font-sans)",
   mb: 1,
 };
 
@@ -41,7 +49,7 @@ export default function DateSelector({
   selectedTimeIndex,
   setSelectedTimeIndex,
   data,
-}: DateSelectorProps) {
+}: Readonly<DateSelectorProps>) {
   const { t } = useTranslation();
   const [calOpen, setCalOpen] = useState(false);
 
@@ -81,7 +89,7 @@ export default function DateSelector({
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
-      {/* ── DATE ── */}
+      {/* Date */}
       <Box>
         <Typography sx={subLabelSx}>Date</Typography>
 
@@ -92,9 +100,7 @@ export default function DateSelector({
             bgcolor: calOpen ? ACCENT_BG : "transparent",
             transition: "background-color 0.18s, border-color 0.18s",
             overflow: "hidden",
-            "&:hover": !calOpen
-              ? { borderColor: "rgba(255,255,255,0.18)" }
-              : {},
+            "&:hover": !calOpen ? { borderColor: HOVER_BORDER } : {},
           }}
         >
           {/* Trigger row */}
@@ -123,7 +129,6 @@ export default function DateSelector({
                   fontSize: 13,
                   fontWeight: 600,
                   color: selectedDate ? TEXT_HI : TEXT_DIM,
-                  fontFamily: "var(--font-sans)",
                   lineHeight: 1,
                   letterSpacing: "0.01em",
                   transition: "font-weight 0.15s, color 0.15s",
@@ -196,7 +201,6 @@ export default function DateSelector({
                   fontSize: 12.5,
                   fontWeight: 600,
                   color: TEXT_HI,
-                  fontFamily: "var(--font-sans)",
                   letterSpacing: "0.01em",
                 },
 
@@ -206,7 +210,7 @@ export default function DateSelector({
                   padding: "4px",
                   borderRadius: "4px",
                   "&:hover": {
-                    bgcolor: "rgba(255,255,255,0.07)",
+                    bgcolor: HOVER_BG,
                     color: TEXT_HI,
                   },
                 },
@@ -219,7 +223,6 @@ export default function DateSelector({
                   color: TEXT_LOW,
                   width: 32,
                   height: 28,
-                  fontFamily: "var(--font-sans)",
                 },
 
                 // Day cells
@@ -230,24 +233,23 @@ export default function DateSelector({
                   height: 32,
                   borderRadius: "10px",
                   color: TEXT_DIM,
-                  fontFamily: "var(--font-sans)",
                   transition: "background-color 0.1s, color 0.1s",
                   "&:hover": {
-                    bgcolor: "rgba(255,255,255,0.07)",
+                    bgcolor: HOVER_BG,
                     color: TEXT_HI,
                   },
                 },
 
                 // Today
                 "& .MuiPickersDay-today": {
-                  border: `1px solid #3a78e0 !important`,
-                  color: `#3a78e0 !important`,
+                  border: `1px solid var(--color-secondary) !important`,
+                  color: `var(--color-secondary) !important`,
                   fontWeight: 600,
                 },
 
                 // Selected
                 "& .Mui-selected": {
-                  bgcolor: `rgba(148,206,36,0.15) !important`,
+                  bgcolor: `${ACCENT_BG} !important`,
                   color: `${ACCENT} !important`,
                   border: `1px solid ${BORDER_OPEN} !important`,
                   fontWeight: 600,
@@ -275,7 +277,7 @@ export default function DateSelector({
         </Box>
       </Box>
 
-      {/* ── TIME ── */}
+      {/* Time */}
       <Box>
         <Box
           sx={{
@@ -290,7 +292,6 @@ export default function DateSelector({
           </Typography>
           <Typography
             sx={{
-              fontFamily: "var(--font-sans)",
               fontSize: 13,
               fontWeight: 600,
               color: TEXT_HI,
@@ -311,25 +312,25 @@ export default function DateSelector({
             step={1}
             min={0}
             max={maxIndex}
-            marks={marks} // tu array de {value, label}
+            marks={marks}
             sx={{
               color: ACCENT,
               height: 3,
-              px: 0, // quitar padding extra del slider para que los extremos coincidan con el track
+              px: 0,
               "& .MuiSlider-thumb": {
                 width: 11,
                 height: 11,
                 "&:hover, &.Mui-focusVisible": {
-                  boxShadow: "0 0 0 6px rgba(163,230,53,0.12)",
+                  boxShadow: `0 0 0 6px ${THUMB_SHADOW}`,
                 },
               },
               "& .MuiSlider-track": { border: "none" },
               "& .MuiSlider-rail": {
-                bgcolor: "rgba(255,255,255,0.1)",
+                bgcolor: RAIL_BG,
                 opacity: 1,
               },
               "& .MuiSlider-mark": {
-                bgcolor: "rgba(255,255,255,0.18)",
+                bgcolor: MARK_BG,
                 width: 1.5,
                 height: 3,
               },
@@ -338,18 +339,17 @@ export default function DateSelector({
                 mt: 0.5,
                 color: TEXT_DIM,
                 top: 20,
-                fontFamily: "var(--font-sans)",
-                // Primer label alineado al inicio
+
                 "&:first-of-type": {
                   transform: "translateX(0%)",
                   textAlign: "left",
                 },
-                // Último label alineado al final
+
                 "&:last-of-type": {
                   transform: "translateX(-100%)",
                   textAlign: "right",
                 },
-                // Intermedios centrados
+
                 "&:not(:first-of-type):not(:last-of-type)": {
                   transform: "translateX(-50%)",
                   textAlign: "center",

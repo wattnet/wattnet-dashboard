@@ -1,47 +1,93 @@
 @import "tailwindcss";
 
 @theme {
-  /* Primary colors */
-  --color-primary-50: #e8f0fa;
-  --color-primary-100: #c5d9f5;
-  --color-primary-200: #9fbef0;
-  --color-primary-300: #7aa3eb;
-  --color-primary-400: #5588e6;
-  --color-primary-500: #3a78e0;
-  --color-primary-600: #2e63c2;
-  --color-primary-700: #224ea4;
-  --color-primary-800: #173986;
-  --color-primary-900: #0f2868;
-
-  /* Secondary */
-  --color-secondary-50: #f8fafc;
-  --color-secondary-100: #f1f5f9;
-  --color-secondary-200: #e2e8f0;
-  --color-secondary-300: #cbd5e1;
-  --color-secondary-400: #94a3b8;
-  --color-secondary-500: #64748b;
-  --color-secondary-600: #475569;
-  --color-secondary-700: #334155;
-  --color-secondary-800: #1e293b;
-  --color-secondary-900: #0f172a;
-
-  /* Accent */
-  --color-accent-400: #c1e859;
-  --color-accent-500: #94ce24;
-  --color-accent-600: #7bb320;
+  --color-primary: var(--primary);
+  --color-secondary: var(--secondary);
+  --color-background: var(--bg);
+  --color-foreground: var(--text-primary);
+  --color-panel: var(--panel-bg);
+  --color-border: var(--border-color);
 
   /* Fonts */
   --font-sans: "Red Hat Text", system-ui, sans-serif;
   --font-display: "Red Hat Display", system-ui, sans-serif;
 }
 
-:root {
-  --background: #020617;
-  --foreground: #f8fafc;
+/* Dark Mode (default) */
+:root,
+[data-theme="dark"] {
+  --bg: #1d2a36;
+  --text-primary: #f8fafc;
+  --primary: #94ce24;
+  --secondary: #5588e6;
+  --panel-bg: rgba(11, 18, 30, 0.88);
+  --border-color: rgba(255, 255, 255, 0.1);
 }
 
+/* Light Mode */
+[data-theme="light"] {
+  --bg: #dbe9f5;
+  --text-primary: #0f172a;
+  --primary: #7bb320;
+  --secondary: #3a78e0;
+  --panel-bg: rgba(255, 255, 255, 0.88);
+  --border-color: rgba(0, 0, 0, 0.4);
+}
+
+/* Contrast Mode */
+[data-theme="colorblind"] {
+  --bg: #ffffff;
+  --text-primary: #000000;
+  --primary: #d55e00;
+  --secondary: #0072b2;
+  --panel-bg: rgba(255, 255, 255, 0.95);
+  --border-color: rgba(0, 0, 0, 0.2);
+}
+
+html,
 body {
-  background: var(--background);
-  color: var(--foreground);
+  margin: 0;
+  padding: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background-color: var(--bg);
+  color: var(--text-primary);
   font-family: var(--font-sans);
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+/* ── Global Scrollbar Styles ── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--color-foreground) 15%, transparent)
+    transparent;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: color-mix(
+    in srgb,
+    var(--color-foreground) 15%,
+    transparent
+  );
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(
+    in srgb,
+    var(--color-foreground) 30%,
+    transparent
+  );
 }

@@ -16,7 +16,6 @@ import {
 import { processFootprints } from "@/src/features/map/utils/footprintAdapter";
 import GlobalTag from "@/src/features/map/components/GlobalTag";
 import MapContainer from "@/src/features/map/components/MapContainer";
-import { getScaleConfig, MetricKey } from "@/src/features/map/utils/mapScales";
 
 import { useTheme, useMediaQuery } from "@mui/material";
 import { MOBILE_TOP_BAR_H } from "@/src/app/(dashboard)/layout";
@@ -30,11 +29,20 @@ import {
   ZoneData,
 } from "@/src/features/dashboard/store/useDashboardStore";
 import { Portal } from "@/src/shared/components/Portal";
+import { MetricKey, useMapScales } from "@/src/features/map/hooks/useMapScales";
+import ThemeSwitcher from "@/src/features/map/components/ThemeSwitcher";
 
-const BORDER = "rgba(255,255,255,0.08)";
+// ── Palette ─────────────────────────────────────────────────────
+const BORDER = "var(--color-border)";
 const BACKDROP = "blur(20px)";
-const PANEL_BG = "rgba(11,18,30,0.88)";
+const PANEL_BG = "var(--color-panel)";
 const LEGEND_MARGIN = 16;
+
+const BTN_COLOR =
+  "color-mix(in srgb, var(--color-foreground) 60%, transparent)";
+const BTN_HOVER_COLOR = "var(--color-foreground)";
+const BTN_HOVER_BG =
+  "color-mix(in srgb, var(--color-foreground) 15%, var(--color-panel))";
 
 const zoomBtnSx = {
   width: 32,
@@ -44,8 +52,8 @@ const zoomBtnSx = {
   WebkitBackdropFilter: BACKDROP,
   border: `1px solid ${BORDER}`,
   borderRadius: "8px",
-  color: "rgba(255,255,255,0.6)",
-  "&:hover": { color: "#fff", bgcolor: "rgba(255,255,255,0.1)" },
+  color: BTN_COLOR,
+  "&:hover": { color: BTN_HOVER_COLOR, bgcolor: BTN_HOVER_BG },
 };
 
 function mobileLegendBottom(_sheetState: string): number {
@@ -88,10 +96,7 @@ export default function MapPage() {
   const [selectedTimeIndex, setSelectedTimeIndex] =
     useState(getInitialTimeIndex);
 
-  const legendConfig = useMemo(
-    () => getScaleConfig(metric, dimension),
-    [metric, dimension],
-  );
+  const legendConfig = useMapScales(metric as MetricKey, dimension);
 
   const dateKey = useMemo(
     () =>
@@ -100,7 +105,7 @@ export default function MapPage() {
         String(selectedDate.getUTCMonth() + 1).padStart(2, "0"),
         String(selectedDate.getUTCDate()).padStart(2, "0"),
       ].join("-"),
-    [selectedDate],
+    [selectedDate]
   );
 
   const { data, loading, error, ephemeralToken, fetchToken } = useMetricData(
@@ -113,7 +118,7 @@ export default function MapPage() {
       aggregate: false,
       use_global: flowTracing,
     },
-    dateKey,
+    dateKey
   );
 
   const isToday = useMemo(() => {
@@ -145,7 +150,7 @@ export default function MapPage() {
 
   const processedData = useMemo(
     () => (data ? processFootprints(data) : []),
-    [data],
+    [data]
   );
 
   const globalDataStatusTag = useMemo(() => {
@@ -163,7 +168,7 @@ export default function MapPage() {
       now.getUTCMonth(),
       now.getUTCDate(),
       now.getUTCHours(),
-      Math.floor(now.getUTCMinutes() / 15) * 15,
+      Math.floor(now.getUTCMinutes() / 15) * 15
     );
 
     const selectedHours = Math.floor(selectedTimeIndex / 4);
@@ -174,7 +179,7 @@ export default function MapPage() {
       selectedDate.getUTCMonth(),
       selectedDate.getUTCDate(),
       selectedHours,
-      selectedMinutes,
+      selectedMinutes
     );
 
     if (selectedTimestamp > currentTimestamp) return "forecast";
@@ -260,7 +265,12 @@ export default function MapPage() {
             }}
           >
             <ZoomButtons mapRef={mapRef} />
+
+            <Box sx={{ mt: 0.5 }}>
+              <ThemeSwitcher />
+            </Box>
           </Box>
+
           <Box
             sx={{
               position: "absolute",
@@ -279,8 +289,8 @@ export default function MapPage() {
                 top: mobileTopOffset + 80,
                 right: 16,
                 pointerEvents: "auto",
-                bgcolor: "rgba(239,68,68,0.9)",
-                color: "#fff",
+                bgcolor: "var(--color-secondary)",
+                color: "var(--color-background)",
                 px: 1.5,
                 py: 0.75,
                 borderRadius: 1,
@@ -327,6 +337,10 @@ export default function MapPage() {
             }}
           >
             <ZoomButtons mapRef={mapRef} />
+
+            <Box sx={{ mt: 0.5 }}>
+              <ThemeSwitcher />
+            </Box>
           </Box>
           <Box
             sx={{
@@ -345,8 +359,8 @@ export default function MapPage() {
                 top: 80,
                 right: 16,
                 pointerEvents: "auto",
-                bgcolor: "rgba(239,68,68,0.9)",
-                color: "#fff",
+                bgcolor: "var(--color-secondary)",
+                color: "var(--color-background)",
                 px: 1.5,
                 py: 0.75,
                 borderRadius: 1,
