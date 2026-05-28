@@ -13,13 +13,29 @@ import {
   useMapControls,
   useFlowTracing,
 } from "../../dashboard/store/useDashboardStore";
-import { ThemeMode, useAppTheme } from "@/src/core/theme/ThemeContext";
+import { useAppTheme } from "@/src/core/theme/ThemeContext";
 
-// ── Palette ────────────────────────────────────────────────────────────────
+// ── Palette ─────────────────────────────────────────────────────
 const BORDER = "var(--color-border)";
 const TEXT_DIM = "color-mix(in srgb, var(--color-foreground) 70%, transparent)";
 const TEXT_ON = "color-mix(in srgb, var(--color-foreground) 90%, transparent)";
 const ACCENT = "var(--color-primary)";
+
+const TOGGLE_BG =
+  "color-mix(in srgb, var(--color-foreground) 15%, transparent)";
+const TOGGLE_DOT = "var(--color-background)";
+const LINK_BG = "color-mix(in srgb, var(--color-foreground) 4%, transparent)";
+const LINK_BORDER =
+  "color-mix(in srgb, var(--color-foreground) 7%, transparent)";
+const LINK_TEXT =
+  "color-mix(in srgb, var(--color-foreground) 55%, transparent)";
+const LINK_HOVER_BG =
+  "color-mix(in srgb, var(--color-secondary) 13%, transparent)";
+const ACCENT_TEXT = "var(--color-background)";
+const VIEW_BG = "color-mix(in srgb, var(--color-primary) 8%, transparent)";
+const VIEW_BORDER = "color-mix(in srgb, var(--color-primary) 25%, transparent)";
+const COPYRIGHT_TEXT =
+  "color-mix(in srgb, var(--color-foreground) 75%, transparent)";
 
 // ── Section label ──────────────────────────────────────────────────────────
 const sectionLabelSx = {
@@ -28,7 +44,6 @@ const sectionLabelSx = {
   letterSpacing: "0.09em",
   textTransform: "uppercase" as const,
   color: TEXT_DIM,
-  fontFamily: "var(--font-display)",
   mb: 1.25,
 };
 
@@ -36,10 +51,10 @@ const sectionLabelSx = {
 function AppleToggle({
   checked,
   onChange,
-}: {
+}: Readonly<{
   checked: boolean;
   onChange: (v: boolean) => void;
-}) {
+}>) {
   return (
     <Box
       onClick={() => onChange(!checked)}
@@ -47,7 +62,7 @@ function AppleToggle({
         width: 44,
         height: 26,
         borderRadius: 13,
-        bgcolor: checked ? ACCENT : "rgba(255,255,255,0.15)",
+        bgcolor: checked ? ACCENT : TOGGLE_BG,
         position: "relative",
         cursor: "pointer",
         flexShrink: 0,
@@ -63,7 +78,7 @@ function AppleToggle({
           width: 20,
           height: 20,
           borderRadius: "50%",
-          bgcolor: "#fff",
+          bgcolor: TOGGLE_DOT,
           boxShadow: "0 1px 4px rgba(0,0,0,0.35)",
           transition: "left 0.22s cubic-bezier(0.4, 0, 0.2, 1)",
         }}
@@ -91,8 +106,8 @@ function LinksBar() {
       sx={{
         display: "flex",
         borderRadius: 1.5,
-        border: `1px solid rgba(255,255,255,0.07)`,
-        bgcolor: "rgba(255,255,255,0.04)",
+        border: `1px solid ${LINK_BORDER}`,
+        bgcolor: LINK_BG,
         overflow: "hidden",
       }}
     >
@@ -112,11 +127,14 @@ function LinksBar() {
             px: 1,
             py: 0.625,
             cursor: "pointer",
-            color: "rgba(255,255,255,0.55)",
+            color: LINK_TEXT,
             textDecoration: "none",
             transition: "all 0.2s ease",
-            borderLeft: idx === 0 ? "none" : `1px solid rgba(255,255,255,0.07)`,
-            "&:hover": { color: ACCENT, bgcolor: "rgba(163,230,53,0.13)" },
+            borderLeft: idx === 0 ? "none" : `1px solid ${LINK_BORDER}`,
+            "&:hover": {
+              color: "var(--color-secondary)",
+              bgcolor: LINK_HOVER_BG,
+            },
           }}
         >
           {link.icon}
@@ -126,7 +144,6 @@ function LinksBar() {
               fontSize: 12,
               lineHeight: 1,
               fontWeight: 500,
-              fontFamily: "var(--font-sans)",
               display: "flex",
               alignItems: "center",
             }}
@@ -146,8 +163,6 @@ function OptionsBody() {
     useMapControls();
   const { flowTracing, setFlowTracing } = useFlowTracing();
 
-  const { theme, setTheme } = useAppTheme();
-
   useEffect(() => {
     if (metric === "impact") {
       setDimension("water");
@@ -164,17 +179,6 @@ function OptionsBody() {
       </Typography>
 
       <Box id="desktop-sidebar-controls-slot" />
-
-      <SegmentedControl
-        label="Visual Theme"
-        value={theme}
-        onChange={(v) => setTheme(v as ThemeMode)}
-        options={[
-          { value: "dark", label: "Dark" },
-          { value: "light", label: "Light" },
-          { value: "colorblind", label: "Accessible" },
-        ]}
-      />
 
       <SegmentedControl
         label={t("sidebar.options.metric.label")}
@@ -252,7 +256,6 @@ function OptionsBody() {
               fontSize: 12.5,
               fontWeight: 600,
               color: TEXT_ON,
-              fontFamily: "var(--font-sans)",
             }}
           >
             {t("sidebar.options.flowTracing.title")}
@@ -261,7 +264,6 @@ function OptionsBody() {
             sx={{
               fontSize: 12,
               color: TEXT_DIM,
-              fontFamily: "var(--font-sans)",
               mt: 0.3,
             }}
           >
@@ -283,7 +285,6 @@ function FundingBody() {
         sx={{
           fontSize: 12.15,
           color: TEXT_DIM,
-          fontFamily: "var(--font-sans)",
           lineHeight: 1.25,
           textAlign: "justify",
           fontWeight: 400,
@@ -297,7 +298,7 @@ function FundingBody() {
           target="_blank"
           rel="noopener"
           sx={{
-            color: "var(--secondary)",
+            color: "var(--color-secondary)",
             textDecoration: "none",
             "&:hover": { textDecoration: "underline" },
           }}
@@ -311,7 +312,7 @@ function FundingBody() {
           target="_blank"
           rel="noopener"
           sx={{
-            color: "var(--secondary)",
+            color: "var(--color-secondary)",
             textDecoration: "none",
             "&:hover": { textDecoration: "underline" },
           }}
@@ -349,6 +350,8 @@ function FundingBody() {
 
 // ── §1 Header (desktop only) ───────────────────────────────────────────────
 export function SidebarHeader() {
+  const { theme } = useAppTheme();
+
   return (
     <Box
       sx={{
@@ -361,7 +364,11 @@ export function SidebarHeader() {
       }}
     >
       <Image
-        src="/images/wattnet-logo-full-dark-transparent.svg"
+        src={
+          theme === "dark"
+            ? "/images/wattnet-logo-full-dark-transparent.svg"
+            : "/images/wattnet-logo-full-light-transparent.svg"
+        }
         alt="wattnet"
         width={160}
         height={50}
@@ -378,13 +385,12 @@ export function SidebarHeader() {
           top: 16,
           right: 16,
           bgcolor: ACCENT,
-          color: "#0B1C38",
+          color: ACCENT_TEXT,
           px: 1.25,
           py: 0.25,
           borderRadius: "99px",
           fontSize: 10.5,
           fontWeight: 600,
-          fontFamily: "var(--font-sans)",
           textDecoration: "none",
           cursor: "pointer",
           "&:hover": {
@@ -399,7 +405,6 @@ export function SidebarHeader() {
         sx={{
           fontSize: 12.75,
           color: TEXT_DIM,
-          fontFamily: "var(--font-sans)",
           lineHeight: 1.5,
           mt: 0.75,
           fontWeight: 500,
@@ -436,8 +441,8 @@ function SidebarViews() {
           px: 1.5,
           py: 1,
           borderRadius: "5px",
-          bgcolor: "color-mix(in srgb, var(--color-primary) 8%, transparent)",
-          border: `1px solid color-mix(in srgb, var(--color-primary) 25%, transparent)`,
+          bgcolor: VIEW_BG,
+          border: `1px solid ${VIEW_BORDER}`,
           cursor: "default",
         }}
       >
@@ -447,7 +452,6 @@ function SidebarViews() {
             fontSize: 13,
             fontWeight: 600,
             color: ACCENT,
-            fontFamily: "var(--font-sans)",
           }}
         >
           Map
@@ -470,22 +474,6 @@ function SidebarOptions() {
           "linear-gradient(to bottom, transparent 0%, black 24px, black calc(100% - 24px), transparent 100%)",
         WebkitMaskImage:
           "linear-gradient(to bottom, transparent 0%, black 24px, black calc(100% - 24px), transparent 100%)",
-        // ── Custom Scrollbar Style ──
-        "&::-webkit-scrollbar": {
-          width: "8px",
-        },
-        "&::-webkit-scrollbar-track": {
-          background: "transparent",
-        },
-        "&::-webkit-scrollbar-thumb": {
-          backgroundColor: "rgba(255, 255, 255, 0.15)",
-          borderRadius: "10px",
-          border: "2px solid transparent",
-          backgroundClip: "padding-box",
-        },
-        "&::-webkit-scrollbar-thumb:hover": {
-          backgroundColor: "rgba(255, 255, 255, 0.3)",
-        },
       }}
     >
       <OptionsBody />
@@ -517,8 +505,7 @@ export function SidebarCopyright() {
       <Typography
         sx={{
           fontSize: 11,
-          color: "rgb(201,201,201)",
-          fontFamily: "var(--font-sans)",
+          color: COPYRIGHT_TEXT,
           lineHeight: 1.35,
           pt: 0.75,
           fontWeight: 500,
@@ -530,7 +517,7 @@ export function SidebarCopyright() {
           target="_blank"
           rel="noopener noreferrer"
           sx={{
-            color: "var(--secondary)",
+            color: "var(--color-secondary)",
             textDecoration: "none",
             "&:hover": { textDecoration: "underline" },
             fontWeight: 600,
@@ -565,7 +552,6 @@ export function MobileSidebarContent() {
             sx={{
               fontSize: 12.75,
               color: TEXT_DIM,
-              fontFamily: "var(--font-sans)",
               lineHeight: 1.5,
               fontWeight: 500,
               flex: 1,
@@ -582,13 +568,12 @@ export function MobileSidebarContent() {
             sx={{
               flexShrink: 0,
               bgcolor: ACCENT,
-              color: "#0B1C38",
+              color: ACCENT_TEXT,
               px: 1.25,
               py: 0.25,
               borderRadius: "99px",
               fontSize: 10.5,
               fontWeight: 600,
-              fontFamily: "var(--font-sans)",
               mt: 0.25,
               textDecoration: "none",
               cursor: "pointer",
@@ -616,8 +601,8 @@ export function MobileSidebarContent() {
             px: 1.5,
             py: 1,
             borderRadius: "5px",
-            bgcolor: "color-mix(in srgb, var(--color-primary) 8%, transparent)",
-            border: `1px solid color-mix(in srgb, var(--color-primary) 25%, transparent)`,
+            bgcolor: VIEW_BG,
+            border: `1px solid ${VIEW_BORDER}`,
             cursor: "default",
           }}
         >
@@ -627,7 +612,6 @@ export function MobileSidebarContent() {
               fontSize: 13,
               fontWeight: 600,
               color: ACCENT,
-              fontFamily: "var(--font-sans)",
             }}
           >
             Map
@@ -651,8 +635,7 @@ export function MobileSidebarContent() {
         <Typography
           sx={{
             fontSize: 12,
-            color: "rgb(201,201,201)",
-            fontFamily: "var(--font-sans)",
+            color: COPYRIGHT_TEXT,
             lineHeight: 1.5,
             fontWeight: 500,
           }}
@@ -663,7 +646,7 @@ export function MobileSidebarContent() {
             target="_blank"
             rel="noopener noreferrer"
             sx={{
-              color: "var(--secondary)",
+              color: "var(--color-secondary)",
               textDecoration: "none",
               "&:hover": { textDecoration: "underline" },
               fontWeight: 600,

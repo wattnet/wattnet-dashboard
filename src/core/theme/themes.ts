@@ -17,6 +17,19 @@ export interface ThemePalette {
     noData: string;
     mapBorder: string;
   };
+  chipColors: {
+    final: string;
+    notFinal: string;
+    complete: string;
+    preview: string;
+    forecasted: string;
+    missing: string;
+    neutral: string;
+    lifecycle: string;
+    operational: string;
+    global: string;
+    local: string;
+  };
 }
 
 const BASE_MAP_SCALES = {
@@ -121,6 +134,48 @@ const COLORBLIND_MAP_SCALES = {
   ],
 };
 
+export const DARK_CHIP_COLORS = {
+  final: '#a8d84e',
+  notFinal: '#f87171',
+  complete: '#34d399',
+  preview: '#fbbf24',
+  forecasted: '#a78bfa',
+  missing: '#f87171',
+  neutral: '#ffffff',
+  lifecycle: '#7dd3fc',
+  operational: '#a5b4fc',
+  global: '#94ce24',
+  local: '#ffffff',
+};
+
+export const LIGHT_CHIP_COLORS = {
+  final: '#5e9411',
+  notFinal: '#dc2626',
+  complete: '#059669',
+  preview: '#d97706',
+  forecasted: '#7c3aed',
+  missing: '#dc2626',
+  neutral: '#64748b',
+  lifecycle: '#0284c7',
+  operational: '#4f46e5',
+  global: '#5e9411',
+  local: '#D65687',
+};
+
+export const COLORBLIND_CHIP_COLORS = {
+  final: '#0072b2',
+  notFinal: '#A34800',
+  complete: '#8B12DF',
+  preview: '#998400',
+  forecasted: '#B81D9B',
+  missing: '#BD5300',
+  neutral: '#64748B',
+  lifecycle: '#007A8A',
+  operational: '#5C5A46',
+  global: '#6700B2',
+  local: '#004A39',
+};
+
 export const THEMES: Record<'dark' | 'light' | 'colorblind', ThemePalette> = {
   dark: {
     mode: 'dark',
@@ -128,24 +183,25 @@ export const THEMES: Record<'dark' | 'light' | 'colorblind', ThemePalette> = {
       primary: '#94ce24',
       secondary: '#5588e6',
       background: '#1D2A36',
-      panelBg: 'rgba(11, 18, 30, 0.88)',
+      panelBg: '#0b121e',
       text: '#f8fafc',
       textDim: 'rgba(255, 255, 255, 0.7)',
       border: 'rgba(255, 255, 255, 0.08)',
     },
     mapScales: {
       ...BASE_MAP_SCALES,
-      noData: '#333333',
+      noData: '#1a2a45',
       mapBorder: '#1a1a1a',
     },
+    chipColors: DARK_CHIP_COLORS,
   },
   light: {
     mode: 'light',
     colors: {
       primary: '#7bb320',
       secondary: '#3a78e0',
-      background: '#DBE9F5',
-      panelBg: 'rgba(255, 255, 255, 0.88)',
+      background: '#EAEDF0',
+      panelBg: '#ffffff',
       text: '#0f172a',
       textDim: 'rgba(0, 0, 0, 0.6)',
       border: 'rgba(0, 0, 0, 0.08)',
@@ -155,6 +211,7 @@ export const THEMES: Record<'dark' | 'light' | 'colorblind', ThemePalette> = {
       noData: '#e2e8f0',
       mapBorder: '#ffffff',
     },
+    chipColors: LIGHT_CHIP_COLORS,
   },
   colorblind: {
     mode: 'light',
@@ -172,5 +229,6 @@ export const THEMES: Record<'dark' | 'light' | 'colorblind', ThemePalette> = {
       noData: '#cccccc',
       mapBorder: '#ffffff',
     },
+    chipColors: COLORBLIND_CHIP_COLORS,
   },
 };

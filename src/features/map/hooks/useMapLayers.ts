@@ -2,13 +2,15 @@ import { useCallback, useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 import { FeatureCollection } from 'geojson';
 
-import { getScaleConfig, MetricKey, DimensionKey } from '../utils/mapScales';
+import { useMapScales, MetricKey } from './useMapScales';
 import {
   ZoneData,
   useMapControls,
   useFlowTracing,
   useZonePanel,
 } from '../../dashboard/store/useDashboardStore';
+import { useAppTheme } from '@/src/core/theme/ThemeContext';
+import { ThemePalette } from '@/src/core/theme/themes';
 
 interface ZoneFeatureProperties {
   countryName?: string;
@@ -18,19 +20,24 @@ interface ZoneFeatureProperties {
   [key: string]: unknown;
 }
 
-function injectPopupStyles() {
-  if (document.getElementById('wn-popup-style')) return;
-  const style = document.createElement('style');
-  style.id = 'wn-popup-style';
+function injectPopupStyles(currentPalette: ThemePalette) {
+  let style = document.getElementById('wn-popup-style');
+
+  if (!style) {
+    style = document.createElement('style');
+    style.id = 'wn-popup-style';
+    document.head.appendChild(style);
+  }
+
   style.textContent = `
     .wn-popup .maplibregl-popup-content {
-      background: rgba(10,16,28,0.85);
+      background: color-mix(in srgb, var(--color-background) 85%, transparent);
       backdrop-filter: blur(24px);
       -webkit-backdrop-filter: blur(24px);
-      border: 1px solid rgba(255,255,255,0.09);
+      border: 1px solid color-mix(in srgb, var(--color-foreground) 10%, transparent);
       border-radius: 12px;
       padding: 0;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+      box-shadow: 0 8px 32px color-mix(in srgb, var(--color-background) 3s0%, transparent);
       font-family: "Red Hat Text", system-ui, sans-serif;
       overflow: hidden;
       min-width: 360px;
@@ -41,15 +48,15 @@ function injectPopupStyles() {
 
     .wn-left {
       flex: 1; min-width: 0; padding: 14px 16px;
-      border-right: 1px solid rgba(255,255,255,0.07);
+      border-right: 1px solid ${currentPalette.colors.border};
       display: flex; flex-direction: column; gap: 5px;
     }
-    .wn-date  { font-size: 14px; font-weight: 500; color: rgba(255,255,255,0.3); letter-spacing: 0.03em; line-height: 1; }
-    .wn-zone  { font-size: 18px; font-weight: 600; color: rgba(255,255,255,0.92); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2; margin-bottom: 5px; }
+    .wn-date  { font-size: 14px; font-weight: 500; color: color-mix(in srgb, var(--color-foreground) 30%, transparent); letter-spacing: 0.03em; line-height: 1; }
+    .wn-zone  { font-size: 18px; font-weight: 600; color: color-mix(in srgb, var(--tcolor-foreground) 92%, transparent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2; margin-bottom: 5px; }
     .wn-value-row { display: flex; align-items: flex-end; gap: 5px; }
-    .wn-value { font-size: 34px; font-weight: 700; color: rgba(255,255,255,0.92); line-height: 1; }
-    .wn-unit  { font-size: 14px; font-weight: 500; color: rgba(255,255,255,0.4); line-height: 1;}
-    .wn-label { font-size: 15px; color: rgba(255,255,255,0.5); line-height: 1; padding-top: 7px; }
+    .wn-value { font-size: 34px; font-weight: 700; color:color-mix(in srgb, var(--color-foreground) 92%, transparent); line-height: 1; }
+    .wn-unit  { font-size: 14px; font-weight: 500; color: color-mix(in srgb, var(--color-foreground) 40%, transparent); line-height: 1;}
+    .wn-label { font-size: 15px; color:color-mix(in srgb, var(--color-foreground) 50%, transparent); line-height: 1; padding-top: 7px; }
 
     .wn-right {
       padding: 14px 12px; display: flex; flex-direction: column;
@@ -63,19 +70,18 @@ function injectPopupStyles() {
       font-family: "Red Hat Text", system-ui, sans-serif;
     }
 
-    .wn-chip-final      { background: rgba(148,206,36,0.13); border: 1px solid rgba(148,206,36,0.35); color: #a8d84e; }
-    .wn-chip-not-final  { background: rgba(239,68,68,0.13);  border: 1px solid rgba(239,68,68,0.35);  color: #f87171; }
-    .wn-chip-complete   { background: rgba(52,211,153,0.12); border: 1px solid rgba(52,211,153,0.3);  color: #34d399; }
-    .wn-chip-preview    { background: rgba(251,191,36,0.12); border: 1px solid rgba(251,191,36,0.3);  color: #fbbf24; }
-    .wn-chip-forecasted { background: rgba(139,92,246,0.12); border: 1px dashed rgba(139,92,246,0.4); color: #a78bfa; }
-    .wn-chip-missing    { background: rgba(239,68,68,0.08);  border: 1px solid rgba(239,68,68,0.22);  color: rgba(248,113,113,0.7); }
-    .wn-chip-neutral    { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.38); }
-    .wn-chip-lifecycle  { background: rgba(56,189,248,0.1);   border: 1px solid rgba(56,189,248,0.25); color: #7dd3fc; }
-    .wn-chip-operational{ background: rgba(99,102,241,0.1);   border: 1px solid rgba(99,102,241,0.25); color: #a5b4fc; }
-    .wn-chip-global     { background: rgba(148,206,36,0.09);  border: 1px solid rgba(148,206,36,0.25); color: rgba(148,206,36,0.85); }
-    .wn-chip-local      { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);  color: rgba(255,255,255,0.4); }
+    .wn-chip-final      { background: color-mix(in srgb, ${currentPalette.chipColors.final} 13%, transparent); border: 1px solid color-mix(in srgb, ${currentPalette.chipColors.final} 35%, transparent); color: ${currentPalette.chipColors.final}; }
+    .wn-chip-not-final  { background: color-mix(in srgb, ${currentPalette.chipColors.notFinal} 13%, transparent); border: 1px solid color-mix(in srgb, ${currentPalette.chipColors.notFinal} 35%, transparent); color: ${currentPalette.chipColors.notFinal}; }
+    .wn-chip-complete   { background: color-mix(in srgb, ${currentPalette.chipColors.complete} 12%, transparent); border: 1px solid color-mix(in srgb, ${currentPalette.chipColors.complete} 30%, transparent); color: ${currentPalette.chipColors.complete}; }
+    .wn-chip-preview    { background: color-mix(in srgb, ${currentPalette.chipColors.preview} 12%, transparent); border: 1px solid color-mix(in srgb, ${currentPalette.chipColors.preview} 30%, transparent); color: ${currentPalette.chipColors.preview}; }
+    .wn-chip-forecasted { background: color-mix(in srgb, ${currentPalette.chipColors.forecasted} 12%, transparent); border: 1px dashed color-mix(in srgb, ${currentPalette.chipColors.forecasted} 40%, transparent); color: ${currentPalette.chipColors.forecasted}; }
+    .wn-chip-missing    { background: color-mix(in srgb, ${currentPalette.chipColors.missing} 8%, transparent); border: 1px solid color-mix(in srgb, ${currentPalette.chipColors.missing} 22%, transparent); color: color-mix(in srgb, ${currentPalette.chipColors.missing} 70%, transparent); }
+    .wn-chip-neutral    { background: color-mix(in srgb, ${currentPalette.chipColors.neutral} 5%, transparent); border: 1px solid color-mix(in srgb, ${currentPalette.chipColors.neutral} 10%, transparent); color: color-mix(in srgb, ${currentPalette.chipColors.neutral} 38%, transparent); }
+    .wn-chip-lifecycle  { background: color-mix(in srgb, ${currentPalette.chipColors.lifecycle} 10%, transparent); border: 1px solid color-mix(in srgb, ${currentPalette.chipColors.lifecycle} 25%, transparent); color: ${currentPalette.chipColors.lifecycle}; }
+    .wn-chip-operational{ background: color-mix(in srgb, ${currentPalette.chipColors.operational} 10%, transparent); border: 1px solid color-mix(in srgb, ${currentPalette.chipColors.operational} 25%, transparent); color: ${currentPalette.chipColors.operational}; }
+    .wn-chip-global     { background: color-mix(in srgb, ${currentPalette.chipColors.global} 9%, transparent); border: 1px solid color-mix(in srgb, ${currentPalette.chipColors.global} 25%, transparent); color: color-mix(in srgb, ${currentPalette.chipColors.global} 85%, transparent); }
+    .wn-chip-local      { background: color-mix(in srgb, ${currentPalette.chipColors.local} 13%, transparent); border: 1px solid color-mix(in srgb, ${currentPalette.chipColors.local} 35%, transparent); color: ${currentPalette.chipColors.local}; }
   `;
-  document.head.appendChild(style);
 }
 
 function isTouchDevice(): boolean {
@@ -91,8 +97,8 @@ function formatDatetime(date: Date, timeIndex: number): string {
       date.getUTCMonth(),
       date.getUTCDate(),
       hours,
-      minutes,
-    ),
+      minutes
+    )
   );
   const datePart = d.toLocaleDateString('en-GB', {
     timeZone: 'UTC',
@@ -117,8 +123,8 @@ function calcIsForecast(date: Date, timeIndex: number): boolean {
       date.getUTCMonth(),
       date.getUTCDate(),
       hours,
-      minutes,
-    ),
+      minutes
+    )
   );
   return selected.getTime() > Date.now();
 }
@@ -135,14 +141,14 @@ function chipHTML({ label, cls }: ChipDef): string {
 function buildPopupChips(
   data: ZoneData,
   scope: string,
-  flowTracing: boolean,
+  flowTracing: boolean
 ): ChipDef[] {
   const chips: ChipDef[] = [];
 
   chips.push(
     data.valid
       ? { label: 'Final', cls: 'wn-chip-final' }
-      : { label: 'Not Final', cls: 'wn-chip-not-final' },
+      : { label: 'Not Final', cls: 'wn-chip-not-final' }
   );
 
   const raw = data.zoneStatus ?? '';
@@ -159,13 +165,13 @@ function buildPopupChips(
   chips.push(
     scope === 'life-cycle'
       ? { label: 'Life-cycle', cls: 'wn-chip-lifecycle' }
-      : { label: 'Operational', cls: 'wn-chip-operational' },
+      : { label: 'Operational', cls: 'wn-chip-operational' }
   );
 
   chips.push(
     flowTracing
       ? { label: 'Global', cls: 'wn-chip-global' }
-      : { label: 'Local', cls: 'wn-chip-local' },
+      : { label: 'Local', cls: 'wn-chip-local' }
   );
 
   return chips;
@@ -196,15 +202,18 @@ export function useMapLayers(
   selectedDate: Date,
   metric: MetricKey,
   onZoneClick?: (zoneName: string, data: ZoneData) => void,
-  selectedTimeIndex = 0,
+  selectedTimeIndex = 0
 ) {
-  const { scope } = useMapControls();
+  const { currentPalette } = useAppTheme();
+
+  const { scope, dimension } = useMapControls();
   const { flowTracing } = useFlowTracing();
   const { zonePanelOpen, updateZoneData } = useZonePanel();
 
+  const scaleConfig = useMapScales(metric, dimension);
+
   const popupRef = useRef<maplibregl.Popup | null>(null);
   const isTouch = useRef(false);
-  // Stores the raw GeoJSON props + type of the last clicked zone
   const lastClickRef = useRef<{
     props: ZoneFeatureProperties;
     type: 'carbon' | 'water';
@@ -238,7 +247,7 @@ export function useMapLayers(
 
   useEffect(() => {
     if (!map) return;
-    injectPopupStyles();
+    injectPopupStyles(currentPalette);
     isTouch.current = isTouchDevice();
     if (!isTouch.current) {
       popupRef.current = new maplibregl.Popup({
@@ -251,41 +260,38 @@ export function useMapLayers(
     return () => {
       popupRef.current?.remove();
     };
-  }, [map]);
+  }, [map, currentPalette]);
 
   const buildZoneData = useCallback(
     (props: ZoneFeatureProperties, type: string): ZoneData => {
       const rawValue = props.value;
-      const config = getScaleConfig(metricRef.current, type as DimensionKey);
       const forecast = calcIsForecast(dateRef.current, timeIndexRef.current);
 
       return {
         zoneName: props.countryName ?? 'Unknown',
         value: rawValue == null ? null : Number(rawValue),
-        unit: config.unit ?? '',
-        label: config.title,
+        unit: scaleConfig.unit ?? '',
+        label: scaleConfig.title,
         zoneStatus: props.zone_status,
         valid: props.valid,
         date: formatDatetime(dateRef.current, timeIndexRef.current),
         isForecast: forecast,
       };
     },
-    [],
+    [scaleConfig]
   );
 
-  // ── Refresh panel when date/time changes while a zone is open ─────────────
   useEffect(() => {
     if (!zonePanelOpen || !lastClickRef.current) return;
     const { props, type } = lastClickRef.current;
     updateZoneData(buildZoneData(props, type));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDate, selectedTimeIndex, zonePanelOpen]);
 
   const renderLayers = useCallback(
     (type: string) => {
       if (!map) return;
       const isCarbon = type === 'carbon';
-      const { stops } = getScaleConfig(metric, type as DimensionKey);
+      const { stops } = scaleConfig;
       const property = 'value';
       const layerId = isCarbon ? 'carbon-fill' : 'water-fill';
       const otherId = isCarbon ? 'water-fill' : 'carbon-fill';
@@ -293,7 +299,7 @@ export function useMapLayers(
       const fillColorExpr = [
         'case',
         ['==', ['get', property], null],
-        '#1a2a45',
+        currentPalette.mapScales.noData,
         [
           'interpolate',
           ['linear'],
@@ -318,10 +324,15 @@ export function useMapLayers(
         setupInteractions(layerId, type as 'carbon' | 'water');
       }
       if (map.getLayer(otherId)) map.removeLayer(otherId);
-      // eslint-disable-next-line react-hooks/exhaustive-deps
     },
-    [map, metric],
+    [map, scaleConfig]
   );
+
+  useEffect(() => {
+    if (map && map.getSource('world')) {
+      renderLayers(dimension);
+    }
+  }, [scaleConfig, dimension, map, renderLayers]);
 
   const updateMapData = useCallback(
     (geojson: FeatureCollection, type: string) => {
@@ -332,7 +343,7 @@ export function useMapLayers(
         renderLayers(type);
       }
     },
-    [map, renderLayers],
+    [map, renderLayers]
   );
 
   const setupInteractions = useCallback(
@@ -342,7 +353,6 @@ export function useMapLayers(
       map.on('click', layerId, (e) => {
         if (!e.features?.length) return;
         const props = e.features[0].properties as ZoneFeatureProperties;
-        // Store for panel refresh
         lastClickRef.current = { props, type };
         const data = buildZoneData(props, type);
         onZoneClick?.(data.zoneName, data);
@@ -355,12 +365,12 @@ export function useMapLayers(
           const data = buildZoneData(props, type);
           const datetime = formatDatetime(
             dateRef.current,
-            timeIndexRef.current,
+            timeIndexRef.current
           );
           const chips = buildPopupChips(
             data,
             scopeRef.current,
-            flowTracingRef.current,
+            flowTracingRef.current
           );
           popupRef.current
             .setLngLat(e.lngLat)
@@ -381,7 +391,7 @@ export function useMapLayers(
         });
       }
     },
-    [map, buildZoneData, onZoneClick],
+    [map, buildZoneData, onZoneClick]
   );
 
   return { updateMapData };
