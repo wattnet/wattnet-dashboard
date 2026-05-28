@@ -74,7 +74,42 @@ export default function MapContainer({
 
     const map = new maplibregl.Map({
       container: mapContainer.current,
-      style: "/maps/map-style.json",
+      style: {
+        version: 8,
+        sources: {
+          "world-zones": {
+            type: "geojson",
+            data: "/maps/wattnet.geojson",
+          },
+        },
+        layers: [
+          {
+            id: "background",
+            type: "background",
+            paint: {
+              "background-color": currentPalette.colors.background,
+            },
+          },
+          {
+            id: "world-fill",
+            type: "fill",
+            source: "world-zones",
+            paint: {
+              "fill-color": currentPalette.mapScales.noData,
+              "fill-opacity": 0.5,
+            },
+          },
+          {
+            id: "world-line",
+            type: "line",
+            source: "world-zones",
+            paint: {
+              "line-color": currentPalette.mapScales.mapBorder,
+              "line-width": ["interpolate", ["linear"], ["zoom"], 3, 2, 7, 4],
+            },
+          },
+        ],
+      },
       center: [12, 58],
       zoom: 3,
       minZoom: 3,
@@ -89,13 +124,6 @@ export default function MapContainer({
 
     map.on("load", () => {
       mapInstance.current = map;
-
-      map.setPaintProperty(
-        "background",
-        "background-color",
-        currentPalette.colors.background
-      );
-
       setIsStyleLoaded(true);
       onMapReady?.(map);
     });
@@ -108,13 +136,29 @@ export default function MapContainer({
 
   useEffect(() => {
     if (mapInstance.current && isStyleLoaded) {
-      mapInstance.current.setPaintProperty(
+      const map = mapInstance.current;
+      map.setPaintProperty(
         "background",
         "background-color",
         currentPalette.colors.background
       );
+
+      if (map.getLayer("world-fill")) {
+        map.setPaintProperty(
+          "world-fill",
+          "fill-color",
+          currentPalette.mapScales.noData
+        );
+      }
+      if (map.getLayer("world-line")) {
+        map.setPaintProperty(
+          "world-line",
+          "line-color",
+          currentPalette.mapScales.mapBorder
+        );
+      }
     }
-  }, [currentPalette.colors.background, isStyleLoaded]);
+  }, [currentPalette, isStyleLoaded]);
 
   // Click: zone vs empty
   useEffect(() => {

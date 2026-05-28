@@ -682,17 +682,37 @@ function MobileTopSheet({
           px: 2,
         }}
       >
-        <Image
-          src={
-            theme === "dark"
-              ? "/images/wattnet-logo-full-dark-transparent.svg"
-              : "/images/wattnet-logo-full-light-transparent.svg"
-          }
-          alt="wattnet"
-          width={100}
-          height={30}
-          priority
-        />
+        <Box
+          sx={{
+            display: "none",
+            '[data-theme="dark"] &': { display: "block" },
+          }}
+        >
+          <Image
+            src="/images/wattnet-logo-full-dark-transparent.svg"
+            alt="wattnet"
+            width={100}
+            height={30}
+            priority
+          />
+        </Box>
+
+        <Box
+          sx={{
+            display: "none",
+            '[data-theme="light"] &': { display: "block" },
+            '[data-theme="colorblind"] &': { display: "block" },
+          }}
+        >
+          <Image
+            src="/images/wattnet-logo-full-light-transparent.svg"
+            alt="wattnet"
+            width={100}
+            height={30}
+            priority
+          />
+        </Box>
+
         <CollapseBtn
           onClick={handleToggle}
           icon={
@@ -890,13 +910,41 @@ function DashboardLayoutInner({
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const isNarrow = useMediaQuery(theme.breakpoints.down("lg"));
+
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <Box
+        sx={{
+          width: "100vw",
+          height: "100vh",
+          bgcolor: "var(--color-background)",
+          position: "relative",
+          overflow: "hidden",
+          zIndex: 10,
+          backdropFilter: "blur(20px)",
+          WebkitBackdropFilter: "blur(20px)",
+        }}
+      >
+        <Background />
+      </Box>
+    );
+  }
+
   if (isMobile) return <MobileLayout>{children}</MobileLayout>;
+
   const sidebarExpandedWidth = isNarrow
     ? Math.round(window.innerWidth * 0.5)
     : SIDEBAR_W;
   const zonePanelExpandedWidth = isNarrow
     ? Math.round(window.innerWidth * 0.5)
     : 380;
+
   return (
     <Box
       sx={{

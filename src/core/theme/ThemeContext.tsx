@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  ReactNode,
-  useMemo,
-} from "react";
+import { createContext, useContext, useState, ReactNode, useMemo } from "react";
 import {
   ThemeProvider as MuiThemeProvider,
   createTheme,
@@ -29,24 +22,25 @@ export function AppThemeProvider({
 }: {
   readonly children: ReactNode;
 }) {
-  const [theme, setTheme] = useState<ThemeMode>("dark");
-
-  useEffect(() => {
-    const savedTheme = localStorage.getItem("app-theme") as ThemeMode;
-    if (
-      savedTheme &&
-      (savedTheme === "dark" ||
+  const [theme, setThemeState] = useState<ThemeMode>(() => {
+    if (typeof window !== "undefined") {
+      const savedTheme = localStorage.getItem("app-theme") as ThemeMode;
+      if (
+        savedTheme === "dark" ||
         savedTheme === "light" ||
-        savedTheme === "colorblind")
-    ) {
-      setTheme(savedTheme);
+        savedTheme === "colorblind"
+      ) {
+        return savedTheme;
+      }
     }
-  }, []);
+    return "dark";
+  });
 
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-    localStorage.setItem("app-theme", theme);
-  }, [theme]);
+  const setTheme = (newTheme: ThemeMode) => {
+    setThemeState(newTheme);
+    document.documentElement.setAttribute("data-theme", newTheme);
+    localStorage.setItem("app-theme", newTheme);
+  };
 
   const currentPalette = useMemo(() => THEMES[theme], [theme]);
 

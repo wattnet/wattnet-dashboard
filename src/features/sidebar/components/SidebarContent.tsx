@@ -363,17 +363,36 @@ export function SidebarHeader() {
         position: "relative",
       }}
     >
-      <Image
-        src={
-          theme === "dark"
-            ? "/images/wattnet-logo-full-dark-transparent.svg"
-            : "/images/wattnet-logo-full-light-transparent.svg"
-        }
-        alt="wattnet"
-        width={160}
-        height={50}
-        priority
-      />
+      <Box
+        sx={{
+          display: "none",
+          '[data-theme="dark"] &': { display: "block" },
+        }}
+      >
+        <Image
+          src="/images/wattnet-logo-full-dark-transparent.svg"
+          alt="wattnet"
+          width={160}
+          height={50}
+          priority
+        />
+      </Box>
+
+      <Box
+        sx={{
+          display: "none",
+          '[data-theme="light"] &': { display: "block" },
+          '[data-theme="colorblind"] &': { display: "block" },
+        }}
+      >
+        <Image
+          src="/images/wattnet-logo-full-light-transparent.svg"
+          alt="wattnet"
+          width={160}
+          height={50}
+          priority
+        />
+      </Box>
 
       <Box
         component="a"
