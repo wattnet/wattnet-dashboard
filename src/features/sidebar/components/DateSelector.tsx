@@ -181,6 +181,11 @@ export default function DateSelector({
                   },
                 },
 
+                // Year selector
+                "& .MuiYearCalendar-root": {
+                  width: "100%",
+                },
+
                 // Header alignment
                 "& .MuiPickersCalendarHeader-root": {
                   px: "12px",
