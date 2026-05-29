@@ -4,7 +4,7 @@ import { useRef, useEffect, useState } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { FeatureCollection } from "geojson";
-import { Box, CircularProgress } from "@mui/material";
+import { Box, CircularProgress, Fade } from "@mui/material";
 import { useMapLayers } from "@/src/features/map/hooks/useMapLayers";
 import { ProcessedFootprint } from "@/src/features/map/types/footprints";
 import { mergeActiveMetricValues } from "@/src/features/map/utils/footprintAdapter";
@@ -216,21 +216,28 @@ export default function MapContainer({
     <Box sx={{ width: "100%", height: "100%", position: "relative" }}>
       <div ref={mapContainer} style={{ width: "100%", height: "100%" }} />
       {loading && (
-        <Box
-          sx={{
-            position: "absolute",
-            inset: 0,
-            zIndex: 10,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            backgroundColor: "var(--color-panel)",
-            backdropFilter: "blur(20px)",
-            WebkitBackdropFilter: "blur(20px)",
-          }}
-        >
-          <CircularProgress size={80} sx={{ color: "var(--color-primary)" }} />
-        </Box>
+        <Fade in={loading} timeout={200} unmountOnExit>
+          <Box
+            sx={{
+              position: "absolute",
+              inset: 0,
+              zIndex: 10,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: "var(--color-panel)",
+              backdropFilter: "blur(20px)",
+              WebkitBackdropFilter: "blur(20px)",
+            }}
+          >
+            <Box
+              component="img"
+              src="/images/wattnet-loader.svg"
+              alt="Cargando..."
+              sx={{ width: 150, height: 150 }}
+            />
+          </Box>
+        </Fade>
       )}
     </Box>
   );

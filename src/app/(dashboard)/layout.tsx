@@ -925,11 +925,30 @@ function DashboardLayoutInner({
           position: "relative",
           overflow: "hidden",
           zIndex: 10,
-          backdropFilter: "blur(20px)",
-          WebkitBackdropFilter: "blur(20px)",
         }}
       >
         <Background />
+
+        <Box
+          sx={{
+            position: "absolute",
+            inset: 0,
+            zIndex: 50,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: "var(--color-panel)",
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
+          }}
+        >
+          <Box
+            component="img"
+            src="/images/wattnet-loader.svg"
+            alt="Loading..."
+            sx={{ width: 150, height: 150 }}
+          />
+        </Box>
       </Box>
     );
   }
