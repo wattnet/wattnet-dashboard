@@ -191,7 +191,7 @@ export const THEMES: Record<'dark' | 'light' | 'colorblind', ThemePalette> = {
     mapScales: {
       ...BASE_MAP_SCALES,
       noData: '#1a2a45',
-      mapBorder: '#1a1a1a',
+      mapBorder: '#888888',
     },
     chipColors: DARK_CHIP_COLORS,
   },
@@ -209,7 +209,7 @@ export const THEMES: Record<'dark' | 'light' | 'colorblind', ThemePalette> = {
     mapScales: {
       ...BASE_MAP_SCALES,
       noData: '#e2e8f0',
-      mapBorder: '#ffffff',
+      mapBorder: '#888888',
     },
     chipColors: LIGHT_CHIP_COLORS,
   },
@@ -227,7 +227,7 @@ export const THEMES: Record<'dark' | 'light' | 'colorblind', ThemePalette> = {
     mapScales: {
       ...COLORBLIND_MAP_SCALES,
       noData: '#cccccc',
-      mapBorder: '#ffffff',
+      mapBorder: '#000000',
     },
     chipColors: COLORBLIND_CHIP_COLORS,
   },
