@@ -13,7 +13,6 @@ import {
   useMapControls,
   useFlowTracing,
 } from "../../dashboard/store/useDashboardStore";
-import { useAppTheme } from "@/src/core/theme/ThemeContext";
 
 // ── Palette ─────────────────────────────────────────────────────
 const BORDER = "var(--color-border)";
@@ -350,8 +349,6 @@ function FundingBody() {
 
 // ── §1 Header (desktop only) ───────────────────────────────────────────────
 export function SidebarHeader() {
-  const { theme } = useAppTheme();
-
   return (
     <Box
       sx={{
