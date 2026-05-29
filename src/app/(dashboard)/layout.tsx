@@ -15,27 +15,39 @@ import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
-import {
-  DashboardProvider,
-  useSidebar,
-  useZonePanel,
-  useBottomSheet,
-  useCanvasRect,
-  useMapControls,
-  useFlowTracing,
-} from "@/src/components/features/sidebar/context/DashboardContext";
 
 import SidebarContent, {
   SidebarCopyright,
   MobileSidebarContent,
-} from "@/src/components/features/sidebar/SidebarContent";
+} from "@/src/features/sidebar/components/SidebarContent";
+import {
+  useBottomSheet,
+  useCanvasRect,
+  useFlowTracing,
+  useMapControls,
+  useSidebar,
+  useZonePanel,
+} from "@/src/features/dashboard/store/useDashboardStore";
+import { useAppTheme } from "@/src/core/theme/ThemeContext";
 
 export const MOBILE_TOP_BAR_H = 48;
 export const MOBILE_PEEK_H = 64;
 
-const BORDER = "rgba(255,255,255,0.08)";
+// ── Palette ─────────────────────────────────────────────────────
+const BORDER = "var(--color-border)";
 const BACKDROP = "blur(20px)";
-const PANEL_BG = "rgba(11,18,30,0.88)";
+const PANEL_BG = "var(--color-panel)";
+
+const BTN_COLOR =
+  "color-mix(in srgb, var(--color-foreground) 35%, transparent)";
+const BTN_HOVER_COLOR = "var(--color-foreground)";
+const BTN_HOVER_BG =
+  "color-mix(in srgb, var(--color-foreground) 6%, transparent)";
+const TEXT_DIM = "color-mix(in srgb, var(--color-foreground) 30%, transparent)";
+const TEXT_MID = "color-mix(in srgb, var(--color-foreground) 40%, transparent)";
+const DRAG_HANDLE =
+  "color-mix(in srgb, var(--color-foreground) 15%, transparent)";
+
 const COLLAPSED_W = 56;
 const SIDEBAR_W = 400;
 const EASING = "cubic-bezier(0.16, 1, 0.3, 1)";
@@ -92,8 +104,8 @@ function Background() {
           y2="1026.31"
           gradientUnits="userSpaceOnUse"
         >
-          <stop stopColor="#2563EB" />
-          <stop offset="1" stopColor="#4361EE" />
+          <stop stopColor="var(--color-primary)" />
+          <stop offset="1" stopColor="var(--color-secondary)" />
         </linearGradient>
         <linearGradient
           id="wn-bg-b"
@@ -103,8 +115,8 @@ function Background() {
           y2="118.03"
           gradientUnits="userSpaceOnUse"
         >
-          <stop stopColor="#50C878" />
-          <stop offset="1" stopColor="#39FF14" />
+          <stop stopColor="var(--color-secondary)" />
+          <stop offset="1" stopColor="var(--color-primary)" />
         </linearGradient>
       </defs>
     </svg>
@@ -112,69 +124,70 @@ function Background() {
 }
 
 // ── Shared chip config ─────────────────────────────────────────────────────
-const CHIP_STYLES = {
+const getChipStyles = (colors: Record<string, string>) => ({
   final: {
-    bg: "rgba(148,206,36,0.13)",
-    color: "#a8d84e",
-    border: "rgba(148,206,36,0.35)",
+    bg: `color-mix(in srgb, ${colors.final} 13%, transparent)`,
+    color: colors.final,
+    border: `color-mix(in srgb, ${colors.final} 35%, transparent)`,
   },
   notFinal: {
-    bg: "rgba(239,68,68,0.13)",
-    color: "#f87171",
-    border: "rgba(239,68,68,0.35)",
+    bg: `color-mix(in srgb, ${colors.notFinal} 13%, transparent)`,
+    color: colors.notFinal,
+    border: `color-mix(in srgb, ${colors.notFinal} 35%, transparent)`,
   },
   complete: {
-    bg: "rgba(52,211,153,0.12)",
-    color: "#34d399",
-    border: "rgba(52,211,153,0.3)",
+    bg: `color-mix(in srgb, ${colors.complete} 12%, transparent)`,
+    color: colors.complete,
+    border: `color-mix(in srgb, ${colors.complete} 30%, transparent)`,
   },
   preview: {
-    bg: "rgba(251,191,36,0.12)",
-    color: "#fbbf24",
-    border: "rgba(251,191,36,0.3)",
+    bg: `color-mix(in srgb, ${colors.preview} 12%, transparent)`,
+    color: colors.preview,
+    border: `color-mix(in srgb, ${colors.preview} 30%, transparent)`,
   },
   forecasted: {
-    bg: "rgba(139,92,246,0.12)",
-    color: "#a78bfa",
-    border: "rgba(139,92,246,0.4)",
+    bg: `color-mix(in srgb, ${colors.forecasted} 12%, transparent)`,
+    color: colors.forecasted,
+    border: `color-mix(in srgb, ${colors.forecasted} 40%, transparent)`,
     dashed: true,
   },
   missing: {
-    bg: "rgba(239,68,68,0.08)",
-    color: "rgba(248,113,113,0.7)",
-    border: "rgba(239,68,68,0.22)",
+    bg: `color-mix(in srgb, ${colors.missing} 8%, transparent)`,
+    color: `color-mix(in srgb, ${colors.missing} 70%, transparent)`,
+    border: `color-mix(in srgb, ${colors.missing} 22%, transparent)`,
   },
   neutral: {
-    bg: "rgba(255,255,255,0.05)",
-    color: "rgba(255,255,255,0.38)",
-    border: "rgba(255,255,255,0.1)",
+    bg: `color-mix(in srgb, ${colors.neutral} 5%, transparent)`,
+    color: `color-mix(in srgb, ${colors.neutral} 38%, transparent)`,
+    border: `color-mix(in srgb, ${colors.neutral} 10%, transparent)`,
   },
   lifecycle: {
-    bg: "rgba(56,189,248,0.1)",
-    color: "#7dd3fc",
-    border: "rgba(56,189,248,0.25)",
+    bg: `color-mix(in srgb, ${colors.lifecycle} 10%, transparent)`,
+    color: colors.lifecycle,
+    border: `color-mix(in srgb, ${colors.lifecycle} 25%, transparent)`,
   },
   operational: {
-    bg: "rgba(99,102,241,0.1)",
-    color: "#a5b4fc",
-    border: "rgba(99,102,241,0.25)",
+    bg: `color-mix(in srgb, ${colors.operational} 10%, transparent)`,
+    color: colors.operational,
+    border: `color-mix(in srgb, ${colors.operational} 25%, transparent)`,
   },
   global: {
-    bg: "rgba(148,206,36,0.09)",
-    color: "rgba(148,206,36,0.85)",
-    border: "rgba(148,206,36,0.25)",
+    bg: `color-mix(in srgb, ${colors.global} 9%, transparent)`,
+    color: `color-mix(in srgb, ${colors.global} 85%, transparent)`,
+    border: `color-mix(in srgb, ${colors.global} 25%, transparent)`,
   },
   local: {
-    bg: "rgba(255,255,255,0.05)",
-    color: "rgba(255,255,255,0.4)",
-    border: "rgba(255,255,255,0.1)",
+    bg: `color-mix(in srgb, ${colors.local} 5%, transparent)`,
+    color: `color-mix(in srgb, ${colors.local} 40%, transparent)`,
+    border: `color-mix(in srgb, ${colors.local} 10%, transparent)`,
   },
-} as const;
+});
 
-type ChipKey = keyof typeof CHIP_STYLES;
+type ChipKey = keyof ReturnType<typeof getChipStyles>;
 
-function chipSx(key: ChipKey) {
-  const c = CHIP_STYLES[key];
+function getChipSx(key: ChipKey, colors: Record<string, string>) {
+  const styles = getChipStyles(colors);
+  const c = styles[key];
   return {
     fontSize: 12,
     fontWeight: 600,
@@ -182,7 +195,6 @@ function chipSx(key: ChipKey) {
     bgcolor: c.bg,
     color: c.color,
     border: `1px ${"dashed" in c && c.dashed ? "dashed" : "solid"} ${c.border}`,
-    fontFamily: "var(--font-sans)",
     borderRadius: "99px",
     "& .MuiChip-label": { px: 1.1 },
   };
@@ -198,8 +210,8 @@ function CollapseBtn({
       onClick={onClick}
       size="small"
       sx={{
-        color: "rgba(255,255,255,0.35)",
-        "&:hover": { color: "#fff", bgcolor: "rgba(255,255,255,0.06)" },
+        color: BTN_COLOR,
+        "&:hover": { color: BTN_HOVER_COLOR, bgcolor: BTN_HOVER_BG },
       }}
     >
       {icon}
@@ -223,7 +235,7 @@ function DragHandle() {
           width: 36,
           height: 4,
           borderRadius: 2,
-          bgcolor: "rgba(255,255,255,0.15)",
+          bgcolor: DRAG_HANDLE,
         }}
       />
     </Box>
@@ -236,13 +248,15 @@ function ZoneDataContent() {
   const { scope } = useMapControls();
   const { flowTracing } = useFlowTracing();
 
+  const { currentPalette } = useAppTheme();
+  const colors = currentPalette.chipColors;
+
   if (!zoneData)
     return (
       <Typography
         sx={{
           fontSize: 13,
-          color: "rgba(255,255,255,0.2)",
-          fontFamily: "var(--font-sans)",
+          color: TEXT_DIM,
         }}
       >
         No data available.
@@ -298,8 +312,7 @@ function ZoneDataContent() {
           <Typography
             sx={{
               fontSize: 14,
-              color: "rgba(255,255,255,0.3)",
-              fontFamily: "var(--font-sans)",
+              color: TEXT_DIM,
             }}
           >
             {zoneData.date}
@@ -310,9 +323,8 @@ function ZoneDataContent() {
             sx={{
               fontSize: 34,
               fontWeight: 700,
-              color: "#94ce24",
+              color: "var(--color-primary)",
               lineHeight: 1,
-              fontFamily: "var(--font-sans)",
             }}
           >
             {valStr}
@@ -321,8 +333,7 @@ function ZoneDataContent() {
             sx={{
               fontSize: 16,
               fontWeight: 500,
-              color: "rgba(255,255,255,0.4)",
-              fontFamily: "var(--font-sans)",
+              color: TEXT_MID,
             }}
           >
             {zoneData.unit}
@@ -331,8 +342,8 @@ function ZoneDataContent() {
         <Typography
           sx={{
             fontSize: 14,
-            color: "rgba(255,255,255,0.35)",
-            fontFamily: "var(--font-sans)",
+            color:
+              "color-mix(in srgb, var(--color-foreground) 35%, transparent)",
           }}
         >
           {zoneData.label}
@@ -349,10 +360,26 @@ function ZoneDataContent() {
           pt: 0.25,
         }}
       >
-        <Chip size="small" label={finalLabel} sx={chipSx(finalKey)} />
-        <Chip size="small" label={statusLabel} sx={chipSx(statusKey)} />
-        <Chip size="small" label={scopeLabel} sx={chipSx(scopeKey)} />
-        <Chip size="small" label={coverageLabel} sx={chipSx(coverageKey)} />
+        <Chip
+          size="small"
+          label={finalLabel}
+          sx={getChipSx(finalKey, colors)}
+        />
+        <Chip
+          size="small"
+          label={statusLabel}
+          sx={getChipSx(statusKey, colors)}
+        />
+        <Chip
+          size="small"
+          label={scopeLabel}
+          sx={getChipSx(scopeKey, colors)}
+        />
+        <Chip
+          size="small"
+          label={coverageLabel}
+          sx={getChipSx(coverageKey, colors)}
+        />
       </Box>
     </Box>
   );
@@ -529,8 +556,8 @@ function ZonePanel({ expandedWidth }: Readonly<{ expandedWidth: number }>) {
             sx={{
               fontSize: 14,
               fontWeight: 600,
-              color: "rgba(255,255,255,0.85)",
-              fontFamily: "var(--font-sans)",
+              color:
+                "color-mix(in srgb, var(--color-foreground) 85%, transparent)",
               whiteSpace: "nowrap",
               overflow: "hidden",
               textOverflow: "ellipsis",
@@ -542,8 +569,9 @@ function ZonePanel({ expandedWidth }: Readonly<{ expandedWidth: number }>) {
             onClick={closeZonePanel}
             size="small"
             sx={{
-              color: "rgba(255,255,255,0.4)",
-              "&:hover": { color: "#fff" },
+              color:
+                "color-mix(in srgb, var(--color-foreground) 40%, transparent)",
+              "&:hover": { color: "var(--color-foreground)" },
             }}
           >
             <CloseIcon fontSize="small" />
@@ -652,13 +680,37 @@ function MobileTopSheet({
           px: 2,
         }}
       >
-        <Image
-          src="/images/wattnet-logo-full-dark-transparent.svg"
-          alt="wattnet"
-          width={100}
-          height={30}
-          priority
-        />
+        <Box
+          sx={{
+            display: "none",
+            '[data-theme="dark"] &': { display: "block" },
+          }}
+        >
+          <Image
+            src="/images/wattnet-logo-full-dark-transparent.svg"
+            alt="wattnet"
+            width={100}
+            height={30}
+            priority
+          />
+        </Box>
+
+        <Box
+          sx={{
+            display: "none",
+            '[data-theme="light"] &': { display: "block" },
+            '[data-theme="colorblind"] &': { display: "block" },
+          }}
+        >
+          <Image
+            src="/images/wattnet-logo-full-light-transparent.svg"
+            alt="wattnet"
+            width={100}
+            height={30}
+            priority
+          />
+        </Box>
+
         <CollapseBtn
           onClick={handleToggle}
           icon={
@@ -678,8 +730,6 @@ function MobileTopSheet({
             flex: 1,
             minHeight: 0,
             overflowY: "auto",
-            scrollbarWidth: "thin",
-            scrollbarColor: "rgba(255,255,255,0.08) transparent",
           }}
         >
           <MobileSidebarContent />
@@ -763,8 +813,8 @@ function MobileBottomSheet() {
               sx={{
                 fontSize: 14,
                 fontWeight: 600,
-                color: "rgba(255,255,255,0.85)",
-                fontFamily: "var(--font-sans)",
+                color:
+                  "color-mix(in srgb, var(--color-foreground) 85%, transparent)",
               }}
             >
               {selectedZone ?? ""}
@@ -773,8 +823,9 @@ function MobileBottomSheet() {
               onClick={handleClose}
               size="small"
               sx={{
-                color: "rgba(255,255,255,0.3)",
-                "&:hover": { color: "#fff" },
+                color:
+                  "color-mix(in srgb, var(--color-foreground) 30%, transparent)",
+                "&:hover": { color: "var(--color-foreground)" },
               }}
             >
               <CloseIcon sx={{ fontSize: 16 }} />
@@ -789,8 +840,6 @@ function MobileBottomSheet() {
               px: 2,
               pt: 2,
               pb: 3,
-              scrollbarWidth: "thin",
-              scrollbarColor: "rgba(255,255,255,0.1) transparent",
             }}
           >
             <ZoneDataContent />
@@ -829,7 +878,7 @@ function MobileLayout({ children }: Readonly<{ children: React.ReactNode }>) {
       sx={{
         width: "100vw",
         height: "100vh",
-        bgcolor: "#0c1219",
+        bgcolor: "var(--color-background)",
         overflow: "hidden",
         position: "relative",
       }}
@@ -850,11 +899,7 @@ function MobileLayout({ children }: Readonly<{ children: React.ReactNode }>) {
 export default function DashboardLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  return (
-    <DashboardProvider>
-      <DashboardLayoutInner>{children}</DashboardLayoutInner>
-    </DashboardProvider>
-  );
+  return <DashboardLayoutInner>{children}</DashboardLayoutInner>;
 }
 
 function DashboardLayoutInner({
@@ -863,13 +908,41 @@ function DashboardLayoutInner({
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const isNarrow = useMediaQuery(theme.breakpoints.down("lg"));
+
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <Box
+        sx={{
+          width: "100vw",
+          height: "100vh",
+          bgcolor: "var(--color-background)",
+          position: "relative",
+          overflow: "hidden",
+          zIndex: 10,
+          backdropFilter: "blur(20px)",
+          WebkitBackdropFilter: "blur(20px)",
+        }}
+      >
+        <Background />
+      </Box>
+    );
+  }
+
   if (isMobile) return <MobileLayout>{children}</MobileLayout>;
+
   const sidebarExpandedWidth = isNarrow
     ? Math.round(window.innerWidth * 0.5)
     : SIDEBAR_W;
   const zonePanelExpandedWidth = isNarrow
     ? Math.round(window.innerWidth * 0.5)
     : 380;
+
   return (
     <Box
       sx={{
@@ -877,7 +950,7 @@ function DashboardLayoutInner({
         height: "100vh",
         width: "100vw",
         overflow: "hidden",
-        bgcolor: "#0c1219",
+        bgcolor: "var(--color-background)",
       }}
     >
       <Background />

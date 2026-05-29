@@ -1,0 +1,55 @@
+{
+  "sidebar": {
+    "options": {
+      "title": "Options",
+      "metric": {
+        "label": "Environmental Metric",
+        "footprint": {
+          "label": "Footprint",
+          "tooltip": "How much CO₂ or water is consumed per unit of electricity, based on the energy mix of each zone."
+        },
+        "impact": {
+          "label": "Impact",
+          "tooltip": "The real environmental damage caused by that consumption. Carbon impact equals carbon footprint, while water impact is adjusted for local water scarcity."
+        },
+        "greenScore": {
+          "label": "Green Score",
+          "tooltip": "Overall environmental performance score that takes into account the region's carbon and water impact (the higher the better)"
+        }
+      },
+      "dimension": {
+        "title": "Environmental Dimension",
+        "carbon": {
+          "label": "Carbon",
+          "tooltip": "CO₂ equivalent emissions from electricity generation. Measured in gCO₂eq/kWh."
+        },
+        "water": {
+          "label": "Water",
+          "tooltip": "Freshwater consumed or stress caused by electricity generation. Measured in litres per kWh (footprint) or stress-litres per kWh (impact)."
+        }
+      },
+      "scope": {
+        "title": "Assessment Scope",
+        "lifeCycle": {
+          "label": "Life Cycle",
+          "tooltip": "Includes all emissions and water use across the full life of the technology — manufacturing, operation and decommissioning."
+        },
+        "operational": {
+          "label": "Operational",
+          "tooltip": "Only direct emissions and water use during electricity generation, excluding manufacturing and infrastructure."
+        }
+      },
+      "flowTracing": {
+        "title": "Flow Tracing",
+        "subtitle": "Track cross-border energy flows"
+      }
+    }
+  },
+  "map": {
+    "themeSwitch": {
+      "light": "Switch to light mode",
+      "dark": "Switch to dark mode",
+      "contrast": "Switch to contrast mode"
+    }
+  }
+}
