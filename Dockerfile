@@ -41,16 +41,16 @@ RUN corepack enable
 
 ENV NODE_ENV=production
 
-# Copia artefactos necesarios
-COPY --from=builder /app/package.json ./
-COPY --from=builder /app/yarn.lock ./
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/next.config.ts ./next.config.ts
-
-# Usuario no root
 RUN addgroup -S app && adduser -S app -G app
+
+COPY --from=builder --chown=app:app /app/package.json ./
+COPY --from=builder --chown=app:app /app/yarn.lock ./
+COPY --from=builder --chown=app:app /app/.yarnrc.yml ./ 
+COPY --from=builder --chown=app:app /app/.next ./.next
+COPY --from=builder --chown=app:app /app/public ./public
+COPY --from=builder --chown=app:app /app/node_modules ./node_modules
+COPY --from=builder --chown=app:app /app/next.config.ts ./next.config.ts
+
 USER app
 
 EXPOSE 3000
