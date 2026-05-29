@@ -1,6 +1,9 @@
 # Stage 1: Builder
 FROM node:20-alpine AS builder
+
 WORKDIR /app
+
+RUN corepack enable
 
 ARG API_URL
 ARG API_TOKEN_ENDPOINT
@@ -16,32 +19,40 @@ ENV API_URL=$API_URL \
     DASHBOARD_API_KEY=$DASHBOARD_API_KEY \
     NEXT_PUBLIC_DASHBOARD_API_KEY=$NEXT_PUBLIC_DASHBOARD_API_KEY
 
-# Instala dependencias de producción y desarrollo
-COPY package*.json ./
-RUN npm ci
+# Copia archivos de dependencias
+COPY package.json yarn.lock .yarnrc.yml ./
 
-# Copia todo el código y construye
+# Instala dependencias
+RUN yarn install --immutable
+
+# Copia el resto del código
 COPY . .
-RUN npm run build
+
+# Build
+RUN yarn build
+
 
 # Stage 2: Runner
 FROM node:20-alpine AS runner
+
 WORKDIR /app
 
-# Copia solo lo necesario desde el builder
-COPY --from=builder /app/package*.json ./
+RUN corepack enable
+
+ENV NODE_ENV=production
+
+# Copia artefactos necesarios
+COPY --from=builder /app/package.json ./
+COPY --from=builder /app/yarn.lock ./
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/next.config.ts ./next.config.ts
 
-# Instala solo dependencias de producción
-RUN npm ci --omit=dev
-
-# Crea un usuario sin privilegios
+# Usuario no root
 RUN addgroup -S app && adduser -S app -G app
 USER app
 
-# Expone puerto
 EXPOSE 3000
 
-# Ejecuta la app como usuario no-root
-CMD ["npm", "start"]
+CMD ["yarn", "start"]
