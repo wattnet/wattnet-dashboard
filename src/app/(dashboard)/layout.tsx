@@ -634,8 +634,6 @@ function MobileTopSheet({
   onCollapse: () => void;
   onExpand: () => void;
 }>) {
-  const { theme } = useAppTheme();
-
   const dragStartY = React.useRef<number | null>(null);
 
   const handleTouchStart = (e: React.TouchEvent) => {
