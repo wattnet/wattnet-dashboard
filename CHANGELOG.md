@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.4.0](https://github.com/wattnet/wattnet-dashboard/compare/v1.3.1...v1.4.0) (2026-05-29)
+
+
+### Features
+
+* add wattnet loader ([d850167](https://github.com/wattnet/wattnet-dashboard/commit/d850167cd9ecf473444cbf702b66dda9e9a560d9))
+* apply themes ([ab7641c](https://github.com/wattnet/wattnet-dashboard/commit/ab7641c36e6852805f1d84091af367345bb19757))
+* improve repo structure ([20dcc61](https://github.com/wattnet/wattnet-dashboard/commit/20dcc61013f050e3f39f656a7814c0b5ac6ad401))
+* update time slider automatically to see live data ([a8c9353](https://github.com/wattnet/wattnet-dashboard/commit/a8c9353a5f63cd15dbb5e0bb5977528e5dfb48b6))
+* use react zustand ([7bded0c](https://github.com/wattnet/wattnet-dashboard/commit/7bded0c95ed4b474b8402dee781d99b157578f3e))
+
+
+### Bug Fixes
+
+* code quality ([f23e330](https://github.com/wattnet/wattnet-dashboard/commit/f23e330adc5bfa4a23a63c1ac004c7991c4957e8))
+* code quality ([661b221](https://github.com/wattnet/wattnet-dashboard/commit/661b2215ad7573477f20f02e7adc1d27d933e533))
+* code quality ([8d60ee9](https://github.com/wattnet/wattnet-dashboard/commit/8d60ee9f4a1b6998e25bd988be1f9c386edac8b9))
+* green score bug ([a5daec6](https://github.com/wattnet/wattnet-dashboard/commit/a5daec68f5732c472665ae475aebb36acb5358aa))
+* set scope to operational when metric is green score ([c031f12](https://github.com/wattnet/wattnet-dashboard/commit/c031f128e5748f261ad88e544018113c96df7507))
+* solve blinking page issue ([e93d259](https://github.com/wattnet/wattnet-dashboard/commit/e93d2596b0034f844f866b68f1af18872b40a2fa))
+
 ## [1.3.0](https://github.com/wattnet/wattnet-dashboard/compare/v1.2.1...v1.3.0) (2026-04-16)
 
 
