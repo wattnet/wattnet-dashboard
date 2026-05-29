@@ -6,11 +6,9 @@
 ### Features
 
 * add wattnet loader ([d850167](https://github.com/wattnet/wattnet-dashboard/commit/d850167cd9ecf473444cbf702b66dda9e9a560d9))
-* add wattnet loader ([f10666d](https://github.com/wattnet/wattnet-dashboard/commit/f10666db867fa7e38008a528079fe997080b38f0))
 * apply themes ([ab7641c](https://github.com/wattnet/wattnet-dashboard/commit/ab7641c36e6852805f1d84091af367345bb19757))
 * improve repo structure ([20dcc61](https://github.com/wattnet/wattnet-dashboard/commit/20dcc61013f050e3f39f656a7814c0b5ac6ad401))
 * update time slider automatically to see live data ([a8c9353](https://github.com/wattnet/wattnet-dashboard/commit/a8c9353a5f63cd15dbb5e0bb5977528e5dfb48b6))
-* update time slider automatically to see live data ([1f00e03](https://github.com/wattnet/wattnet-dashboard/commit/1f00e039e79689841aa5760fef4cd8b2cd3fc6d2))
 * use react zustand ([7bded0c](https://github.com/wattnet/wattnet-dashboard/commit/7bded0c95ed4b474b8402dee781d99b157578f3e))
 
 
