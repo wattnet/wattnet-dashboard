@@ -37,11 +37,12 @@ FROM node:20-alpine AS runner
 
 WORKDIR /app
 
+RUN addgroup -S app && adduser -S app -G app \
+    && chown app:app /app
+
 RUN corepack enable
 
 ENV NODE_ENV=production
-
-RUN addgroup -S app && adduser -S app -G app
 
 COPY --from=builder --chown=app:app /app/package.json ./
 COPY --from=builder --chown=app:app /app/yarn.lock ./
