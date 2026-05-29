@@ -4,7 +4,7 @@ import { useRef, useEffect, useState } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { FeatureCollection } from "geojson";
-import { Box, CircularProgress, Fade } from "@mui/material";
+import { Box, Fade } from "@mui/material";
 import { useMapLayers } from "@/src/features/map/hooks/useMapLayers";
 import { ProcessedFootprint } from "@/src/features/map/types/footprints";
 import { mergeActiveMetricValues } from "@/src/features/map/utils/footprintAdapter";
