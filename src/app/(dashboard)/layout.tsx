@@ -36,7 +36,7 @@ export const MOBILE_PEEK_H = 64;
 // ── Palette ─────────────────────────────────────────────────────
 const BORDER = "var(--color-border)";
 const BACKDROP = "blur(20px)";
-const PANEL_BG = "var(--color-panel)";
+const PANEL_BG = "color-mix(in srgb, var(--color-panel) 93%, transparent)";
 
 const BTN_COLOR =
   "color-mix(in srgb, var(--color-foreground) 35%, transparent)";
@@ -937,7 +937,7 @@ function DashboardLayoutInner({
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor: "var(--color-panel)",
+            backgroundColor: "color-mix(in srgb, var(--color-panel) 93%, transparent)",
             backdropFilter: "blur(20px)",
             WebkitBackdropFilter: "blur(20px)",
           }}

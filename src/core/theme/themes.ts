@@ -198,7 +198,7 @@ export const THEMES: Record<'dark' | 'light' | 'colorblind', ThemePalette> = {
   light: {
     mode: 'light',
     colors: {
-      primary: '#7bb320',
+      primary: '#70a01b',
       secondary: '#3a78e0',
       background: '#EAEDF0',
       panelBg: '#ffffff',
@@ -218,16 +218,16 @@ export const THEMES: Record<'dark' | 'light' | 'colorblind', ThemePalette> = {
     colors: {
       primary: '#d55e00',
       secondary: '#0072b2',
-      background: '#ffffff',
+      background: '#EAEDF0',
       panelBg: 'rgba(255, 255, 255, 0.95)',
       text: '#000000',
-      textDim: '#444444',
+      textDim: 'rgba(0, 0, 0, 0.6)',
       border: 'rgba(0, 0, 0, 0.2)',
     },
     mapScales: {
       ...COLORBLIND_MAP_SCALES,
       noData: '#cccccc',
-      mapBorder: '#000000',
+      mapBorder: '#888888',
     },
     chipColors: COLORBLIND_CHIP_COLORS,
   },

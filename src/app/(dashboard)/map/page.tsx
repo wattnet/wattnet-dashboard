@@ -47,7 +47,7 @@ const BTN_HOVER_BG =
 const zoomBtnSx = {
   width: 32,
   height: 32,
-  bgcolor: PANEL_BG,
+  bgcolor: `color-mix(in srgb, ${PANEL_BG} 93%, transparent)`,
   backdropFilter: BACKDROP,
   WebkitBackdropFilter: BACKDROP,
   border: `1px solid ${BORDER}`,
@@ -265,7 +265,6 @@ export default function MapPage() {
             }}
           >
             <ZoomButtons mapRef={mapRef} />
-
             <Box sx={{ mt: 0.5 }}>
               <ThemeSwitcher />
             </Box>
@@ -337,7 +336,6 @@ export default function MapPage() {
             }}
           >
             <ZoomButtons mapRef={mapRef} />
-
             <Box sx={{ mt: 0.5 }}>
               <ThemeSwitcher />
             </Box>

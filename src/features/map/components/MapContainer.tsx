@@ -64,7 +64,7 @@ export default function MapContainer({
     selectedDate,
     metric,
     onZoneClick as any, // TODO: revisar
-    selectedTimeIndex
+    selectedTimeIndex,
   );
 
   // Init map
@@ -140,21 +140,21 @@ export default function MapContainer({
       map.setPaintProperty(
         "background",
         "background-color",
-        currentPalette.colors.background
+        currentPalette.colors.background,
       );
 
       if (map.getLayer("world-fill")) {
         map.setPaintProperty(
           "world-fill",
           "fill-color",
-          currentPalette.mapScales.noData
+          currentPalette.mapScales.noData,
         );
       }
       if (map.getLayer("world-line")) {
         map.setPaintProperty(
           "world-line",
           "line-color",
-          currentPalette.mapScales.mapBorder
+          currentPalette.mapScales.mapBorder,
         );
       }
     }
@@ -166,7 +166,7 @@ export default function MapContainer({
     if (!map || !isStyleLoaded) return;
     const handler = (e: maplibregl.MapMouseEvent) => {
       const existing = ["carbon-fill", "water-fill"].filter(
-        (id) => !!map.getLayer(id)
+        (id) => !!map.getLayer(id),
       );
       if (!existing.length) {
         onEmptyClickRef.current?.();
@@ -193,7 +193,7 @@ export default function MapContainer({
       const merged: FeatureCollection = mergeActiveMetricValues(
         base,
         data,
-        selectedTimeIndex
+        selectedTimeIndex,
       );
 
       const map = mapInstance.current!;
