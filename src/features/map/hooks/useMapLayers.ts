@@ -13,6 +13,7 @@ import { useAppTheme } from '@/src/core/theme/ThemeContext';
 import { ThemePalette } from '@/src/core/theme/themes';
 
 interface ZoneFeatureProperties {
+  zoneName?: string;
   countryName?: string;
   value?: number;
   zone_status?: string;
@@ -40,7 +41,7 @@ function injectPopupStyles(currentPalette: ThemePalette) {
       box-shadow: 0 8px 32px color-mix(in srgb, var(--color-background) 3s0%, transparent);
       font-family: "Red Hat Text", system-ui, sans-serif;
       overflow: hidden;
-      min-width: 360px;
+      width: max-content;
     }
     .wn-popup .maplibregl-popup-tip { display: none; }
 
@@ -53,6 +54,7 @@ function injectPopupStyles(currentPalette: ThemePalette) {
     }
     .wn-date  { font-size: 14px; font-weight: 500; color: color-mix(in srgb, var(--color-foreground) 30%, transparent); letter-spacing: 0.03em; line-height: 1; }
     .wn-zone  { font-size: 18px; font-weight: 600; color: color-mix(in srgb, var(--tcolor-foreground) 92%, transparent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2; margin-bottom: 5px; }
+    .wn-zone-code { font-size: 12px; font-weight: 500; color: color-mix(in srgb, var(--color-foreground) 45%, transparent); vertical-align: baseline; letter-spacing: 0.04em; }
     .wn-value-row { display: flex; align-items: flex-end; gap: 5px; }
     .wn-value { font-size: 34px; font-weight: 700; color:color-mix(in srgb, var(--color-foreground) 92%, transparent); line-height: 1; }
     .wn-unit  { font-size: 14px; font-weight: 500; color: color-mix(in srgb, var(--color-foreground) 40%, transparent); line-height: 1;}
@@ -183,7 +185,7 @@ function buildHTML(data: ZoneData, datetime: string, chips: ChipDef[]): string {
     <div class="wn-inner">
       <div class="wn-left">
         <div class="wn-date">${datetime}</div>
-        <div class="wn-zone">${data.zoneName}</div>
+        <div class="wn-zone">${data.zoneName}${data.zoneCode ? ` <span class="wn-zone-code">(${data.zoneCode})</span>` : ''}</div>
         <div class="wn-value-row">
           <span class="wn-value">${valStr}</span>
           ${data.unit ? `<span class="wn-unit">${data.unit}</span>` : ''}
@@ -274,6 +276,7 @@ export function useMapLayers(
 
       return {
         zoneName: props.countryName ?? 'Unknown',
+        zoneCode: props.zoneName ?? '',
         value: rawValue == null ? null : Number(rawValue),
         unit: scaleConfigRef.current.unit ?? '',
         label: scaleConfigRef.current.title,

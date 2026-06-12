@@ -65,7 +65,7 @@ export function useMapScales(
         },
         legendColors: getLegendColors(scales.waterImpact),
         title: 'Water Impact',
-        unit: 'stress-L/kWh',
+        unit: 'stress-Liters/kWh',
       };
     }
 
@@ -90,7 +90,7 @@ export function useMapScales(
       },
       legendColors: getLegendColors(scales.waterFootprint),
       title: 'Water Footprint',
-      unit: 'L/kWh',
+      unit: 'Liters/kWh',
     };
   }, [currentPalette, metric, dimension]);
 }
