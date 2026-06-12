@@ -13,6 +13,7 @@ export interface CanvasRect {
 
 export interface ZoneData {
   zoneName: string;
+  zoneCode?: string;
   value: number | null;
   unit: string;
   label: string;

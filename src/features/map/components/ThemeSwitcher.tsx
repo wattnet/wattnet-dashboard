@@ -16,7 +16,7 @@ const BORDER = "var(--color-border)";
 const btnSx = {
   width: 32,
   height: 32,
-  bgcolor: "var(--color-panel)",
+  bgcolor: "color-mix(in srgb, var(--color-panel) 93%, transparent)",
   backdropFilter: "blur(20px)",
   WebkitBackdropFilter: "blur(20px)",
   border: "1px solid var(--color-border)",

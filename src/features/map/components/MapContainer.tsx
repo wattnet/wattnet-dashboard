@@ -34,6 +34,8 @@ interface MapContainerProps {
   onZoneClick?: (zoneName: string) => void;
   onEmptyClick?: () => void;
   onMapReady?: (map: maplibregl.Map) => void;
+  initialCenter?: [number, number];
+  initialZoom?: number;
 }
 
 export default function MapContainer({
@@ -46,6 +48,8 @@ export default function MapContainer({
   onZoneClick,
   onEmptyClick,
   onMapReady,
+  initialCenter,
+  initialZoom,
 }: Readonly<MapContainerProps>) {
   const { currentPalette } = useAppTheme();
 
@@ -64,7 +68,7 @@ export default function MapContainer({
     selectedDate,
     metric,
     onZoneClick as any, // TODO: revisar
-    selectedTimeIndex
+    selectedTimeIndex,
   );
 
   // Init map
@@ -110,8 +114,8 @@ export default function MapContainer({
           },
         ],
       },
-      center: [12, 58],
-      zoom: 3,
+      center: initialCenter ?? [12, 58],
+      zoom: initialZoom ?? 3,
       minZoom: 3,
       maxZoom: 7,
       attributionControl: false,
@@ -140,21 +144,21 @@ export default function MapContainer({
       map.setPaintProperty(
         "background",
         "background-color",
-        currentPalette.colors.background
+        currentPalette.colors.background,
       );
 
       if (map.getLayer("world-fill")) {
         map.setPaintProperty(
           "world-fill",
           "fill-color",
-          currentPalette.mapScales.noData
+          currentPalette.mapScales.noData,
         );
       }
       if (map.getLayer("world-line")) {
         map.setPaintProperty(
           "world-line",
           "line-color",
-          currentPalette.mapScales.mapBorder
+          currentPalette.mapScales.mapBorder,
         );
       }
     }
@@ -166,7 +170,7 @@ export default function MapContainer({
     if (!map || !isStyleLoaded) return;
     const handler = (e: maplibregl.MapMouseEvent) => {
       const existing = ["carbon-fill", "water-fill"].filter(
-        (id) => !!map.getLayer(id)
+        (id) => !!map.getLayer(id),
       );
       if (!existing.length) {
         onEmptyClickRef.current?.();
@@ -193,7 +197,7 @@ export default function MapContainer({
       const merged: FeatureCollection = mergeActiveMetricValues(
         base,
         data,
-        selectedTimeIndex
+        selectedTimeIndex,
       );
 
       const map = mapInstance.current!;

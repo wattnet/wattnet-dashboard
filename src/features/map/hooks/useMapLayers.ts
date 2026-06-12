@@ -13,6 +13,7 @@ import { useAppTheme } from '@/src/core/theme/ThemeContext';
 import { ThemePalette } from '@/src/core/theme/themes';
 
 interface ZoneFeatureProperties {
+  zoneName?: string;
   countryName?: string;
   value?: number;
   zone_status?: string;
@@ -31,16 +32,16 @@ function injectPopupStyles(currentPalette: ThemePalette) {
 
   style.textContent = `
     .wn-popup .maplibregl-popup-content {
-      background: color-mix(in srgb, var(--color-background) 85%, transparent);
-      backdrop-filter: blur(24px);
-      -webkit-backdrop-filter: blur(24px);
+      background: color-mix(in srgb, var(--color-panel) 93%, transparent);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
       border: 1px solid color-mix(in srgb, var(--color-foreground) 10%, transparent);
       border-radius: 12px;
       padding: 0;
       box-shadow: 0 8px 32px color-mix(in srgb, var(--color-background) 3s0%, transparent);
       font-family: "Red Hat Text", system-ui, sans-serif;
       overflow: hidden;
-      min-width: 360px;
+      width: max-content;
     }
     .wn-popup .maplibregl-popup-tip { display: none; }
 
@@ -53,6 +54,7 @@ function injectPopupStyles(currentPalette: ThemePalette) {
     }
     .wn-date  { font-size: 14px; font-weight: 500; color: color-mix(in srgb, var(--color-foreground) 30%, transparent); letter-spacing: 0.03em; line-height: 1; }
     .wn-zone  { font-size: 18px; font-weight: 600; color: color-mix(in srgb, var(--tcolor-foreground) 92%, transparent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2; margin-bottom: 5px; }
+    .wn-zone-code { font-size: 12px; font-weight: 500; color: color-mix(in srgb, var(--color-foreground) 45%, transparent); vertical-align: baseline; letter-spacing: 0.04em; }
     .wn-value-row { display: flex; align-items: flex-end; gap: 5px; }
     .wn-value { font-size: 34px; font-weight: 700; color:color-mix(in srgb, var(--color-foreground) 92%, transparent); line-height: 1; }
     .wn-unit  { font-size: 14px; font-weight: 500; color: color-mix(in srgb, var(--color-foreground) 40%, transparent); line-height: 1;}
@@ -97,8 +99,8 @@ function formatDatetime(date: Date, timeIndex: number): string {
       date.getUTCMonth(),
       date.getUTCDate(),
       hours,
-      minutes
-    )
+      minutes,
+    ),
   );
   const datePart = d.toLocaleDateString('en-GB', {
     timeZone: 'UTC',
@@ -123,8 +125,8 @@ function calcIsForecast(date: Date, timeIndex: number): boolean {
       date.getUTCMonth(),
       date.getUTCDate(),
       hours,
-      minutes
-    )
+      minutes,
+    ),
   );
   return selected.getTime() > Date.now();
 }
@@ -141,14 +143,14 @@ function chipHTML({ label, cls }: ChipDef): string {
 function buildPopupChips(
   data: ZoneData,
   scope: string,
-  flowTracing: boolean
+  flowTracing: boolean,
 ): ChipDef[] {
   const chips: ChipDef[] = [];
 
   chips.push(
     data.valid
       ? { label: 'Final', cls: 'wn-chip-final' }
-      : { label: 'Not Final', cls: 'wn-chip-not-final' }
+      : { label: 'Not Final', cls: 'wn-chip-not-final' },
   );
 
   const raw = data.zoneStatus ?? '';
@@ -165,13 +167,13 @@ function buildPopupChips(
   chips.push(
     scope === 'life-cycle'
       ? { label: 'Life-cycle', cls: 'wn-chip-lifecycle' }
-      : { label: 'Operational', cls: 'wn-chip-operational' }
+      : { label: 'Operational', cls: 'wn-chip-operational' },
   );
 
   chips.push(
     flowTracing
       ? { label: 'Global', cls: 'wn-chip-global' }
-      : { label: 'Local', cls: 'wn-chip-local' }
+      : { label: 'Local', cls: 'wn-chip-local' },
   );
 
   return chips;
@@ -183,10 +185,10 @@ function buildHTML(data: ZoneData, datetime: string, chips: ChipDef[]): string {
     <div class="wn-inner">
       <div class="wn-left">
         <div class="wn-date">${datetime}</div>
-        <div class="wn-zone">${data.zoneName}</div>
+        <div class="wn-zone">${data.zoneName}${data.zoneCode ? ` <span class="wn-zone-code">(${data.zoneCode})</span>` : ''}</div>
         <div class="wn-value-row">
           <span class="wn-value">${valStr}</span>
-          <span class="wn-unit">${data.unit}</span>
+          ${data.unit ? `<span class="wn-unit">${data.unit}</span>` : ''}
         </div>
         <div class="wn-label">${data.label}</div>
       </div>
@@ -202,7 +204,7 @@ export function useMapLayers(
   selectedDate: Date,
   metric: MetricKey,
   onZoneClick?: (zoneName: string, data: ZoneData) => void,
-  selectedTimeIndex = 0
+  selectedTimeIndex = 0,
 ) {
   const { currentPalette } = useAppTheme();
 
@@ -218,6 +220,11 @@ export function useMapLayers(
     props: ZoneFeatureProperties;
     type: 'carbon' | 'water';
   } | null>(null);
+
+  const scaleConfigRef = useRef(scaleConfig);
+  useEffect(() => {
+    scaleConfigRef.current = scaleConfig;
+  }, [scaleConfig]);
 
   const metricRef = useRef(metric);
   const scopeRef = useRef(scope);
@@ -269,16 +276,17 @@ export function useMapLayers(
 
       return {
         zoneName: props.countryName ?? 'Unknown',
+        zoneCode: props.zoneName ?? '',
         value: rawValue == null ? null : Number(rawValue),
-        unit: scaleConfig.unit ?? '',
-        label: scaleConfig.title,
+        unit: scaleConfigRef.current.unit ?? '',
+        label: scaleConfigRef.current.title,
         zoneStatus: props.zone_status,
         valid: props.valid,
         date: formatDatetime(dateRef.current, timeIndexRef.current),
         isForecast: forecast,
       };
     },
-    [scaleConfig]
+    [],
   );
 
   useEffect(() => {
@@ -325,7 +333,7 @@ export function useMapLayers(
       }
       if (map.getLayer(otherId)) map.removeLayer(otherId);
     },
-    [map, scaleConfig]
+    [map, scaleConfig],
   );
 
   useEffect(() => {
@@ -343,7 +351,7 @@ export function useMapLayers(
         renderLayers(type);
       }
     },
-    [map, renderLayers]
+    [map, renderLayers],
   );
 
   const setupInteractions = useCallback(
@@ -365,12 +373,12 @@ export function useMapLayers(
           const data = buildZoneData(props, type);
           const datetime = formatDatetime(
             dateRef.current,
-            timeIndexRef.current
+            timeIndexRef.current,
           );
           const chips = buildPopupChips(
             data,
             scopeRef.current,
-            flowTracingRef.current
+            flowTracingRef.current,
           );
           popupRef.current
             .setLngLat(e.lngLat)
@@ -391,7 +399,7 @@ export function useMapLayers(
         });
       }
     },
-    [map, buildZoneData, onZoneClick]
+    [map, buildZoneData, onZoneClick],
   );
 
   return { updateMapData };

@@ -2,10 +2,9 @@
 
 import { Box, Typography } from "@mui/material";
 
-const BORDER = "var(--color-border)";
 const BACKDROP = "blur(20px)";
-const PANEL_BG = "var(--color-panel)";
-const SHADOW = "var(--color-background) 40% 0px 4px 24px";
+const PANEL_BG = "color-mix(in srgb, var(--color-panel) 93%, transparent)";
+const SHADOW = "0 4px 24px color-mix(in srgb, var(--color-background) 40%, transparent)";
 
 const TEXT_TITLE =
   "color-mix(in srgb, var(--color-foreground) 55%, transparent)";
@@ -31,7 +30,6 @@ export default function Legend({
         bgcolor: PANEL_BG,
         backdropFilter: BACKDROP,
         WebkitBackdropFilter: BACKDROP,
-        border: `1px solid ${BORDER}`,
         borderRadius: "10px",
         px: 1.5,
         py: 1.25,
