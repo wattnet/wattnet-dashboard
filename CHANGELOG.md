@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.1](https://github.com/wattnet/wattnet-dashboard/compare/v1.4.0...v1.4.1) (2026-06-12)
+
+
+### Bug Fixes
+
+* greenscore tooltip ([40f6916](https://github.com/wattnet/wattnet-dashboard/commit/40f69163495841a3363b8253deb3710970b1e009))
+
 ## [1.4.0](https://github.com/wattnet/wattnet-dashboard/compare/v1.3.1...v1.4.0) (2026-05-29)
 
 
