@@ -36,8 +36,13 @@ export default function RootLayout({
             __html: `
               (function() {
                 try {
-                  var savedTheme = localStorage.getItem('app-theme') || 'dark';
-                  document.documentElement.setAttribute('data-theme', savedTheme);
+                  var params = new URLSearchParams(window.location.search);
+                  var urlTheme = params.get('theme');
+                  var valid = ['dark', 'light', 'colorblind'];
+                  var theme = (urlTheme && valid.indexOf(urlTheme) !== -1)
+                    ? urlTheme
+                    : (localStorage.getItem('app-theme') || 'dark');
+                  document.documentElement.setAttribute('data-theme', theme);
                 } catch (e) {}
               })();
             `,

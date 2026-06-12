@@ -34,6 +34,8 @@ interface MapContainerProps {
   onZoneClick?: (zoneName: string) => void;
   onEmptyClick?: () => void;
   onMapReady?: (map: maplibregl.Map) => void;
+  initialCenter?: [number, number];
+  initialZoom?: number;
 }
 
 export default function MapContainer({
@@ -46,6 +48,8 @@ export default function MapContainer({
   onZoneClick,
   onEmptyClick,
   onMapReady,
+  initialCenter,
+  initialZoom,
 }: Readonly<MapContainerProps>) {
   const { currentPalette } = useAppTheme();
 
@@ -110,8 +114,8 @@ export default function MapContainer({
           },
         ],
       },
-      center: [12, 58],
-      zoom: 3,
+      center: initialCenter ?? [12, 58],
+      zoom: initialZoom ?? 3,
       minZoom: 3,
       maxZoom: 7,
       attributionControl: false,

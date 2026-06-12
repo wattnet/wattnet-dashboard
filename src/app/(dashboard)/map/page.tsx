@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Box, IconButton } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
@@ -31,6 +32,7 @@ import {
 import { Portal } from "@/src/shared/components/Portal";
 import { MetricKey, useMapScales } from "@/src/features/map/hooks/useMapScales";
 import ThemeSwitcher from "@/src/features/map/components/ThemeSwitcher";
+import { parseMapParams } from "@/src/shared/utils/urlParams";
 
 // ── Palette ─────────────────────────────────────────────────────
 const BORDER = "var(--color-border)";
@@ -82,6 +84,13 @@ const ZoomButtons = ({ mapRef }: ZoomButtonsProps) => (
 );
 
 export default function MapPage() {
+  const searchParams = useSearchParams();
+  const { initialCenter, initialZoom } = parseMapParams({
+    lat: searchParams.get("lat"),
+    lng: searchParams.get("lng"),
+    zoom: searchParams.get("zoom"),
+  });
+
   const { metric, dimension, scope } = useMapControls();
   const { flowTracing } = useFlowTracing();
   const { openZonePanel, closeZonePanel } = useZonePanel();
@@ -236,6 +245,8 @@ export default function MapPage() {
           onMapReady={(m) => {
             mapRef.current = m;
           }}
+          initialCenter={initialCenter}
+          initialZoom={initialZoom}
         />
       </Box>
 
