@@ -426,8 +426,8 @@ export function SidebarHeader() {
           fontWeight: 500,
         }}
       >
-        Interactive web dashboard for visualizing energy generation, CO₂
-        emissions, and environmental footprint metrics.
+        Interactive dashboard to explore electricity-related CO₂ emissions,
+        water footprint, and sustainability metrics across Europe.
       </Typography>
 
       <Box sx={{ mt: 1.75 }}>
@@ -573,8 +573,8 @@ export function MobileSidebarContent() {
               flex: 1,
             }}
           >
-            Interactive web dashboard for visualizing energy generation, CO₂
-            emissions, and environmental footprint metrics.
+            Interactive dashboard to explore electricity-related CO₂ emissions,
+            water footprint, and sustainability metrics across Europe.
           </Typography>
           <Box
             component="a"
@@ -637,7 +637,6 @@ export function MobileSidebarContent() {
 
       {/* Options — flat, no scroll wrapper */}
       <Box sx={{ px: 2.5, py: 2, borderBottom: `1px solid ${BORDER}` }}>
-        <Box id="mobile-sidebar-controls-slot" sx={{ mb: 2 }} />
         <OptionsBody />
       </Box>
 

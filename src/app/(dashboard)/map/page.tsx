@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
-import { useSearchParams } from "next/navigation";
+import { useState, useMemo, useRef, useCallback, useEffect } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Box, IconButton } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
@@ -13,6 +13,7 @@ import Legend from "@/src/features/map/components/Legend";
 import {
   getInitialTimeIndex,
   getTodayUTC,
+  decomposeTimeIndex,
 } from "@/src/shared/utils/dateManager";
 import { processFootprints } from "@/src/features/map/utils/footprintAdapter";
 import GlobalTag from "@/src/features/map/components/GlobalTag";
@@ -27,12 +28,14 @@ import {
   useZonePanel,
   useCanvasRect,
   useBottomSheet,
+  useDashboardStore,
   ZoneData,
 } from "@/src/features/dashboard/store/useDashboardStore";
+import { useShallow } from "zustand/react/shallow";
 import { Portal } from "@/src/shared/components/Portal";
 import { MetricKey, useMapScales } from "@/src/features/map/hooks/useMapScales";
 import ThemeSwitcher from "@/src/features/map/components/ThemeSwitcher";
-import { parseMapParams } from "@/src/shared/utils/urlParams";
+import { parseMapParams, parsePlayParam } from "@/src/shared/utils/urlParams";
 
 // ── Palette ─────────────────────────────────────────────────────
 const BORDER = "var(--color-border)";
@@ -85,6 +88,9 @@ const ZoomButtons = ({ mapRef }: ZoomButtonsProps) => (
 
 export default function MapPage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
   const { initialCenter, initialZoom } = parseMapParams({
     lat: searchParams.get("lat"),
     lng: searchParams.get("lng"),
@@ -101,69 +107,104 @@ export default function MapPage() {
 
   const mapRef = useRef<Map | null>(null);
 
-  const [selectedDate, setSelectedDate] = useState(getTodayUTC);
+  const [startDate, setStartDate] = useState(getTodayUTC);
+  const [endDate, setEndDate] = useState(getTodayUTC);
   const [selectedTimeIndex, setSelectedTimeIndex] =
     useState(getInitialTimeIndex);
+  const [isPlaying, setIsPlayingState] = useState(() =>
+    parsePlayParam(searchParams.get("play")),
+  );
+
+  const setIsPlaying = useCallback(
+    (playing: boolean) => {
+      setIsPlayingState(playing);
+      const params = new URLSearchParams(searchParams.toString());
+      if (playing) {
+        params.set("play", "true");
+      } else {
+        params.delete("play");
+      }
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    },
+    [searchParams, router, pathname],
+  );
+
+  const setDateRange = useCallback((start: Date, end: Date) => {
+    setStartDate(start);
+    setEndDate(end);
+    setSelectedTimeIndex(0);
+    setIsPlayingState(false);
+  }, []);
 
   const legendConfig = useMapScales(metric as MetricKey, dimension);
 
-  const dateKey = useMemo(
-    () =>
-      [
-        selectedDate.getUTCFullYear(),
-        String(selectedDate.getUTCMonth() + 1).padStart(2, "0"),
-        String(selectedDate.getUTCDate()).padStart(2, "0"),
-      ].join("-"),
-    [selectedDate]
+  const fmt = (d: Date) =>
+    [
+      d.getUTCFullYear(),
+      String(d.getUTCMonth() + 1).padStart(2, "0"),
+      String(d.getUTCDate()).padStart(2, "0"),
+    ].join("-");
+
+  const rangeKey = useMemo(
+    () => `${fmt(startDate)}__${fmt(endDate)}`,
+    [startDate, endDate],
   );
+
+  const [startKey, endKey] = rangeKey.split("__");
 
   const { data, loading, error, ephemeralToken, fetchToken } = useMetricData(
     {
       metric,
       dimension,
       scope,
-      start: `${dateKey}T00:00:00Z`,
-      end: `${dateKey}T23:59:59Z`,
+      start: `${startKey}T00:00:00Z`,
+      end: `${endKey}T23:59:59Z`,
       aggregate: false,
       use_global: flowTracing,
     },
-    dateKey
+    rangeKey,
   );
 
   const isToday = useMemo(() => {
     const today = getTodayUTC();
     return (
-      selectedDate.getUTCFullYear() === today.getUTCFullYear() &&
-      selectedDate.getUTCMonth() === today.getUTCMonth() &&
-      selectedDate.getUTCDate() === today.getUTCDate()
+      endDate.getUTCFullYear() === today.getUTCFullYear() &&
+      endDate.getUTCMonth() === today.getUTCMonth() &&
+      endDate.getUTCDate() === today.getUTCDate()
     );
-  }, [selectedDate]);
+  }, [endDate]);
 
   useDataRefresh({
     params: {
       metric,
       dimension,
       scope,
-      start: `${dateKey}T00:00:00Z`,
-      end: `${dateKey}T23:59:59Z`,
+      start: `${startKey}T00:00:00Z`,
+      end: `${endKey}T23:59:59Z`,
       aggregate: false,
       use_global: flowTracing,
     },
-    dateKey,
+    dateKey: rangeKey,
     ephemeralToken,
     fetchToken,
     enabled: isToday,
     selectedTimeIndex,
     setSelectedTimeIndex,
+    startDate,
   });
 
   const processedData = useMemo(
-    () => (data ? processFootprints(data) : []),
-    [data]
+    () => (data ? processFootprints(data, startDate, endDate) : []),
+    [data, startDate, endDate],
+  );
+
+  const displayDate = useMemo(
+    () => decomposeTimeIndex(startDate, selectedTimeIndex).date,
+    [startDate, selectedTimeIndex],
   );
 
   const globalDataStatusTag = useMemo(() => {
-    if (processedData.length === 0 || !selectedDate) return "no-data";
+    if (processedData.length === 0) return "no-data";
 
     const selectedItem = processedData[0].series?.[selectedTimeIndex];
     if (selectedItem?.value === null || selectedItem?.value === undefined) {
@@ -177,25 +218,53 @@ export default function MapPage() {
       now.getUTCMonth(),
       now.getUTCDate(),
       now.getUTCHours(),
-      Math.floor(now.getUTCMinutes() / 15) * 15
+      Math.floor(now.getUTCMinutes() / 15) * 15,
     );
 
-    const selectedHours = Math.floor(selectedTimeIndex / 4);
-    const selectedMinutes = (selectedTimeIndex % 4) * 15;
+    const { date: slotDate, slotWithinDay } = decomposeTimeIndex(
+      startDate,
+      selectedTimeIndex,
+    );
+    const selectedHours = Math.floor(slotWithinDay / 4);
+    const selectedMinutes = (slotWithinDay % 4) * 15;
 
     const selectedTimestamp = Date.UTC(
-      selectedDate.getUTCFullYear(),
-      selectedDate.getUTCMonth(),
-      selectedDate.getUTCDate(),
+      slotDate.getUTCFullYear(),
+      slotDate.getUTCMonth(),
+      slotDate.getUTCDate(),
       selectedHours,
-      selectedMinutes
+      selectedMinutes,
     );
 
     if (selectedTimestamp > currentTimestamp) return "forecast";
     if (selectedTimestamp < currentTimestamp) return "historical";
 
     return "live";
-  }, [processedData, selectedDate, selectedTimeIndex]);
+  }, [processedData, startDate, selectedTimeIndex]);
+
+  // ── Zone chart data ────────────────────────────────────────────
+  const { zonePanelOpen, zoneCode, setZoneSeries, setZoneSeriesIndex } =
+    useDashboardStore(
+      useShallow((s) => ({
+        zonePanelOpen: s.zonePanelOpen,
+        zoneCode: s.zoneData?.zoneCode ?? null,
+        setZoneSeries: s.setZoneSeries,
+        setZoneSeriesIndex: s.setZoneSeriesIndex,
+      })),
+    );
+
+  useEffect(() => {
+    if (!zonePanelOpen || !zoneCode) { setZoneSeries(null); return; }
+    if (processedData.length === 0) return; // keep old series while loading
+    const fp = processedData.find((d) => d.zone === zoneCode);
+    setZoneSeries(
+      fp ? fp.series.map((s) => ({ value: s.value, timestamp: s.timestamp })) : null,
+    );
+  }, [zonePanelOpen, zoneCode, processedData, setZoneSeries]);
+
+  useEffect(() => {
+    if (zonePanelOpen) setZoneSeriesIndex(selectedTimeIndex);
+  }, [zonePanelOpen, selectedTimeIndex, setZoneSeriesIndex]);
 
   const handleZoneClick = (zoneName: string, zoneData: ZoneData) => {
     openZonePanel(zoneName, zoneData);
@@ -219,15 +288,18 @@ export default function MapPage() {
       <Portal
         targetId={
           isMobile
-            ? "mobile-sidebar-controls-slot"
+            ? "desktop-sidebar-controls-slot"
             : "desktop-sidebar-controls-slot"
         }
       >
         <DateSelector
-          selectedDate={selectedDate}
-          setSelectedDate={setSelectedDate}
+          startDate={startDate}
+          endDate={endDate}
+          setDateRange={setDateRange}
           selectedTimeIndex={selectedTimeIndex}
           setSelectedTimeIndex={setSelectedTimeIndex}
+          isPlaying={isPlaying}
+          setIsPlaying={setIsPlaying}
           data={processedData}
         />
       </Portal>
@@ -237,7 +309,7 @@ export default function MapPage() {
           data={processedData}
           metric={metric as MetricKey}
           loading={loading}
-          selectedDate={selectedDate}
+          selectedDate={displayDate}
           selectedTimeIndex={selectedTimeIndex}
           selectedDimension={dimension}
           onZoneClick={handleZoneClick}

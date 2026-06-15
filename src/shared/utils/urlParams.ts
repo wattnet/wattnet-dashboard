@@ -15,6 +15,10 @@ export function parseThemeParam(raw: string | null): ThemeMode | undefined {
   return undefined;
 }
 
+export function parsePlayParam(raw: string | null): boolean {
+  return raw !== null;
+}
+
 export function parseMapParams(params: {
   lat: string | null;
   lng: string | null;

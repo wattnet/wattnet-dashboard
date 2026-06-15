@@ -23,6 +23,11 @@ export interface ZoneData {
   isForecast?: boolean;
 }
 
+export interface ZoneSeriesPoint {
+  value: number | null;
+  timestamp: string;
+}
+
 interface DashboardState {
   // State
   metric: MetricKey;
@@ -36,6 +41,8 @@ interface DashboardState {
   sidebarCollapsed: boolean;
   bottomSheetState: BottomSheetState;
   canvasRect: CanvasRect;
+  zoneSeries: ZoneSeriesPoint[] | null;
+  zoneSeriesIndex: number;
 
   // Simple actions (setters)
   setMetric: (v: MetricKey) => void;
@@ -44,6 +51,8 @@ interface DashboardState {
   setFlowTracing: (v: boolean) => void;
   setBottomSheetState: (v: BottomSheetState) => void;
   setCanvasRect: (rect: CanvasRect) => void;
+  setZoneSeries: (series: ZoneSeriesPoint[] | null) => void;
+  setZoneSeriesIndex: (index: number) => void;
 
   // Complex actions
   openZonePanel: (zoneName: string, data?: ZoneData) => void;
@@ -68,6 +77,8 @@ export const useDashboardStore = create<DashboardState>((set) => ({
   sidebarCollapsed: false,
   bottomSheetState: 'hidden',
   canvasRect: { top: 0, left: 0, width: 0, height: 0 },
+  zoneSeries: null,
+  zoneSeriesIndex: 0,
 
   // Setters
   setMetric: (metric) => set({ metric }),
@@ -76,20 +87,22 @@ export const useDashboardStore = create<DashboardState>((set) => ({
   setFlowTracing: (flowTracing) => set({ flowTracing }),
   setBottomSheetState: (bottomSheetState) => set({ bottomSheetState }),
   setCanvasRect: (canvasRect) => set({ canvasRect }),
+  setZoneSeries: (zoneSeries) => set({ zoneSeries }),
+  setZoneSeriesIndex: (zoneSeriesIndex) => set({ zoneSeriesIndex }),
 
   // Complex actions
   openZonePanel: (zoneName, data) =>
     set((state) => ({
       selectedZone: zoneName,
       zoneData: data ?? state.zoneData,
-      zonePanelOpen: false,
+      zonePanelOpen: true,
       openCount: state.openCount + 1,
     })),
 
   updateZoneData: (data) => set({ zoneData: data }),
 
   closeZonePanel: () => {
-    set({ zonePanelOpen: false });
+    set({ zonePanelOpen: false, zoneSeries: null, zoneSeriesIndex: 0 });
     setTimeout(() => {
       set({ selectedZone: undefined, zoneData: null });
     }, 500);
@@ -134,6 +147,15 @@ export function useZonePanel() {
       openZonePanel: state.openZonePanel,
       updateZoneData: state.updateZoneData,
       closeZonePanel: state.closeZonePanel,
+    })),
+  );
+}
+
+export function useZoneChart() {
+  return useDashboardStore(
+    useShallow((state) => ({
+      zoneSeries: state.zoneSeries,
+      zoneSeriesIndex: state.zoneSeriesIndex,
     })),
   );
 }

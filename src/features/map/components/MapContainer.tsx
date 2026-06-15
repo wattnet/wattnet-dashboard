@@ -69,6 +69,7 @@ export default function MapContainer({
     metric,
     onZoneClick as any, // TODO: revisar
     selectedTimeIndex,
+    data,
   );
 
   // Init map

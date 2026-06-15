@@ -20,12 +20,14 @@ function msUntilNextQuarter(): number {
   return nextQuarterMs === ms ? QUARTER_INTERVAL_MS : nextQuarterMs - ms;
 }
 
-/**
- * Returns the time index (0-95) corresponding to the current UTC quarter-hour slot.
- */
-function currentSlotIndex(): number {
+function currentFlatSlotIndex(startDate: Date): number {
   const now = new Date();
-  return now.getUTCHours() * 4 + Math.floor(now.getUTCMinutes() / 15);
+  const dayOffset = Math.floor(
+    (Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) -
+      startDate.getTime()) /
+      86_400_000,
+  );
+  return dayOffset * 96 + now.getUTCHours() * 4 + Math.floor(now.getUTCMinutes() / 15);
 }
 
 /**
@@ -60,6 +62,8 @@ interface UseDataRefreshOptions {
   selectedTimeIndex: number;
   /** Advance the slider to the new slot, only if the user hasn't moved it away manually. */
   setSelectedTimeIndex: (index: number) => void;
+  /** Start date of the selected range — needed to compute the flat slot index for multi-day ranges. */
+  startDate: Date;
 }
 
 /**
@@ -79,6 +83,7 @@ export function useDataRefresh({
   enabled,
   selectedTimeIndex,
   setSelectedTimeIndex,
+  startDate,
 }: UseDataRefreshOptions) {
   const { mutate } = useSWRConfig();
 
@@ -91,6 +96,7 @@ export function useDataRefresh({
     enabled,
     selectedTimeIndex,
     setSelectedTimeIndex,
+    startDate,
   });
   useEffect(() => {
     stateRef.current = {
@@ -101,6 +107,7 @@ export function useDataRefresh({
       enabled,
       selectedTimeIndex,
       setSelectedTimeIndex,
+      startDate,
     };
   });
 
@@ -204,7 +211,7 @@ export function useDataRefresh({
       if (swrKey) await mutate(swrKey);
 
       // ── Advance the slider only if the user is on the immediately preceding slot ──
-      const newSlotIndex = currentSlotIndex();
+      const newSlotIndex = currentFlatSlotIndex(stateRef.current.startDate);
       if (selectedTimeIndex === newSlotIndex - 1) {
         setSelectedTimeIndex(newSlotIndex);
       }

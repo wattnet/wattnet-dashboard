@@ -11,6 +11,7 @@ import {
 } from '../../dashboard/store/useDashboardStore';
 import { useAppTheme } from '@/src/core/theme/ThemeContext';
 import { ThemePalette } from '@/src/core/theme/themes';
+import { ProcessedFootprint } from '../types/footprints';
 
 interface ZoneFeatureProperties {
   zoneName?: string;
@@ -52,11 +53,12 @@ function injectPopupStyles(currentPalette: ThemePalette) {
       border-right: 1px solid ${currentPalette.colors.border};
       display: flex; flex-direction: column; gap: 5px;
     }
-    .wn-date  { font-size: 14px; font-weight: 500; color: color-mix(in srgb, var(--color-foreground) 30%, transparent); letter-spacing: 0.03em; line-height: 1; }
-    .wn-zone  { font-size: 18px; font-weight: 600; color: color-mix(in srgb, var(--tcolor-foreground) 92%, transparent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2; margin-bottom: 5px; }
-    .wn-zone-code { font-size: 12px; font-weight: 500; color: color-mix(in srgb, var(--color-foreground) 45%, transparent); vertical-align: baseline; letter-spacing: 0.04em; }
-    .wn-value-row { display: flex; align-items: flex-end; gap: 5px; }
-    .wn-value { font-size: 34px; font-weight: 700; color:color-mix(in srgb, var(--color-foreground) 92%, transparent); line-height: 1; }
+    .wn-date  { font-size: 14px; font-weight: 500; color: color-mix(in srgb, var(--color-foreground) 30%, transparent); letter-spacing: 0.03em; line-height: 1; font-variant-numeric: tabular-nums; }
+    .wn-zone  { display: flex; align-items: baseline; gap: 5px; line-height: 1.2; margin-bottom: 5px; overflow: hidden; }
+    .wn-zone-name { font-size: 18px; font-weight: 600; color: color-mix(in srgb, var(--color-foreground) 92%, transparent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+    .wn-zone-code { font-size: 12px; font-weight: 500; color: color-mix(in srgb, var(--color-foreground) 45%, transparent); letter-spacing: 0.04em; white-space: nowrap; flex-shrink: 0; }
+    .wn-value-row { display: flex; align-items: baseline; gap: 6px; }
+    .wn-value { font-size: 34px; font-weight: 700; color:color-mix(in srgb, var(--color-foreground) 92%, transparent); line-height: 1; font-variant-numeric: tabular-nums; }
     .wn-unit  { font-size: 14px; font-weight: 500; color: color-mix(in srgb, var(--color-foreground) 40%, transparent); line-height: 1;}
     .wn-label { font-size: 15px; color:color-mix(in srgb, var(--color-foreground) 50%, transparent); line-height: 1; padding-top: 7px; }
 
@@ -91,8 +93,9 @@ function isTouchDevice(): boolean {
 }
 
 function formatDatetime(date: Date, timeIndex: number): string {
-  const hours = Math.floor(timeIndex / 4);
-  const minutes = (timeIndex % 4) * 15;
+  const slot = timeIndex % 96;
+  const hours = Math.floor(slot / 4);
+  const minutes = (slot % 4) * 15;
   const d = new Date(
     Date.UTC(
       date.getUTCFullYear(),
@@ -117,8 +120,9 @@ function formatDatetime(date: Date, timeIndex: number): string {
 }
 
 function calcIsForecast(date: Date, timeIndex: number): boolean {
-  const hours = Math.floor(timeIndex / 4);
-  const minutes = (timeIndex % 4) * 15;
+  const slot = timeIndex % 96;
+  const hours = Math.floor(slot / 4);
+  const minutes = (slot % 4) * 15;
   const selected = new Date(
     Date.UTC(
       date.getUTCFullYear(),
@@ -185,7 +189,7 @@ function buildHTML(data: ZoneData, datetime: string, chips: ChipDef[]): string {
     <div class="wn-inner">
       <div class="wn-left">
         <div class="wn-date">${datetime}</div>
-        <div class="wn-zone">${data.zoneName}${data.zoneCode ? ` <span class="wn-zone-code">(${data.zoneCode})</span>` : ''}</div>
+        <div class="wn-zone"><span class="wn-zone-name">${data.zoneName}</span>${data.zoneCode ? `<span class="wn-zone-code">(${data.zoneCode})</span>` : ''}</div>
         <div class="wn-value-row">
           <span class="wn-value">${valStr}</span>
           ${data.unit ? `<span class="wn-unit">${data.unit}</span>` : ''}
@@ -205,6 +209,7 @@ export function useMapLayers(
   metric: MetricKey,
   onZoneClick?: (zoneName: string, data: ZoneData) => void,
   selectedTimeIndex = 0,
+  processedData: ProcessedFootprint[] = [],
 ) {
   const { currentPalette } = useAppTheme();
 
@@ -220,6 +225,12 @@ export function useMapLayers(
     props: ZoneFeatureProperties;
     type: 'carbon' | 'water';
   } | null>(null);
+  const lastHoverRef = useRef<{
+    props: ZoneFeatureProperties;
+    type: 'carbon' | 'water';
+  } | null>(null);
+  const processedDataRef = useRef(processedData);
+  processedDataRef.current = processedData;
 
   const scaleConfigRef = useRef(scaleConfig);
   useEffect(() => {
@@ -270,18 +281,21 @@ export function useMapLayers(
   }, [map, currentPalette]);
 
   const buildZoneData = useCallback(
-    (props: ZoneFeatureProperties, type: string): ZoneData => {
-      const rawValue = props.value;
+    (props: ZoneFeatureProperties, _type: string): ZoneData => {
+      const fp = processedDataRef.current.find(
+        (d) => d.zone === props.zoneName,
+      );
+      const currentItem = fp?.series[timeIndexRef.current];
       const forecast = calcIsForecast(dateRef.current, timeIndexRef.current);
 
       return {
         zoneName: props.countryName ?? 'Unknown',
         zoneCode: props.zoneName ?? '',
-        value: rawValue == null ? null : Number(rawValue),
+        value: currentItem?.value ?? null,
         unit: scaleConfigRef.current.unit ?? '',
         label: scaleConfigRef.current.title,
-        zoneStatus: props.zone_status,
-        valid: props.valid,
+        zoneStatus: currentItem?.zoneStatus ?? props.zone_status ?? 'missing',
+        valid: currentItem?.valid ?? props.valid ?? false,
         date: formatDatetime(dateRef.current, timeIndexRef.current),
         isForecast: forecast,
       };
@@ -293,7 +307,20 @@ export function useMapLayers(
     if (!zonePanelOpen || !lastClickRef.current) return;
     const { props, type } = lastClickRef.current;
     updateZoneData(buildZoneData(props, type));
-  }, [selectedDate, selectedTimeIndex, zonePanelOpen]);
+  }, [selectedDate, selectedTimeIndex, zonePanelOpen, processedData]);
+
+  useEffect(() => {
+    if (!lastHoverRef.current || !popupRef.current?.isOpen()) return;
+    const { props, type } = lastHoverRef.current;
+    const data = buildZoneData(props, type);
+    const datetime = formatDatetime(dateRef.current, timeIndexRef.current);
+    const chips = buildPopupChips(
+      data,
+      scopeRef.current,
+      flowTracingRef.current,
+    );
+    popupRef.current.setHTML(buildHTML(data, datetime, chips));
+  }, [selectedTimeIndex, selectedDate, buildZoneData]);
 
   const renderLayers = useCallback(
     (type: string) => {
@@ -370,6 +397,7 @@ export function useMapLayers(
         map.on('mousemove', layerId, (e) => {
           if (!e.features?.length || !popupRef.current) return;
           const props = e.features[0].properties as ZoneFeatureProperties;
+          lastHoverRef.current = { props, type };
           const data = buildZoneData(props, type);
           const datetime = formatDatetime(
             dateRef.current,
@@ -387,6 +415,7 @@ export function useMapLayers(
           map.getCanvas().style.cursor = 'pointer';
         });
         map.on('mouseleave', layerId, () => {
+          lastHoverRef.current = null;
           popupRef.current?.remove();
           map.getCanvas().style.cursor = '';
         });

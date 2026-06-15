@@ -4,39 +4,22 @@ import {
   ProcessedFootprint,
   FootprintItem,
 } from '../types/footprints';
+import { dayCountInRange } from '@/src/shared/utils/dateManager';
 
-/**
- * Generates an array of ISO timestamps for every 15-minute interval in the day of the given date.
- */
-const generateDayIntervals = (date: Date) => {
-  const intervals: string[] = [];
-
-  const start = new Date(
-    Date.UTC(
-      date.getUTCFullYear(),
-      date.getUTCMonth(),
-      date.getUTCDate(),
-      0,
-      0,
-      0,
-      0,
-    ),
+const generateRangeIntervals = (startDate: Date, endDate: Date): string[] => {
+  const N = dayCountInRange(startDate, endDate);
+  const origin = Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate());
+  return Array.from({ length: N * 96 }, (_, i) =>
+    new Date(origin + i * 15 * 60 * 1000).toISOString()
   );
-
-  for (let i = 0; i < 96; i++) {
-    const d = new Date(start.getTime() + i * 15 * 60 * 1000);
-    intervals.push(d.toISOString());
-  }
-
-  return intervals;
 };
 
-/**
- * Transforms raw footprint data into a structured format with complete 15-minute intervals.
- */
-export const processFootprints = (data: Footprint[]): ProcessedFootprint[] => {
+export const processFootprints = (
+  data: Footprint[],
+  startDate: Date,
+  endDate: Date,
+): ProcessedFootprint[] => {
   return data.map((fp) => {
-    // Merge all series into one sorted array of items with timestamp, value, valid, and zoneStatus
     const flattened = fp.series
       .flatMap((s) =>
         s.values.map<FootprintItem>(([timestamp, value]) => ({
@@ -55,17 +38,13 @@ export const processFootprints = (data: Footprint[]): ProcessedFootprint[] => {
       return { ...fp, series: [] };
     }
 
-    // Create a map by timestamp to check if all intervals have data
     const byTimestamp = new Map(
       flattened.map((item) => [new Date(item.timestamp).getTime(), item]),
     );
 
-    // Generate full day intervals based on the first timestamp's date
-    const baseDate = new Date(flattened[0].timestamp);
-    const fullDayIntervals = generateDayIntervals(baseDate);
+    const fullIntervals = generateRangeIntervals(startDate, endDate);
 
-    // For each interval, use the existing data or fill in a placeholder if missing
-    const completedSeries: FootprintItem[] = fullDayIntervals.map((ts) => {
+    const completedSeries: FootprintItem[] = fullIntervals.map((ts) => {
       const tMs = new Date(ts).getTime();
       return (
         byTimestamp.get(tMs) ?? {

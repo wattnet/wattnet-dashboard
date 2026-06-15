@@ -29,3 +29,18 @@ export const getInitialTimeIndex = () => {
 
   return Math.min(intervalIndex, 95);
 };
+
+export const dayCountInRange = (startDate: Date, endDate: Date): number =>
+  Math.round((endDate.getTime() - startDate.getTime()) / 86_400_000) + 1;
+
+export const dateAtDayOffset = (startDate: Date, dayOffset: number): Date =>
+  new Date(Date.UTC(
+    startDate.getUTCFullYear(),
+    startDate.getUTCMonth(),
+    startDate.getUTCDate() + dayOffset,
+  ));
+
+export const decomposeTimeIndex = (startDate: Date, timeIndex: number) => ({
+  date: dateAtDayOffset(startDate, Math.floor(timeIndex / 96)),
+  slotWithinDay: timeIndex % 96,
+});

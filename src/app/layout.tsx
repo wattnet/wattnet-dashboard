@@ -16,7 +16,7 @@ const redHatDisplay = Red_Hat_Display({
 export const metadata: Metadata = {
   title: "Dashboard - wattnet.eu",
   description:
-    "Interactive dashboard for wattnet, visualizing energy generation, CO₂ emissions, and environmental footprint metrics.",
+    "Interactive dashboard to explore electricity-related CO₂ emissions, water footprint, and sustainability metrics across Europe.",
 };
 
 export default function RootLayout({

@@ -27,6 +27,7 @@ import {
   useMapControls,
   useSidebar,
   useZonePanel,
+  useZoneChart,
 } from "@/src/features/dashboard/store/useDashboardStore";
 import { useAppTheme } from "@/src/core/theme/ThemeContext";
 
@@ -49,7 +50,7 @@ const DRAG_HANDLE =
   "color-mix(in srgb, var(--color-foreground) 15%, transparent)";
 
 const COLLAPSED_W = 56;
-const SIDEBAR_W = 400;
+const SIDEBAR_W = 445;
 const EASING = "cubic-bezier(0.16, 1, 0.3, 1)";
 const DURATION = "0.4s";
 
@@ -263,7 +264,7 @@ function ZoneDataContent() {
       </Typography>
     );
 
-  const valStr = zoneData.value != null ? zoneData.value.toFixed(1) : "—";
+  const valStr = zoneData.value != null ? zoneData.value.toFixed(2) : "—";
 
   // 1. Final / Not Final
   const finalKey: ChipKey = zoneData.valid ? "final" : "notFinal";
@@ -298,42 +299,48 @@ function ZoneDataContent() {
 
   return (
     <Box sx={{ display: "flex", gap: 2, alignItems: "flex-start" }}>
-      {/* Left: value */}
+      {/* Left: data */}
       <Box
         sx={{
           flex: 1,
           minWidth: 0,
           display: "flex",
           flexDirection: "column",
-          gap: 1,
+          gap: "5px",
         }}
       >
         {zoneData.date && (
           <Typography
             sx={{
               fontSize: 14,
+              fontWeight: 500,
               color: TEXT_DIM,
+              letterSpacing: "0.03em",
+              fontVariantNumeric: "tabular-nums",
+              lineHeight: 1,
             }}
           >
             {zoneData.date}
           </Typography>
         )}
-        <Box sx={{ display: "flex", alignItems: "baseline", gap: 0.75 }}>
+        <Box sx={{ display: "flex", alignItems: "baseline", gap: 0.75, mt: "5px" }}>
           <Typography
             sx={{
               fontSize: 34,
               fontWeight: 700,
-              color: "var(--color-primary)",
+              color: "color-mix(in srgb, var(--color-foreground) 92%, transparent)",
               lineHeight: 1,
+              fontVariantNumeric: "tabular-nums",
             }}
           >
             {valStr}
           </Typography>
           <Typography
             sx={{
-              fontSize: 16,
+              fontSize: 14,
               fontWeight: 500,
               color: TEXT_MID,
+              lineHeight: 1,
             }}
           >
             {zoneData.unit}
@@ -341,9 +348,10 @@ function ZoneDataContent() {
         </Box>
         <Typography
           sx={{
-            fontSize: 14,
-            color:
-              "color-mix(in srgb, var(--color-foreground) 35%, transparent)",
+            fontSize: 15,
+            color: "color-mix(in srgb, var(--color-foreground) 50%, transparent)",
+            lineHeight: 1,
+            pt: "7px",
           }}
         >
           {zoneData.label}
@@ -360,26 +368,10 @@ function ZoneDataContent() {
           pt: 0.25,
         }}
       >
-        <Chip
-          size="small"
-          label={finalLabel}
-          sx={getChipSx(finalKey, colors)}
-        />
-        <Chip
-          size="small"
-          label={statusLabel}
-          sx={getChipSx(statusKey, colors)}
-        />
-        <Chip
-          size="small"
-          label={scopeLabel}
-          sx={getChipSx(scopeKey, colors)}
-        />
-        <Chip
-          size="small"
-          label={coverageLabel}
-          sx={getChipSx(coverageKey, colors)}
-        />
+        <Chip size="small" label={finalLabel} sx={getChipSx(finalKey, colors)} />
+        <Chip size="small" label={statusLabel} sx={getChipSx(statusKey, colors)} />
+        <Chip size="small" label={scopeLabel} sx={getChipSx(scopeKey, colors)} />
+        <Chip size="small" label={coverageLabel} sx={getChipSx(coverageKey, colors)} />
       </Box>
     </Box>
   );
@@ -500,9 +492,189 @@ function Sidebar({ expandedWidth }: Readonly<{ expandedWidth: number }>) {
   );
 }
 
+// ── Zone chart ────────────────────────────────────────────────────────────
+function ZoneChart() {
+  const { zoneSeries, zoneSeriesIndex } = useZoneChart();
+  const wrapRef = React.useRef<HTMLDivElement>(null);
+  const [w, setW] = React.useState(300);
+
+  const hasSeries = !!zoneSeries && zoneSeries.length >= 2;
+
+  React.useEffect(() => {
+    if (!wrapRef.current) return;
+    const ro = new ResizeObserver(([e]) => setW(e.contentRect.width));
+    ro.observe(wrapRef.current);
+    return () => ro.disconnect();
+  }, [hasSeries]);
+
+  if (!hasSeries) return null;
+
+  const H = 180;
+  const PAD = { t: 16, r: 20, b: 30, l: 48 };
+  const plotW = w - PAD.l - PAD.r;
+  const plotH = H - PAD.t - PAD.b;
+  const n = zoneSeries.length;
+
+  const vals = zoneSeries
+    .map((s) => s.value)
+    .filter((v): v is number => v !== null);
+  if (vals.length < 2) return null;
+
+  const minV = Math.min(...vals);
+  const maxV = Math.max(...vals);
+  const rangeV = maxV - minV || 1;
+
+  const xOf = (i: number) => PAD.l + (i / (n - 1)) * plotW;
+  const yOf = (v: number) => PAD.t + (1 - (v - minV) / rangeV) * plotH;
+
+  const fmtVal = (v: number) =>
+    Math.abs(v) >= 1000 ? `${(v / 1000).toFixed(1)}k` : Math.round(v).toString();
+
+  // Build path segments (skip null gaps)
+  const segments: { line: string; firstX: number; lastX: number }[] = [];
+  let cmds: string[] = [];
+  let firstX = 0;
+  let lastX = 0;
+
+  for (let i = 0; i < n; i++) {
+    const v = zoneSeries[i].value;
+    if (v === null) {
+      if (cmds.length) { segments.push({ line: cmds.join(""), firstX, lastX }); cmds = []; }
+    } else {
+      const x = xOf(i); const y = yOf(v);
+      if (!cmds.length) { firstX = x; cmds.push(`M${x.toFixed(1)},${y.toFixed(1)}`); }
+      else cmds.push(`L${x.toFixed(1)},${y.toFixed(1)}`);
+      lastX = x;
+    }
+  }
+  if (cmds.length) segments.push({ line: cmds.join(""), firstX, lastX });
+
+  const linePath = segments.map((s) => s.line).join(" ");
+  const areaPath = segments
+    .map((s) =>
+      `${s.line}L${s.lastX.toFixed(1)},${(H - PAD.b).toFixed(1)}L${s.firstX.toFixed(1)},${(H - PAD.b).toFixed(1)}Z`,
+    )
+    .join(" ");
+
+  // Day separators (every 96 slots = 1 day)
+  const daySeps: number[] = [];
+  for (let i = 96; i < n; i += 96) daySeps.push(xOf(i));
+
+  // X axis labels: dates for multi-day, hour marks for single day
+  const fmtDate = (ts: string) => {
+    const d = new Date(ts);
+    const day = String(d.getUTCDate()).padStart(2, "0");
+    const month = String(d.getUTCMonth() + 1).padStart(2, "0");
+    const year = String(d.getUTCFullYear()).slice(2);
+    return `${day}/${month}/${year}`;
+  };
+  const xLabels: { x: number; label: string; anchor: string }[] = [];
+  if (n > 96) {
+    for (let i = 96; i < n; i += 96) {
+      const ts = zoneSeries[i]?.timestamp;
+      if (ts) xLabels.push({ x: xOf(i), label: fmtDate(ts), anchor: "middle" });
+    }
+  } else {
+    xLabels.push(
+      { x: xOf(0), label: "0h", anchor: "start" },
+      { x: xOf(Math.round((n - 1) / 2)), label: "12h", anchor: "middle" },
+      { x: xOf(n - 1), label: "24h", anchor: "end" },
+    );
+  }
+
+  // Current position
+  const curX = xOf(Math.min(zoneSeriesIndex, n - 1));
+  const curV = zoneSeries[Math.min(zoneSeriesIndex, n - 1)]?.value;
+  const curY = curV != null ? yOf(curV) : null;
+
+  const axisColor = "var(--color-foreground)";
+  const axisOpacity = 0.3;
+  const labelOpacity = 0.4;
+
+  return (
+    <Box
+      ref={wrapRef}
+      sx={{ width: "100%", mt: 2.5, pt: 2, borderTop: `1px solid ${BORDER}` }}
+    >
+      <Typography
+        sx={{
+          fontSize: 10.5,
+          fontWeight: 600,
+          color: TEXT_DIM,
+          letterSpacing: "0.08em",
+          mb: 1,
+          px: 2.5,
+        }}
+      >
+        TREND
+      </Typography>
+      <svg width={w} height={H} style={{ display: "block" }}>
+        <defs>
+          <linearGradient id="wn-zc-fill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="var(--color-primary)" stopOpacity="0.3" />
+            <stop offset="100%" stopColor="var(--color-primary)" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+
+        {/* Y gridlines at min and max */}
+        <line x1={PAD.l} y1={yOf(maxV)} x2={w - PAD.r} y2={yOf(maxV)}
+          stroke={axisColor} strokeWidth={0.5} strokeOpacity={0.1} />
+        <line x1={PAD.l} y1={yOf(minV)} x2={w - PAD.r} y2={yOf(minV)}
+          stroke={axisColor} strokeWidth={0.5} strokeOpacity={0.1} />
+
+        {/* Y axis labels */}
+        <text x={PAD.l - 5} y={yOf(maxV)} textAnchor="end" dominantBaseline="hanging"
+          fontSize={13} fill={axisColor} fillOpacity={labelOpacity}>
+          {fmtVal(maxV)}
+        </text>
+        <text x={PAD.l - 5} y={yOf(minV)} textAnchor="end" dominantBaseline="auto"
+          fontSize={13} fill={axisColor} fillOpacity={labelOpacity}>
+          {fmtVal(minV)}
+        </text>
+
+        {/* X axis baseline */}
+        <line x1={PAD.l} y1={H - PAD.b} x2={w - PAD.r} y2={H - PAD.b}
+          stroke={axisColor} strokeWidth={0.5} strokeOpacity={axisOpacity} />
+
+        {/* Day separators */}
+        {daySeps.map((x, i) => (
+          <line key={i} x1={x} y1={PAD.t} x2={x} y2={H - PAD.b}
+            stroke={axisColor} strokeWidth={0.5} strokeOpacity={0.12} />
+        ))}
+
+        {/* X axis labels */}
+        {xLabels.map(({ x, label, anchor }, i) => (
+          <text key={i} x={x} y={H - PAD.b + 5} textAnchor={anchor}
+            dominantBaseline="hanging" fontSize={13} fill={axisColor} fillOpacity={labelOpacity}>
+            {label}
+          </text>
+        ))}
+
+        {/* Area fill */}
+        {areaPath && <path d={areaPath} fill="url(#wn-zc-fill)" />}
+
+        {/* Line */}
+        {linePath && (
+          <path d={linePath} fill="none"
+            stroke="var(--color-primary)" strokeWidth={1.5}
+            strokeLinecap="round" strokeLinejoin="round" />
+        )}
+
+        {/* Current position marker */}
+        <line x1={curX} y1={PAD.t} x2={curX} y2={H - PAD.b}
+          stroke={axisColor} strokeWidth={1} strokeOpacity={0.3} strokeDasharray="3,2" />
+        {curY !== null && (
+          <circle cx={curX} cy={curY} r={4}
+            fill="var(--color-primary)" stroke={PANEL_BG} strokeWidth={2} />
+        )}
+      </svg>
+    </Box>
+  );
+}
+
 // ── Desktop zone panel ─────────────────────────────────────────────────────
 function ZonePanel({ expandedWidth }: Readonly<{ expandedWidth: number }>) {
-  const { zonePanelOpen, selectedZone, closeZonePanel } = useZonePanel();
+  const { zonePanelOpen, selectedZone, zoneData, closeZonePanel } = useZonePanel();
   const { collapseSidebar } = useSidebar();
   const theme = useTheme();
   const isNarrow = useMediaQuery(theme.breakpoints.down("lg"));
@@ -552,19 +724,36 @@ function ZonePanel({ expandedWidth }: Readonly<{ expandedWidth: number }>) {
             flexShrink: 0,
           }}
         >
-          <Typography
-            sx={{
-              fontSize: 14,
-              fontWeight: 600,
-              color:
-                "color-mix(in srgb, var(--color-foreground) 85%, transparent)",
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-            }}
-          >
-            {selectedZone ?? ""}
-          </Typography>
+          <Box sx={{ display: "flex", alignItems: "baseline", gap: 1, minWidth: 0, overflow: "hidden" }}>
+            <Typography
+              sx={{
+                fontSize: 18,
+                fontWeight: 600,
+                color: "color-mix(in srgb, var(--color-foreground) 92%, transparent)",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                lineHeight: 1.2,
+              }}
+            >
+              {selectedZone ?? ""}
+            </Typography>
+            {zoneData?.zoneCode && (
+              <Typography
+                component="span"
+                sx={{
+                  fontSize: 12,
+                  fontWeight: 500,
+                  color: "color-mix(in srgb, var(--color-foreground) 45%, transparent)",
+                  letterSpacing: "0.04em",
+                  whiteSpace: "nowrap",
+                  flexShrink: 0,
+                }}
+              >
+                ({zoneData.zoneCode})
+              </Typography>
+            )}
+          </Box>
           <IconButton
             onClick={closeZonePanel}
             size="small"
@@ -577,8 +766,11 @@ function ZonePanel({ expandedWidth }: Readonly<{ expandedWidth: number }>) {
             <CloseIcon fontSize="small" />
           </IconButton>
         </Box>
-        <Box sx={{ flex: 1, overflowY: "auto", p: 2.5 }}>
-          <ZoneDataContent />
+        <Box sx={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+          <Box sx={{ p: 2.5 }}>
+            <ZoneDataContent />
+          </Box>
+          <ZoneChart />
         </Box>
       </Box>
     </Box>
@@ -723,18 +915,17 @@ function MobileTopSheet({
         />
       </Box>
 
-      {/* Content — full sheet scrollable */}
-      {expanded && (
-        <Box
-          sx={{
-            flex: 1,
-            minHeight: 0,
-            overflowY: "auto",
-          }}
-        >
-          <MobileSidebarContent />
-        </Box>
-      )}
+      {/* Content — always mounted so the Portal slot exists in DOM */}
+      <Box
+        sx={{
+          flex: 1,
+          minHeight: 0,
+          overflowY: "auto",
+          display: expanded ? "block" : "none",
+        }}
+      >
+        <MobileSidebarContent />
+      </Box>
     </Box>
   );
 }
@@ -742,7 +933,7 @@ function MobileTopSheet({
 // ── Mobile bottom sheet ────────────────────────────────────────────────────
 function MobileBottomSheet() {
   const { bottomSheetState, setBottomSheetState } = useBottomSheet();
-  const { selectedZone, zonePanelOpen, openCount, closeZonePanel } =
+  const { selectedZone, zoneData, zonePanelOpen, openCount, closeZonePanel } =
     useZonePanel();
   const dragStartY = React.useRef<number | null>(null);
 
@@ -809,16 +1000,35 @@ function MobileBottomSheet() {
               borderBottom: `1px solid ${BORDER}`,
             }}
           >
-            <Typography
-              sx={{
-                fontSize: 14,
-                fontWeight: 600,
-                color:
-                  "color-mix(in srgb, var(--color-foreground) 85%, transparent)",
-              }}
-            >
-              {selectedZone ?? ""}
-            </Typography>
+            <Box sx={{ display: "flex", alignItems: "baseline", gap: 1, minWidth: 0 }}>
+              <Typography
+                sx={{
+                  fontSize: 18,
+                  fontWeight: 600,
+                  color: "color-mix(in srgb, var(--color-foreground) 92%, transparent)",
+                  lineHeight: 1.2,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {selectedZone ?? ""}
+              </Typography>
+              {zoneData?.zoneCode && (
+                <Typography
+                  component="span"
+                  sx={{
+                    fontSize: 12,
+                    fontWeight: 500,
+                    color: "color-mix(in srgb, var(--color-foreground) 45%, transparent)",
+                    letterSpacing: "0.04em",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  ({zoneData.zoneCode})
+                </Typography>
+              )}
+            </Box>
             <IconButton
               onClick={handleClose}
               size="small"
@@ -833,16 +1043,12 @@ function MobileBottomSheet() {
           </Box>
 
           {/* Scrollable content */}
-          <Box
-            sx={{
-              flex: 1,
-              overflowY: "auto",
-              px: 2,
-              pt: 2,
-              pb: 3,
-            }}
-          >
-            <ZoneDataContent />
+          <Box sx={{ flex: 1, overflowY: "auto" }}>
+            <Box sx={{ px: 2, pt: 2, pb: 1 }}>
+              <ZoneDataContent />
+            </Box>
+            <ZoneChart />
+            <Box sx={{ height: 24 }} />
           </Box>
         </>
       )}
@@ -908,6 +1114,7 @@ function DashboardLayoutInner({
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const isNarrow = useMediaQuery(theme.breakpoints.down("lg"));
+  const { sidebarCollapsed } = useSidebar();
 
   const [mounted, setMounted] = React.useState(false);
 
@@ -958,9 +1165,8 @@ function DashboardLayoutInner({
   const sidebarExpandedWidth = isNarrow
     ? Math.round(window.innerWidth * 0.5)
     : SIDEBAR_W;
-  const zonePanelExpandedWidth = isNarrow
-    ? Math.round(window.innerWidth * 0.5)
-    : 380;
+  const sidebarCurrentWidth = sidebarCollapsed ? COLLAPSED_W : sidebarExpandedWidth;
+  const zonePanelExpandedWidth = Math.round((window.innerWidth - sidebarCurrentWidth) / 2);
 
   return (
     <Box
