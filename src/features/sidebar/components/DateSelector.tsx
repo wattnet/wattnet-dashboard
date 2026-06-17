@@ -204,7 +204,6 @@ export default function DateSelector({
     const normalized = normalizeToUTCDate(clicked);
     if (!pendingStart) {
       setPendingStart(normalized);
-      setDateRange(normalized, normalized);
       return;
     }
     const a = normalized < pendingStart ? normalized : pendingStart;
@@ -585,6 +584,7 @@ export default function DateSelector({
             <Box
               sx={{
                 borderTop: `1px solid ${BORDER}`,
+                pt: 1,
                 pb: 1.5,
 
                 "& .MuiDateCalendar-root": {
@@ -615,7 +615,7 @@ export default function DateSelector({
 
                 "& .MuiYearCalendar-root": { width: "100%" },
 
-                "& .MuiPickersCalendarHeader-root": { px: "12px", mb: 0 },
+                "& .MuiPickersCalendarHeader-root": { px: "12px", mt: 0, mb: 0 },
                 "& .MuiDayCalendar-header": {
                   px: "12px",
                   justifyContent: "space-between",
@@ -685,6 +685,20 @@ export default function DateSelector({
                 "& .Mui-disabled": { opacity: 0.3 },
               }}
             >
+              {pendingStart && (
+                <Typography
+                  sx={{
+                    fontSize: 13,
+                    color: ACCENT,
+                    px: "12px",
+                    pt: 0,
+                    pb: 0,
+                    fontWeight: 500,
+                  }}
+                >
+                  Click the same day to confirm, or pick an end date (max 7 days)
+                </Typography>
+              )}
               <DateCalendar
                 value={pendingStart ?? startDate}
                 reduceAnimations
@@ -697,20 +711,6 @@ export default function DateSelector({
             </Box>
           </Collapse>
         </Box>
-
-        {pendingStart && calOpen && (
-          <Typography
-            sx={{
-              fontSize: 11.5,
-              color: ACCENT,
-              mt: 0.75,
-              px: 0.5,
-              fontWeight: 500,
-            }}
-          >
-            Select end date (max 7 days)
-          </Typography>
-        )}
       </Box>
 
       {/* Slider */}

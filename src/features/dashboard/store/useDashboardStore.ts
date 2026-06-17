@@ -43,6 +43,7 @@ interface DashboardState {
   canvasRect: CanvasRect;
   zoneSeries: ZoneSeriesPoint[] | null;
   zoneSeriesIndex: number;
+  initialDataReady: boolean;
 
   // Simple actions (setters)
   setMetric: (v: MetricKey) => void;
@@ -53,6 +54,7 @@ interface DashboardState {
   setCanvasRect: (rect: CanvasRect) => void;
   setZoneSeries: (series: ZoneSeriesPoint[] | null) => void;
   setZoneSeriesIndex: (index: number) => void;
+  setInitialDataReady: () => void;
 
   // Complex actions
   openZonePanel: (zoneName: string, data?: ZoneData) => void;
@@ -79,6 +81,7 @@ export const useDashboardStore = create<DashboardState>((set) => ({
   canvasRect: { top: 0, left: 0, width: 0, height: 0 },
   zoneSeries: null,
   zoneSeriesIndex: 0,
+  initialDataReady: false,
 
   // Setters
   setMetric: (metric) => set({ metric }),
@@ -89,6 +92,7 @@ export const useDashboardStore = create<DashboardState>((set) => ({
   setCanvasRect: (canvasRect) => set({ canvasRect }),
   setZoneSeries: (zoneSeries) => set({ zoneSeries }),
   setZoneSeriesIndex: (zoneSeriesIndex) => set({ zoneSeriesIndex }),
+  setInitialDataReady: () => set({ initialDataReady: true }),
 
   // Complex actions
   openZonePanel: (zoneName, data) =>

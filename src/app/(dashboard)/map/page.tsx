@@ -165,6 +165,19 @@ export default function MapPage() {
     rangeKey,
   );
 
+  const setInitialDataReady = useDashboardStore((s) => s.setInitialDataReady);
+  const hasStartedLoading = useRef(false);
+  const initialDataReadyFired = useRef(false);
+  useEffect(() => {
+    if (loading) {
+      hasStartedLoading.current = true;
+    }
+    if (!loading && hasStartedLoading.current && !initialDataReadyFired.current) {
+      initialDataReadyFired.current = true;
+      setInitialDataReady();
+    }
+  }, [loading, setInitialDataReady]);
+
   const isToday = useMemo(() => {
     const today = getTodayUTC();
     return (

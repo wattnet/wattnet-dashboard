@@ -21,6 +21,7 @@ import SidebarContent, {
   MobileSidebarContent,
 } from "@/src/features/sidebar/components/SidebarContent";
 import {
+  useDashboardStore,
   useBottomSheet,
   useCanvasRect,
   useFlowTracing,
@@ -510,7 +511,7 @@ function ZoneChart() {
   if (!hasSeries) return null;
 
   const H = 180;
-  const PAD = { t: 16, r: 20, b: 30, l: 48 };
+  const PAD = { t: 16, r: 20, b: 30, l: 52 };
   const plotW = w - PAD.l - PAD.r;
   const plotH = H - PAD.t - PAD.b;
   const n = zoneSeries.length;
@@ -520,15 +521,44 @@ function ZoneChart() {
     .filter((v): v is number => v !== null);
   if (vals.length < 2) return null;
 
-  const minV = Math.min(...vals);
-  const maxV = Math.max(...vals);
-  const rangeV = maxV - minV || 1;
+  const dataMin = Math.min(...vals);
+  const dataMax = Math.max(...vals);
+
+  // Nice Y axis with padding and round ticks
+  const niceYAxis = (lo: number, hi: number, targetTicks = 4) => {
+    const rawRange = hi - lo || 1;
+    const pad = rawRange * 0.12;
+    const paddedLo = lo - pad;
+    const paddedHi = hi + pad;
+    const range = paddedHi - paddedLo;
+    const roughStep = range / targetTicks;
+    const mag = Math.pow(10, Math.floor(Math.log10(roughStep)));
+    const norm = roughStep / mag;
+    const niceNorm = norm < 1.5 ? 1 : norm < 3 ? 2 : norm < 7 ? 5 : 10;
+    const step = niceNorm * mag;
+    const yMin = Math.floor(paddedLo / step) * step;
+    const yMax = Math.ceil(paddedHi / step) * step;
+    const ticks: number[] = [];
+    for (let t = yMin; t <= yMax + step * 0.001; t += step) {
+      ticks.push(Math.round(t * 1e9) / 1e9);
+    }
+    return { yMin, yMax, ticks, step };
+  };
+
+  const { yMin, yMax, ticks: yTicks, step: yStep } = niceYAxis(dataMin, dataMax);
+  const rangeV = yMax - yMin;
 
   const xOf = (i: number) => PAD.l + (i / (n - 1)) * plotW;
-  const yOf = (v: number) => PAD.t + (1 - (v - minV) / rangeV) * plotH;
+  const yOf = (v: number) => PAD.t + (1 - (v - yMin) / rangeV) * plotH;
 
-  const fmtVal = (v: number) =>
-    Math.abs(v) >= 1000 ? `${(v / 1000).toFixed(1)}k` : Math.round(v).toString();
+  const yDecimals = Math.max(0, -Math.floor(Math.log10(yStep)));
+  const fmtVal = (v: number) => {
+    if (Math.abs(v) >= 1000) {
+      const k = v / 1000;
+      return `${Number.isInteger(k) ? k : k.toFixed(1)}k`;
+    }
+    return yDecimals === 0 ? Math.round(v).toString() : v.toFixed(yDecimals);
+  };
 
   // Build path segments (skip null gaps)
   const segments: { line: string; firstX: number; lastX: number }[] = [];
@@ -616,21 +646,21 @@ function ZoneChart() {
           </linearGradient>
         </defs>
 
-        {/* Y gridlines at min and max */}
-        <line x1={PAD.l} y1={yOf(maxV)} x2={w - PAD.r} y2={yOf(maxV)}
-          stroke={axisColor} strokeWidth={0.5} strokeOpacity={0.1} />
-        <line x1={PAD.l} y1={yOf(minV)} x2={w - PAD.r} y2={yOf(minV)}
-          stroke={axisColor} strokeWidth={0.5} strokeOpacity={0.1} />
-
-        {/* Y axis labels */}
-        <text x={PAD.l - 5} y={yOf(maxV)} textAnchor="end" dominantBaseline="hanging"
-          fontSize={13} fill={axisColor} fillOpacity={labelOpacity}>
-          {fmtVal(maxV)}
-        </text>
-        <text x={PAD.l - 5} y={yOf(minV)} textAnchor="end" dominantBaseline="auto"
-          fontSize={13} fill={axisColor} fillOpacity={labelOpacity}>
-          {fmtVal(minV)}
-        </text>
+        {/* Y gridlines + labels */}
+        {yTicks.map((t) => {
+          const y = yOf(t);
+          if (y < PAD.t - 2 || y > H - PAD.b + 2) return null;
+          return (
+            <g key={t}>
+              <line x1={PAD.l} y1={y} x2={w - PAD.r} y2={y}
+                stroke={axisColor} strokeWidth={0.5} strokeOpacity={0.1} />
+              <text x={PAD.l - 5} y={y} textAnchor="end" dominantBaseline="middle"
+                fontSize={12} fill={axisColor} fillOpacity={labelOpacity}>
+                {fmtVal(t)}
+              </text>
+            </g>
+          );
+        })}
 
         {/* X axis baseline */}
         <line x1={PAD.l} y1={H - PAD.b} x2={w - PAD.r} y2={H - PAD.b}
@@ -1101,11 +1131,44 @@ function MobileLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   );
 }
 
+// ── Initial loader — stable sibling, never recreated by layout changes ──────
+function FullscreenLoader() {
+  const initialDataReady = useDashboardStore((s) => s.initialDataReady);
+  if (initialDataReady) return null;
+  return (
+    <Box
+      sx={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 9999,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: "color-mix(in srgb, var(--color-panel) 93%, transparent)",
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+      }}
+    >
+      <Box
+        component="img"
+        src="/images/wattnet-loader.svg"
+        alt="Loading..."
+        sx={{ width: 150, height: 150 }}
+      />
+    </Box>
+  );
+}
+
 // ── Root layout ────────────────────────────────────────────────────────────
 export default function DashboardLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  return <DashboardLayoutInner>{children}</DashboardLayoutInner>;
+  return (
+    <>
+      <FullscreenLoader />
+      <DashboardLayoutInner>{children}</DashboardLayoutInner>
+    </>
+  );
 }
 
 function DashboardLayoutInner({
@@ -1122,43 +1185,7 @@ function DashboardLayoutInner({
     setMounted(true);
   }, []);
 
-  if (!mounted) {
-    return (
-      <Box
-        sx={{
-          width: "100vw",
-          height: "100vh",
-          bgcolor: "var(--color-background)",
-          position: "relative",
-          overflow: "hidden",
-          zIndex: 10,
-        }}
-      >
-        <Background />
-
-        <Box
-          sx={{
-            position: "absolute",
-            inset: 0,
-            zIndex: 50,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            backgroundColor: "color-mix(in srgb, var(--color-panel) 93%, transparent)",
-            backdropFilter: "blur(20px)",
-            WebkitBackdropFilter: "blur(20px)",
-          }}
-        >
-          <Box
-            component="img"
-            src="/images/wattnet-loader.svg"
-            alt="Loading..."
-            sx={{ width: 150, height: 150 }}
-          />
-        </Box>
-      </Box>
-    );
-  }
+  if (!mounted) return null;
 
   if (isMobile) return <MobileLayout>{children}</MobileLayout>;
 
