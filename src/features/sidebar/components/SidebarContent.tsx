@@ -289,8 +289,9 @@ function FundingBody() {
           fontWeight: 400,
         }}
       >
-        This dashboard is provided by CSIC. The work is funded from the European
-        Union's Horizon Europe research and innovation programme through the{" "}
+        This dashboard is provided by CSIC. The work is funded from the
+        European Union's Horizon Europe research and innovation programme through
+        the{" "}
         <Box
           component="a"
           href="https://greendigit-project.eu/"
@@ -318,23 +319,34 @@ function FundingBody() {
         >
           101131207
         </Box>
-        .
+        , as well as the Swiss State Secretariat for Education, Research and
+        Innovation (SERI).
       </Typography>
       <Box
         sx={{
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          mt: 1.25,
+          mt: 1.5,
         }}
       >
-        <Image
-          src="/images/EN_FundedbytheEU_RGB_POS.png"
-          alt="Funded by the European Union"
-          width={150}
-          height={50}
-          style={{ objectFit: "contain" }}
-        />
+        {/* EU logo + Swiss flag grouped on the left */}
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Image
+            src="/images/EN_FundedbytheEU_RGB_POS.png"
+            alt="Funded by the European Union"
+            width={150}
+            height={50}
+            style={{ objectFit: "contain" }}
+          />
+          <Image
+            src="/images/Flag_of_Switzerland.svg"
+            alt="Swiss State Secretariat for Education, Research and Innovation (SERI)"
+            width={27}
+            height={27}
+            style={{ objectFit: "contain" }}
+          />
+        </Box>
         <Image
           src="/images/GreenDIGIT logo color horizontal2.png"
           alt="GreenDIGIT"
