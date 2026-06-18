@@ -811,7 +811,7 @@ export default function FlowArrows({
 
             <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 6 }}>
               <span style={{ fontSize: 34, fontWeight: 700, color: "color-mix(in srgb, var(--color-foreground) 92%, transparent)", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
-                {Math.round(tooltipArrow.mw).toLocaleString()}
+                {Math.round(tooltipArrow.mw)}
               </span>
               <span style={{ fontSize: 14, fontWeight: 500, color: "color-mix(in srgb, var(--color-foreground) 40%, transparent)", lineHeight: 1 }}>MW</span>
             </div>
