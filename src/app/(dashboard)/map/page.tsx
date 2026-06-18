@@ -35,7 +35,9 @@ import { useShallow } from "zustand/react/shallow";
 import { Portal } from "@/src/shared/components/Portal";
 import { MetricKey, useMapScales } from "@/src/features/map/hooks/useMapScales";
 import ThemeSwitcher from "@/src/features/map/components/ThemeSwitcher";
-import { parseMapParams, parsePlayParam } from "@/src/shared/utils/urlParams";
+import { parseMapParams, parsePlayParam, parseControlParams } from "@/src/shared/utils/urlParams";
+import FlowArrows from "@/src/features/map/components/FlowArrows";
+import { useImportsData } from "@/src/features/map/hooks/useImportsData";
 
 // ── Palette ─────────────────────────────────────────────────────
 const BORDER = "var(--color-border)";
@@ -97,8 +99,8 @@ export default function MapPage() {
     zoom: searchParams.get("zoom"),
   });
 
-  const { metric, dimension, scope } = useMapControls();
-  const { flowTracing } = useFlowTracing();
+  const { metric, dimension, scope, setMetric, setDimension, setScope } = useMapControls();
+  const { flowTracing, setFlowTracing } = useFlowTracing();
   const { openZonePanel, closeZonePanel } = useZonePanel();
   const { canvasRect } = useCanvasRect();
   const { bottomSheetState } = useBottomSheet();
@@ -106,6 +108,34 @@ export default function MapPage() {
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
   const mapRef = useRef<Map | null>(null);
+  const [isMapReady, setIsMapReady] = useState(false);
+
+  // Apply control params from URL on first mount
+  useEffect(() => {
+    const p = parseControlParams({
+      metric: searchParams.get("metric"),
+      dimension: searchParams.get("dimension"),
+      scope: searchParams.get("scope"),
+      flowTracing: searchParams.get("flowTracing"),
+    });
+    if (p.metric !== undefined) setMetric(p.metric);
+    if (p.dimension !== undefined) setDimension(p.dimension);
+    if (p.scope !== undefined) setScope(p.scope);
+    if (p.flowTracing !== undefined) setFlowTracing(p.flowTracing);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Keep URL in sync whenever controls change
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("metric", metric);
+    params.set("dimension", dimension);
+    params.set("scope", scope);
+    if (flowTracing) params.delete("flowTracing");
+    else params.set("flowTracing", "false");
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [metric, dimension, scope, flowTracing]);
 
   const [startDate, setStartDate] = useState(getTodayUTC);
   const [endDate, setEndDate] = useState(getTodayUTC);
@@ -206,8 +236,17 @@ export default function MapPage() {
     startDate,
   });
 
+  const { data: importsData } = useImportsData(
+    {
+      start: `${startKey}T00:00:00Z`,
+      end: `${endKey}T23:59:59Z`,
+    },
+    rangeKey,
+    ephemeralToken,
+  );
+
   const processedData = useMemo(
-    () => (data ? processFootprints(data, startDate, endDate) : []),
+    () => (Array.isArray(data) ? processFootprints(data, startDate, endDate) : []),
     [data, startDate, endDate],
   );
 
@@ -268,12 +307,12 @@ export default function MapPage() {
 
   useEffect(() => {
     if (!zonePanelOpen || !zoneCode) { setZoneSeries(null); return; }
-    if (processedData.length === 0) return; // keep old series while loading
+    if (processedData.length === 0 || loading) return; // keep old series while stale data is present
     const fp = processedData.find((d) => d.zone === zoneCode);
     setZoneSeries(
       fp ? fp.series.map((s) => ({ value: s.value, timestamp: s.timestamp })) : null,
     );
-  }, [zonePanelOpen, zoneCode, processedData, setZoneSeries]);
+  }, [zonePanelOpen, zoneCode, processedData, loading, setZoneSeries]);
 
   useEffect(() => {
     if (zonePanelOpen) setZoneSeriesIndex(selectedTimeIndex);
@@ -329,10 +368,21 @@ export default function MapPage() {
           onEmptyClick={closeZonePanel}
           onMapReady={(m) => {
             mapRef.current = m;
+            setIsMapReady(true);
           }}
           initialCenter={initialCenter}
           initialZoom={initialZoom}
         />
+        {flowTracing && isMapReady && importsData.length > 0 && (
+          <FlowArrows
+            mapRef={mapRef}
+            importsData={importsData}
+            selectedTimeIndex={selectedTimeIndex}
+            startDate={startDate}
+            processedData={processedData}
+            legendConfig={legendConfig}
+          />
+        )}
       </Box>
 
       {isMobile && (

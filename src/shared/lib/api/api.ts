@@ -1,5 +1,6 @@
 import { FootprintQueryParams } from '@/src/shared/types/queryParams';
 import { Footprint } from '@/src/features/map/types/footprints';
+import { ZoneImports, ImportsQueryParams } from '@/src/features/map/types/imports';
 import { endpoints } from '@/src/shared/lib/api/endpoints';
 import { getAccessToken } from '@/src/shared/lib/auth/token';
 
@@ -46,6 +47,26 @@ export async function fetchGreenScore(
     return await fetchFromApi(endpoints.greenScore(params), 'green-score');
   } catch (err) {
     console.error('fetchGreenScore error:', err);
+    return [];
+  }
+}
+
+export async function fetchImports(
+  params: ImportsQueryParams,
+): Promise<ZoneImports[]> {
+  try {
+    const token = await getAccessToken();
+    const res = await fetch(endpoints.imports(params), {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!res.ok) throw new Error(`Error fetching imports: ${res.status}`);
+    return res.json();
+  } catch (err) {
+    console.error('fetchImports error:', err);
     return [];
   }
 }
