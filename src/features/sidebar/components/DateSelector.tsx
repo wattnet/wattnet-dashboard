@@ -216,8 +216,9 @@ export default function DateSelector({
 
   const shouldDisableDate = (day: Date): boolean => {
     if (!pendingStart) return false;
-    const a = day < pendingStart ? day : pendingStart;
-    const b = day < pendingStart ? pendingStart : day;
+    const normalized = normalizeToUTCDate(day);
+    const a = normalized < pendingStart ? normalized : pendingStart;
+    const b = normalized < pendingStart ? pendingStart : normalized;
     return dayCountInRange(a, b) > 7;
   };
 

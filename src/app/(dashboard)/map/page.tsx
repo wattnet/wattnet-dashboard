@@ -14,6 +14,7 @@ import {
   getInitialTimeIndex,
   getTodayUTC,
   decomposeTimeIndex,
+  dayCountInRange,
 } from "@/src/shared/utils/dateManager";
 import { processFootprints } from "@/src/features/map/utils/footprintAdapter";
 import GlobalTag from "@/src/features/map/components/GlobalTag";
@@ -162,7 +163,17 @@ export default function MapPage() {
   const setDateRange = useCallback((start: Date, end: Date) => {
     setStartDate(start);
     setEndDate(end);
-    setSelectedTimeIndex(0);
+    const today = getTodayUTC();
+    const endIsToday =
+      end.getUTCFullYear() === today.getUTCFullYear() &&
+      end.getUTCMonth() === today.getUTCMonth() &&
+      end.getUTCDate() === today.getUTCDate();
+    if (endIsToday) {
+      const N = dayCountInRange(start, end);
+      setSelectedTimeIndex((N - 1) * 96 + getInitialTimeIndex());
+    } else {
+      setSelectedTimeIndex(0);
+    }
     setIsPlayingState(false);
   }, []);
 
@@ -337,13 +348,7 @@ export default function MapPage() {
 
   return (
     <>
-      <Portal
-        targetId={
-          isMobile
-            ? "desktop-sidebar-controls-slot"
-            : "desktop-sidebar-controls-slot"
-        }
-      >
+      <Portal targetId="desktop-sidebar-controls-slot">
         <DateSelector
           startDate={startDate}
           endDate={endDate}

@@ -289,9 +289,7 @@ function FundingBody() {
           fontWeight: 400,
         }}
       >
-        This dashboard is provided by CSIC. The work is funded from the
-        European Union's Horizon Europe research and innovation programme through
-        the{" "}
+        This dashboard is provided by CSIC. This work was developed within the{" "}
         <Box
           component="a"
           href="https://greendigit-project.eu/"
@@ -303,9 +301,10 @@ function FundingBody() {
             "&:hover": { textDecoration: "underline" },
           }}
         >
-          GreenDIGIT project
-        </Box>
-        , under the grant agreement No.{" "}
+          GreenDIGIT
+        </Box>{" "}
+        project, funded by the European Union's Horizon Europe research and
+        innovation programme under grant agreement No.{" "}
         <Box
           component="a"
           href="https://cordis.europa.eu/project/id/101131207"
@@ -319,8 +318,8 @@ function FundingBody() {
         >
           101131207
         </Box>
-        , as well as the Swiss State Secretariat for Education, Research and
-        Innovation (SERI).
+        , and by the Swiss State Secretariat for Education, Research and
+        Innovation.
       </Typography>
       <Box
         sx={{

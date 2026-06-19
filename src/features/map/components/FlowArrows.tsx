@@ -178,15 +178,14 @@ function makeArrowGeometry(
 
   const d = `M ${pts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" L ")} Z`;
 
-  // N chevrons evenly spaced across the full arrow length (tail → tip)
-  // chSpan deliberately overshoots — the clipPath clips them to the arrow silhouette
-  const N_CHEVRONS = 4;
-  const shaftLen = arrowLen - headLen;
+  // N chevrons evenly spaced along the full arrow length (tail → tip).
+  // The clipPath trims any chevron that extends beyond the arrowhead silhouette.
+  const N_CHEVRONS = 5;
   const chDepth = Math.max(3, 5 * scale);
   const chSpan = Math.max(6, HEAD_W_BASE * scale);
   const chevronPaths: string[] = [];
   for (let k = 1; k <= N_CHEVRONS; k++) {
-    const t = k / (N_CHEVRONS + 1);
+    const t = (k - 1) / N_CHEVRONS;
     chevronPaths.push(
       makeChevronPath(
         tailX + cos * arrowLen * t,
@@ -238,6 +237,9 @@ function lookupValue(
   tsMap: Map<number, number>,
   targetMs: number,
 ): number | null {
+  const direct = tsMap.get(targetMs);
+  if (direct !== undefined) return direct;
+  // Fallback: tolerance window for slight timestamp misalignments
   const tolerance = 15 * 60 * 1000;
   let best: number | null = null;
   let bestDelta = Infinity;
@@ -435,12 +437,17 @@ export default function FlowArrows({
   }, []);
 
   useEffect(() => {
-    fetch("/maps/wattnet.geojson")
+    const controller = new AbortController();
+    fetch("/maps/wattnet.geojson", { signal: controller.signal })
       .then((r) => r.json())
       .then((d) => {
         geoJSONRef.current = d;
         setGeoJSONLoaded(true);
+      })
+      .catch((err) => {
+        if (err.name !== "AbortError") console.error("Failed to load zone GeoJSON:", err);
       });
+    return () => controller.abort();
   }, []);
 
   // Sync DOM arrow positions directly on every map render frame — no React re-render
@@ -497,6 +504,15 @@ export default function FlowArrows({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [geoJSONLoaded]);
 
+  // Pre-merge series per zone — recomputed only when importsData changes, not on every tick
+  const mergedImportsMap = useMemo(() => {
+    const result = new Map<string, Map<string, Map<number, number>>>();
+    for (const zoneImport of importsData) {
+      result.set(zoneImport.zone, buildMergedImports(zoneImport));
+    }
+    return result;
+  }, [importsData]);
+
   const arrows = useMemo((): ArrowItem[] => {
     const map = mapRef.current;
     if (!map || importsData.length === 0 || Object.keys(centroids).length === 0)
@@ -506,10 +522,12 @@ export default function FlowArrows({
     const scale = arrowScale(map.getZoom());
     const result: ArrowItem[] = [];
     const seen = new Set<string>();
+    const fpByZone = new Map(processedData.map((d) => [d.zone, d]));
 
     for (const zoneImport of importsData) {
       const destZone = zoneImport.zone;
-      const mergedImports = buildMergedImports(zoneImport);
+      const mergedImports = mergedImportsMap.get(destZone);
+      if (!mergedImports) continue;
 
       for (const [srcZone, tsMap] of mergedImports.entries()) {
         const pairKey = [destZone, srcZone].sort().join(":");
@@ -527,7 +545,7 @@ export default function FlowArrows({
         const p1 = map.project(srcCentroid as [number, number]);
         const p2 = map.project(destCentroid as [number, number]);
 
-        const srcFp = processedData.find((d) => d.zone === srcZone);
+        const srcFp = fpByZone.get(srcZone);
         const metricValue = srcFp?.series?.[selectedTimeIndex]?.value ?? null;
 
         const color =
@@ -591,7 +609,7 @@ export default function FlowArrows({
     }
     return result;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [importsData, selectedTimeIndex, startDate, centroids, zoneNames, zoneFeatures, processedData, legendConfig]);
+  }, [mergedImportsMap, importsData, selectedTimeIndex, startDate, centroids, zoneNames, zoneFeatures, processedData, legendConfig]);
 
   if (!mapContainer) return null;
 
@@ -811,7 +829,7 @@ export default function FlowArrows({
 
             <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 6 }}>
               <span style={{ fontSize: 34, fontWeight: 700, color: "color-mix(in srgb, var(--color-foreground) 92%, transparent)", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
-                {Math.round(tooltipArrow.mw)}
+                {tooltipArrow.mw.toFixed(2)}
               </span>
               <span style={{ fontSize: 14, fontWeight: 500, color: "color-mix(in srgb, var(--color-foreground) 40%, transparent)", lineHeight: 1 }}>MW</span>
             </div>
@@ -822,7 +840,7 @@ export default function FlowArrows({
                 <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: tooltipArrow.color, border: "1px solid rgba(0,0,0,0.2)", flexShrink: 0 }} />
                 with a{" "}
                 <strong style={{ color: "color-mix(in srgb, var(--color-foreground) 85%, transparent)", fontVariantNumeric: "tabular-nums", fontSize: 15 }}>
-                  {tooltipArrow.metricValue.toFixed(1)} {legendConfig.unit ?? ""}
+                  {tooltipArrow.metricValue.toFixed(2)} {legendConfig.unit ?? ""}
                 </strong>
                 {" "}{legendConfig.title.toLowerCase()}
               </div>
