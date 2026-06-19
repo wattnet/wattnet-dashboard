@@ -15,6 +15,8 @@ import {
   getTodayUTC,
   decomposeTimeIndex,
   dayCountInRange,
+  slotToTimestampMs,
+  isSameUTCDay,
 } from "@/src/shared/utils/dateManager";
 import { processFootprints } from "@/src/features/map/utils/footprintAdapter";
 import GlobalTag from "@/src/features/map/components/GlobalTag";
@@ -64,9 +66,6 @@ const zoomBtnSx = {
   "&:hover": { color: BTN_HOVER_COLOR, bgcolor: BTN_HOVER_BG },
 };
 
-function mobileLegendBottom(_sheetState: string): number {
-  return LEGEND_MARGIN;
-}
 
 type ZoomButtonsProps = { mapRef: React.RefObject<Map | null> };
 
@@ -163,12 +162,7 @@ export default function MapPage() {
   const setDateRange = useCallback((start: Date, end: Date) => {
     setStartDate(start);
     setEndDate(end);
-    const today = getTodayUTC();
-    const endIsToday =
-      end.getUTCFullYear() === today.getUTCFullYear() &&
-      end.getUTCMonth() === today.getUTCMonth() &&
-      end.getUTCDate() === today.getUTCDate();
-    if (endIsToday) {
+    if (isSameUTCDay(end, getTodayUTC())) {
       const N = dayCountInRange(start, end);
       setSelectedTimeIndex((N - 1) * 96 + getInitialTimeIndex());
     } else {
@@ -219,14 +213,7 @@ export default function MapPage() {
     }
   }, [loading, setInitialDataReady]);
 
-  const isToday = useMemo(() => {
-    const today = getTodayUTC();
-    return (
-      endDate.getUTCFullYear() === today.getUTCFullYear() &&
-      endDate.getUTCMonth() === today.getUTCMonth() &&
-      endDate.getUTCDate() === today.getUTCDate()
-    );
-  }, [endDate]);
+  const isToday = useMemo(() => isSameUTCDay(endDate, getTodayUTC()), [endDate]);
 
   useDataRefresh({
     params: {
@@ -275,7 +262,6 @@ export default function MapPage() {
     }
 
     const now = getTodayUTC();
-
     const currentTimestamp = Date.UTC(
       now.getUTCFullYear(),
       now.getUTCMonth(),
@@ -284,20 +270,7 @@ export default function MapPage() {
       Math.floor(now.getUTCMinutes() / 15) * 15,
     );
 
-    const { date: slotDate, slotWithinDay } = decomposeTimeIndex(
-      startDate,
-      selectedTimeIndex,
-    );
-    const selectedHours = Math.floor(slotWithinDay / 4);
-    const selectedMinutes = (slotWithinDay % 4) * 15;
-
-    const selectedTimestamp = Date.UTC(
-      slotDate.getUTCFullYear(),
-      slotDate.getUTCMonth(),
-      slotDate.getUTCDate(),
-      selectedHours,
-      selectedMinutes,
-    );
+    const selectedTimestamp = slotToTimestampMs(startDate, selectedTimeIndex);
 
     if (selectedTimestamp > currentTimestamp) return "forecast";
     if (selectedTimestamp < currentTimestamp) return "historical";
@@ -334,7 +307,7 @@ export default function MapPage() {
   };
 
   const mobileTopOffset = MOBILE_TOP_BAR_H + 8;
-  const mobileLegendBot = mobileLegendBottom(bottomSheetState);
+  const mobileLegendBot = LEGEND_MARGIN;
   const showDesktopOverlay = !isMobile && canvasRect.width > 0;
 
   const legendEl = (

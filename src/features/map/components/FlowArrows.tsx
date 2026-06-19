@@ -6,7 +6,7 @@ import type { Map as MapLibreMap } from "maplibre-gl";
 import type { FeatureCollection, Feature } from "geojson";
 import { ZoneImports, ImportSeries } from "@/src/features/map/types/imports";
 import { computeZoneCentroids } from "@/src/features/map/utils/zoneCentroids";
-import { decomposeTimeIndex } from "@/src/shared/utils/dateManager";
+import { decomposeTimeIndex, slotToTimestampMs } from "@/src/shared/utils/dateManager";
 import { ProcessedFootprint } from "@/src/features/map/types/footprints";
 import { ScaleConfig } from "@/src/features/map/hooks/useMapScales";
 import { useAppTheme } from "@/src/core/theme/ThemeContext";
@@ -24,6 +24,10 @@ function arrowScale(zoom: number): number {
 
 // ── Color interpolation ────────────────────────────────────────────────────
 function hexToRgb(hex: string): [number, number, number] {
+  if (hex.startsWith("rgb")) {
+    const m = hex.match(/\d+/g)!;
+    return [+m[0], +m[1], +m[2]];
+  }
   const clean = hex.replace(/^#/, "").slice(0, 6);
   const n = parseInt(clean, 16);
   return [(n >> 16) & 0xff, (n >> 8) & 0xff, n & 0xff];
@@ -52,13 +56,7 @@ function interpolateZoneColor(
 }
 
 function lightenArrowColor(color: string): string {
-  if (color.startsWith("#")) return lerpColor(color, "#ffffff", 0.55);
-  const m = color.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
-  if (m) {
-    const [r, g, b] = [+m[1], +m[2], +m[3]];
-    return `rgb(${Math.round(r + (255 - r) * 0.55)},${Math.round(g + (255 - g) * 0.55)},${Math.round(b + (255 - b) * 0.55)})`;
-  }
-  return "rgba(255,255,255,0.85)";
+  return lerpColor(color, "#ffffff", 0.55);
 }
 
 // ── Border crossing (point-in-polygon + binary search) ────────────────────
@@ -204,20 +202,21 @@ function makeArrowGeometry(
 
 // ── Data helpers ───────────────────────────────────────────────────────────
 
+function importSeriesPriority(s: ImportSeries): number {
+  if (s.valid && s.zone_status === "complete") return 3;
+  if (s.valid) return 2;
+  if (s.zone_status === "preview") return 1;
+  return 0;
+}
+
 // Mirrors processFootprints: flatMap all series, resolve conflicts by priority
 // (best quality overwrites worst for the same timestamp).
 function buildMergedImports(
   zoneImport: ZoneImports,
 ): Map<string, Map<number, number>> {
-  const priority = (s: ImportSeries): number => {
-    if (s.valid && s.zone_status === "complete") return 3;
-    if (s.valid) return 2;
-    if (s.zone_status === "preview") return 1;
-    return 0;
-  };
   // Worst first → best last → best overwrites in the Map
   const sorted = [...zoneImport.series].sort(
-    (a, b) => priority(a) - priority(b),
+    (a, b) => importSeriesPriority(a) - importSeriesPriority(b),
   );
 
   const result = new Map<string, Map<number, number>>();
@@ -253,26 +252,8 @@ function lookupValue(
   return best;
 }
 
-function slotToTimestampMs(startDate: Date, timeIndex: number): number {
-  const { date, slotWithinDay } = decomposeTimeIndex(startDate, timeIndex);
-  const hours = Math.floor(slotWithinDay / 4);
-  const minutes = (slotWithinDay % 4) * 15;
-  return Date.UTC(
-    date.getUTCFullYear(),
-    date.getUTCMonth(),
-    date.getUTCDate(),
-    hours,
-    minutes,
-  );
-}
-
 function formatDatetime(startDate: Date, timeIndex: number): string {
-  const { date, slotWithinDay } = decomposeTimeIndex(startDate, timeIndex);
-  const hours = Math.floor(slotWithinDay / 4);
-  const minutes = (slotWithinDay % 4) * 15;
-  const d = new Date(
-    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), hours, minutes),
-  );
+  const d = new Date(slotToTimestampMs(startDate, timeIndex));
   const datePart = d.toLocaleDateString("en-GB", {
     timeZone: "UTC", day: "numeric", month: "short", year: "numeric",
   });
@@ -299,13 +280,9 @@ function getImportStatus(
   const zoneImport = importsData.find((zi) => zi.zone === destZone);
   if (!zoneImport) return null;
 
-  const priority = (s: ImportSeries): number => {
-    if (s.valid && s.zone_status === "complete") return 3;
-    if (s.valid) return 2;
-    if (s.zone_status === "preview") return 1;
-    return 0;
-  };
-  const sorted = [...zoneImport.series].sort((a, b) => priority(b) - priority(a));
+  const sorted = [...zoneImport.series].sort(
+    (a, b) => importSeriesPriority(b) - importSeriesPriority(a),
+  );
   const tolerance = 15 * 60 * 1000;
 
   for (const series of sorted) {

@@ -23,6 +23,7 @@ import {
   normalizeToUTCDate,
   dayCountInRange,
   dateAtDayOffset,
+  isSameUTCDay,
 } from "@/src/shared/utils/dateManager";
 import { ProcessedFootprint } from "@/src/features/map/types/footprints";
 
@@ -100,14 +101,6 @@ function Kbd({ children }: { children: ReactNode }) {
     >
       {children}
     </Box>
-  );
-}
-
-function isSameDay(a: Date, b: Date) {
-  return (
-    a.getUTCFullYear() === b.getUTCFullYear() &&
-    a.getUTCMonth() === b.getUTCMonth() &&
-    a.getUTCDate() === b.getUTCDate()
   );
 }
 
@@ -299,7 +292,7 @@ export default function DateSelector({
       year: "numeric",
     });
 
-  const formattedRange = isSameDay(startDate, endDate)
+  const formattedRange = isSameUTCDay(startDate, endDate)
     ? startDate.toLocaleDateString("en-GB", {
         timeZone: "UTC",
         weekday: "long",
@@ -320,7 +313,7 @@ export default function DateSelector({
           day.getMonth(),
           day.getDate(),
         );
-        const multiDay = !isSameDay(startDate, endDate);
+        const multiDay = !isSameUTCDay(startDate, endDate);
         const isStart = dayUTC === startDate.getTime();
         const isEnd = dayUTC === endDate.getTime() && multiDay;
         const inRange =

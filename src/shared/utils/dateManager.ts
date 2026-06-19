@@ -44,3 +44,22 @@ export const decomposeTimeIndex = (startDate: Date, timeIndex: number) => ({
   date: dateAtDayOffset(startDate, Math.floor(timeIndex / 96)),
   slotWithinDay: timeIndex % 96,
 });
+
+export function slotToTimestampMs(startDate: Date, timeIndex: number): number {
+  const { date, slotWithinDay } = decomposeTimeIndex(startDate, timeIndex);
+  return Date.UTC(
+    date.getUTCFullYear(),
+    date.getUTCMonth(),
+    date.getUTCDate(),
+    Math.floor(slotWithinDay / 4),
+    (slotWithinDay % 4) * 15,
+  );
+}
+
+export function isSameUTCDay(a: Date, b: Date): boolean {
+  return (
+    a.getUTCFullYear() === b.getUTCFullYear() &&
+    a.getUTCMonth() === b.getUTCMonth() &&
+    a.getUTCDate() === b.getUTCDate()
+  );
+}
