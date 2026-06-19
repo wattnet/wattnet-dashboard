@@ -272,6 +272,7 @@ export function useMapLayers(
         closeButton: false,
         closeOnClick: false,
         offset: 12,
+        maxWidth: 'none',
         className: 'wn-popup',
       });
     }

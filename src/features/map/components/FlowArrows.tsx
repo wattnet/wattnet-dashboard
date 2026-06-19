@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useMemo } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useMemo } from "react";
 import { createPortal } from "react-dom";
 import type { Map as MapLibreMap } from "maplibre-gl";
 import type { FeatureCollection, Feature } from "geojson";
@@ -418,6 +418,8 @@ export default function FlowArrows({
   const [mapContainer, setMapContainer] = useState<HTMLElement | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const arrowDOMRef = useRef<ArrowDOMItem[]>([]);
+  const tooltipElRef = useRef<HTMLDivElement>(null);
+  const tooltipSizeRef = useRef<{ w: number; h: number } | null>(null);
 
   useEffect(() => {
     const container = mapRef.current?.getContainer();
@@ -611,6 +613,20 @@ export default function FlowArrows({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mergedImportsMap, importsData, selectedTimeIndex, startDate, centroids, zoneNames, zoneFeatures, processedData, legendConfig]);
 
+  // Look up arrow in both directions so the tooltip survives a direction flip
+  const tooltipArrow = tooltip
+    ? (arrows.find((a) => a.srcZone === tooltip.srcZone && a.destZone === tooltip.destZone)
+        ?? arrows.find((a) => a.srcZone === tooltip.destZone && a.destZone === tooltip.srcZone)
+        ?? null)
+    : null;
+
+  useLayoutEffect(() => {
+    if (tooltipElRef.current) {
+      const { width, height } = tooltipElRef.current.getBoundingClientRect();
+      tooltipSizeRef.current = { w: width, h: height };
+    }
+  }, [tooltipArrow?.srcZone, tooltipArrow?.destZone]);
+
   if (!mapContainer) return null;
 
   // Keep arrowDOMRef in sync with arrows for the map.on('render') handler
@@ -751,12 +767,6 @@ export default function FlowArrows({
     </svg>
   );
 
-  // Look up arrow in both directions so the tooltip survives a direction flip
-  const tooltipArrow = tooltip
-    ? (arrows.find((a) => a.srcZone === tooltip.srcZone && a.destZone === tooltip.destZone)
-        ?? arrows.find((a) => a.srcZone === tooltip.destZone && a.destZone === tooltip.srcZone)
-        ?? null)
-    : null;
   const tooltipStatus = tooltipArrow
     ? getImportStatus(
         importsData,
@@ -768,15 +778,25 @@ export default function FlowArrows({
   const tooltipDatetime = formatDatetime(startDate, selectedTimeIndex);
   const cc = currentPalette.chipColors;
 
+  const TOOLTIP_MARGIN = 8;
+  const tw = tooltipSizeRef.current?.w ?? 0;
+  const th = tooltipSizeRef.current?.h ?? 0;
+  const rawLeft = (tooltip?.x ?? 0) + 16;
+  const rawTop  = (tooltip?.y ?? 0) - 14;
+  const clampedLeft = Math.max(TOOLTIP_MARGIN, Math.min(rawLeft, window.innerWidth  - tw - TOOLTIP_MARGIN));
+  const clampedTop  = Math.max(TOOLTIP_MARGIN, Math.min(rawTop,  window.innerHeight - th - TOOLTIP_MARGIN));
+
   return (
     <>
       {createPortal(svgEl, mapContainer)}
       {tooltip && tooltipArrow && (
         <div
+          ref={tooltipElRef}
           style={{
             position: "fixed",
-            left: tooltip.x + 16,
-            top: tooltip.y - 14,
+            left: clampedLeft,
+            top: clampedTop,
+            visibility: tooltipSizeRef.current ? "visible" : "hidden",
             zIndex: 9999,
             pointerEvents: "none",
             fontFamily: '"Red Hat Text", system-ui, sans-serif',
