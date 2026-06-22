@@ -6,7 +6,7 @@ import type { Map as MapLibreMap } from "maplibre-gl";
 import type { FeatureCollection, Feature } from "geojson";
 import { ZoneImports, ImportSeries } from "@/src/features/map/types/imports";
 import { computeZoneCentroids } from "@/src/features/map/utils/zoneCentroids";
-import { decomposeTimeIndex, slotToTimestampMs } from "@/src/shared/utils/dateManager";
+import { slotToTimestampMs } from "@/src/shared/utils/dateManager";
 import { ProcessedFootprint } from "@/src/features/map/types/footprints";
 import { ScaleConfig } from "@/src/features/map/hooks/useMapScales";
 import { useAppTheme } from "@/src/core/theme/ThemeContext";
