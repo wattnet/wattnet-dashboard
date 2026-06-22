@@ -320,7 +320,6 @@ export default function DateSelector({
         const isEnd = dayUTC === endDate.getTime() && multiDay;
         const inRange =
           dayUTC > startDate.getTime() && dayUTC < endDate.getTime();
-        const isEdge = isStart || isEnd;
         const isPending =
           pendingStart !== null && dayUTC === pendingStart.getTime();
 
