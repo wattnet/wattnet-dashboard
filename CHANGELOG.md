@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.1](https://github.com/wattnet/wattnet-dashboard/compare/v1.5.0...v1.5.1) (2026-06-22)
+
+
+### Bug Fixes
+
+* wrap useSearchParams in a suspense ([2a2b937](https://github.com/wattnet/wattnet-dashboard/commit/2a2b9374abb64ab7e2807c1b01e7395f9f455a1e))
+
 ## [1.5.0](https://github.com/wattnet/wattnet-dashboard/compare/v1.4.1...v1.5.0) (2026-06-22)
 
 
