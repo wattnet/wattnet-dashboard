@@ -10,9 +10,9 @@ import { useMapLayers } from "@/src/features/map/hooks/useMapLayers";
 import { ProcessedFootprint } from "@/src/features/map/types/footprints";
 import { mergeActiveMetricValues } from "@/src/features/map/utils/footprintAdapter";
 import { MetricKey } from "../hooks/useMapScales";
-import { useDashboardStore } from "@/src/features/dashboard/store/useDashboardStore";
 
 import { useAppTheme } from "@/src/core/theme/ThemeContext";
+import { useDashboardStore } from "@/src/features/dashboard/store/useDashboardStore";
 
 function injectMapStyles() {
   if (document.getElementById("wn-map-style")) return;
@@ -36,6 +36,7 @@ interface MapContainerProps {
   onZoneClick?: (zoneName: string) => void;
   onEmptyClick?: () => void;
   onMapReady?: (map: maplibregl.Map) => void;
+  onGeoJSONLoad?: (geojson: FeatureCollection) => void;
   initialCenter?: [number, number];
   initialZoom?: number;
 }
@@ -50,6 +51,7 @@ export default function MapContainer({
   onZoneClick,
   onEmptyClick,
   onMapReady,
+  onGeoJSONLoad,
   initialCenter,
   initialZoom,
 }: Readonly<MapContainerProps>) {
@@ -196,6 +198,7 @@ export default function MapContainer({
       if (!worldGeoJSONRef.current) {
         const res = await fetch("/maps/wattnet.geojson");
         worldGeoJSONRef.current = await res.json();
+        onGeoJSONLoad?.(worldGeoJSONRef.current!);
       }
       const base = structuredClone(worldGeoJSONRef.current!);
       const merged: FeatureCollection = mergeActiveMetricValues(
@@ -223,7 +226,8 @@ export default function MapContainer({
   return (
     <Box sx={{ width: "100%", height: "100%", position: "relative" }}>
       <div ref={mapContainer} style={{ width: "100%", height: "100%" }} />
-      {typeof document !== "undefined" && initialDataReady &&
+      {typeof document !== "undefined" &&
+        initialDataReady &&
         createPortal(
           <Fade in={loading} timeout={200} unmountOnExit>
             <Box

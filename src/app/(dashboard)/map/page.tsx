@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo, useRef, useCallback, useEffect } from "react";
+import { useState, useMemo, useRef, useCallback, useEffect, type RefObject } from "react";
+import type { FeatureCollection } from "geojson";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Box, IconButton } from "@mui/material";
@@ -23,7 +24,7 @@ import GlobalTag from "@/src/features/map/components/GlobalTag";
 import MapContainer from "@/src/features/map/components/MapContainer";
 
 import { useTheme, useMediaQuery } from "@mui/material";
-import { MOBILE_TOP_BAR_H } from "@/src/app/(dashboard)/layout";
+import { MOBILE_TOP_BAR_H, MOBILE_PEEK_H } from "@/src/app/(dashboard)/layout";
 import type { Map } from "maplibre-gl";
 import {
   useMapControls,
@@ -55,8 +56,8 @@ const BTN_HOVER_BG =
   "color-mix(in srgb, var(--color-foreground) 15%, var(--color-panel))";
 
 const zoomBtnSx = {
-  width: 32,
-  height: 32,
+  width: { xs: 40, md: 32 },
+  height: { xs: 40, md: 32 },
   bgcolor: `color-mix(in srgb, ${PANEL_BG} 93%, transparent)`,
   backdropFilter: BACKDROP,
   WebkitBackdropFilter: BACKDROP,
@@ -109,6 +110,7 @@ export default function MapPage() {
 
   const mapRef = useRef<Map | null>(null);
   const [isMapReady, setIsMapReady] = useState(false);
+  const [mapGeoJSON, setMapGeoJSON] = useState<FeatureCollection | null>(null);
 
   // Apply control params from URL on first mount
   useEffect(() => {
@@ -307,7 +309,10 @@ export default function MapPage() {
   };
 
   const mobileTopOffset = MOBILE_TOP_BAR_H + 8;
-  const mobileLegendBot = LEGEND_MARGIN;
+  const mobileLegendBot =
+    bottomSheetState === "peek" || bottomSheetState === "full"
+      ? `calc(${MOBILE_PEEK_H}px + ${LEGEND_MARGIN}px + env(safe-area-inset-bottom))`
+      : `calc(${LEGEND_MARGIN}px + env(safe-area-inset-bottom))`;
   const showDesktopOverlay = !isMobile && canvasRect.width > 0;
 
   const legendEl = (
@@ -348,10 +353,11 @@ export default function MapPage() {
             mapRef.current = m;
             setIsMapReady(true);
           }}
+          onGeoJSONLoad={setMapGeoJSON}
           initialCenter={initialCenter}
           initialZoom={initialZoom}
         />
-        {flowTracing && isMapReady && importsData.length > 0 && (
+        {flowTracing && isMapReady && importsData.length > 0 && mapGeoJSON && (
           <FlowArrows
             mapRef={mapRef}
             importsData={importsData}
@@ -359,6 +365,7 @@ export default function MapPage() {
             startDate={startDate}
             processedData={processedData}
             legendConfig={legendConfig}
+            geoJSON={mapGeoJSON}
           />
         )}
       </Box>

@@ -7,6 +7,8 @@ import {
   Collapse,
   IconButton,
   Tooltip,
+  useTheme,
+  useMediaQuery,
 } from "@mui/material";
 import { DateCalendar } from "@mui/x-date-pickers";
 import { PickersDay, PickersDayProps } from "@mui/x-date-pickers";
@@ -115,6 +117,8 @@ export default function DateSelector({
   data,
 }: Readonly<DateSelectorProps>) {
   const { t } = useTranslation();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const [calOpen, setCalOpen] = useState(false);
   const [pendingStart, setPendingStart] = useState<Date | null>(null);
   const [speed, setSpeed] = useState<Speed>(1);
@@ -128,7 +132,7 @@ export default function DateSelector({
   const timeIndexRef = useRef(selectedTimeIndex);
   timeIndexRef.current = selectedTimeIndex;
 
-  const maxIndex = useMemo(() => (data?.[0]?.series?.length ?? 1) - 1, [data]);
+  const maxIndex = useMemo(() => Math.max(1, (data?.[0]?.series?.length ?? 1) - 1), [data]);
   const maxIndexRef = useRef(maxIndex);
   maxIndexRef.current = maxIndex;
 
@@ -182,14 +186,12 @@ export default function DateSelector({
     return () => window.removeEventListener("keydown", handler);
   }, [setIsPlaying]);
 
-  const stepBack = () =>
-    setSelectedTimeIndex(
-      selectedTimeIndex <= 0 ? maxIndex : selectedTimeIndex - 1,
-    );
-  const stepForward = () =>
-    setSelectedTimeIndex(
-      selectedTimeIndex >= maxIndex ? 0 : selectedTimeIndex + 1,
-    );
+  const stepBack = () => {
+    if (selectedTimeIndex > 0) setSelectedTimeIndex(selectedTimeIndex - 1);
+  };
+  const stepForward = () => {
+    if (selectedTimeIndex < maxIndex) setSelectedTimeIndex(selectedTimeIndex + 1);
+  };
   stepBackRef.current = stepBack;
   stepForwardRef.current = stepForward;
 
@@ -347,16 +349,18 @@ export default function DateSelector({
           gap: 1,
         }}
       >
-        <Typography
-          sx={{
-            fontSize: 12.5,
-            fontWeight: 600,
-            color: TEXT_DIM,
-            whiteSpace: "nowrap",
-          }}
-        >
-          {t("dateSelector.dateTime", { defaultValue: "Date & Time" })}
-        </Typography>
+        {!isMobile && (
+          <Typography
+            sx={{
+              fontSize: 12.5,
+              fontWeight: 600,
+              color: TEXT_DIM,
+              whiteSpace: "nowrap",
+            }}
+          >
+            {t("dateSelector.dateTime", { defaultValue: "Date & Time" })}
+          </Typography>
+        )}
 
         {/* nav + play/pause + speed — tightly grouped */}
         <Box
@@ -364,7 +368,8 @@ export default function DateSelector({
             display: "flex",
             alignItems: "center",
             gap: 0,
-            ml: 1,
+            ml: isMobile ? 0 : 1,
+            flexShrink: 0,
           }}
         >
           <Tooltip
@@ -487,7 +492,7 @@ export default function DateSelector({
                 userSelect: "none",
                 transition:
                   "color 0.18s, border-color 0.18s, background-color 0.18s",
-                ml: 1,
+                ml: isMobile ? 0.5 : 1,
                 "&:hover": { borderColor: HOVER_BORDER, color: TEXT_HI },
               }}
             >

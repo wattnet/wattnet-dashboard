@@ -4,6 +4,7 @@ import React from "react";
 import Image from "next/image";
 import {
   Box,
+  Fade,
   IconButton,
   Typography,
   Chip,
@@ -25,6 +26,7 @@ import {
   useBottomSheet,
   useCanvasRect,
   useFlowTracing,
+  useFlowPanel,
   useMapControls,
   useSidebar,
   useZonePanel,
@@ -33,7 +35,7 @@ import {
 import { useAppTheme } from "@/src/core/theme/ThemeContext";
 
 export const MOBILE_TOP_BAR_H = 48;
-export const MOBILE_PEEK_H = 64;
+export const MOBILE_PEEK_H = 240;
 
 // ── Palette ─────────────────────────────────────────────────────
 const BORDER = "var(--color-border)";
@@ -299,35 +301,28 @@ function ZoneDataContent() {
   const coverageLabel = flowTracing ? "Global" : "Local";
 
   return (
-    <Box sx={{ display: "flex", gap: 2, alignItems: "flex-start" }}>
+    <Box sx={{ display: "flex", gap: 3, alignItems: "flex-start" }}>
       {/* Left: data */}
-      <Box
-        sx={{
-          flex: 1,
-          minWidth: 0,
-          display: "flex",
-          flexDirection: "column",
-          gap: "5px",
-        }}
-      >
+      <Box sx={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
         {zoneData.date && (
           <Typography
             sx={{
-              fontSize: 14,
+              fontSize: 13,
               fontWeight: 500,
               color: TEXT_DIM,
               letterSpacing: "0.03em",
               fontVariantNumeric: "tabular-nums",
               lineHeight: 1,
+              mb: 1.5,
             }}
           >
             {zoneData.date}
           </Typography>
         )}
-        <Box sx={{ display: "flex", alignItems: "baseline", gap: 0.75, mt: "5px" }}>
+        <Box sx={{ display: "flex", alignItems: "baseline", gap: 1 }}>
           <Typography
             sx={{
-              fontSize: 34,
+              fontSize: 36,
               fontWeight: 700,
               color: "color-mix(in srgb, var(--color-foreground) 92%, transparent)",
               lineHeight: 1,
@@ -336,23 +331,16 @@ function ZoneDataContent() {
           >
             {valStr}
           </Typography>
-          <Typography
-            sx={{
-              fontSize: 14,
-              fontWeight: 500,
-              color: TEXT_MID,
-              lineHeight: 1,
-            }}
-          >
+          <Typography sx={{ fontSize: 14, fontWeight: 500, color: TEXT_MID, lineHeight: 1 }}>
             {zoneData.unit}
           </Typography>
         </Box>
         <Typography
           sx={{
-            fontSize: 15,
+            fontSize: 14,
             color: "color-mix(in srgb, var(--color-foreground) 50%, transparent)",
             lineHeight: 1,
-            pt: "7px",
+            mt: 1.25,
           }}
         >
           {zoneData.label}
@@ -360,19 +348,157 @@ function ZoneDataContent() {
       </Box>
 
       {/* Right: chips */}
-      <Box
-        sx={{
-          display: "flex",
-          flexDirection: "column",
-          gap: 0.75,
-          flexShrink: 0,
-          pt: 0.25,
-        }}
-      >
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 1, flexShrink: 0, pt: 0.25 }}>
         <Chip size="small" label={finalLabel} sx={getChipSx(finalKey, colors)} />
         <Chip size="small" label={statusLabel} sx={getChipSx(statusKey, colors)} />
         <Chip size="small" label={scopeLabel} sx={getChipSx(scopeKey, colors)} />
         <Chip size="small" label={coverageLabel} sx={getChipSx(coverageKey, colors)} />
+      </Box>
+    </Box>
+  );
+}
+
+function fmtDatasource(raw: string): string {
+  const colonIdx = raw.indexOf(":");
+  const s = colonIdx === -1 ? raw : raw.slice(colonIdx + 1);
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+const TEXT_LOW = "color-mix(in srgb, var(--color-foreground) 28%, transparent)";
+
+// ── Flow data content ──────────────────────────────────────────────────────
+function FlowDataContent() {
+  const { flowPanelData } = useFlowPanel();
+  const { scope } = useMapControls();
+  const { flowTracing } = useFlowTracing();
+  const { currentPalette } = useAppTheme();
+  const colors = currentPalette.chipColors;
+
+  if (!flowPanelData)
+    return (
+      <Typography sx={{ fontSize: 13, color: TEXT_DIM }}>
+        No data available.
+      </Typography>
+    );
+
+  const finalKey: ChipKey = flowPanelData.valid ? "final" : "notFinal";
+  const finalLabel = flowPanelData.valid ? "Final" : "Not Final";
+
+  const raw = flowPanelData.zoneStatus;
+  let statusKey: ChipKey = "neutral";
+  let statusLabel = raw || "—";
+  if (raw === "complete") { statusKey = "complete"; statusLabel = "Complete"; }
+  else if (raw === "preview") { statusKey = "preview"; statusLabel = "Preview"; }
+  else if (raw === "missing" && flowPanelData.isForecast) { statusKey = "forecasted"; statusLabel = "Forecasted"; }
+  else if (raw === "missing") { statusKey = "missing"; statusLabel = "Missing"; }
+
+  const dataStateKey: ChipKey =
+    flowPanelData.dataState === "official" ? "complete" :
+    flowPanelData.dataState === "estimated" ? "preview" : "neutral";
+  const dataStateLabel =
+    flowPanelData.dataState === "official" ? "Official" :
+    flowPanelData.dataState === "estimated" ? "Estimated" : null;
+
+  const scopeKey: ChipKey = scope === "life-cycle" ? "lifecycle" : "operational";
+  const scopeLabel = scope === "life-cycle" ? "Life-cycle" : "Operational";
+  const coverageKey: ChipKey = flowTracing ? "global" : "local";
+  const coverageLabel = flowTracing ? "Global" : "Local";
+
+  return (
+    <Box sx={{ display: "flex", flexDirection: "column" }}>
+      {/* Datetime */}
+      <Typography sx={{ fontSize: 13, fontWeight: 500, color: TEXT_DIM, letterSpacing: "0.03em", lineHeight: 1, fontVariantNumeric: "tabular-nums", mb: 2 }}>
+        {flowPanelData.datetime}
+      </Typography>
+
+      {/* Zones + animated connector */}
+      <Box sx={{ display: "flex", gap: 2, mb: 2.5 }}>
+        <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", width: 10, pt: "6px", pb: "6px" }}>
+          <Box sx={{ width: 6, height: 6, borderRadius: "50%", bgcolor: "color-mix(in srgb, var(--color-foreground) 35%, transparent)", flexShrink: 0 }} />
+          <Box sx={{ flex: 1, minHeight: 6, width: 1.5, bgcolor: "color-mix(in srgb, var(--color-foreground) 18%, transparent)", my: "4px" }} />
+          <Box component="svg" width="8" height="12" viewBox="0 0 8 12" fill="none" sx={{ flexShrink: 0 }}>
+            <path d="M1 1L4 4.5L7 1" stroke="color-mix(in srgb, var(--color-foreground) 32%, transparent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <animate attributeName="opacity" values="0.15;1;0.15" dur="1.2s" begin="0s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" />
+            </path>
+            <path d="M1 7L4 10.5L7 7" stroke="color-mix(in srgb, var(--color-foreground) 32%, transparent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <animate attributeName="opacity" values="0.15;1;0.15" dur="1.2s" begin="0.4s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" />
+            </path>
+          </Box>
+          <Box sx={{ flex: 1, minHeight: 6, width: 1.5, bgcolor: "color-mix(in srgb, var(--color-foreground) 18%, transparent)", my: "4px" }} />
+          <Box sx={{ width: 6, height: 6, borderRadius: "50%", bgcolor: "color-mix(in srgb, var(--color-foreground) 35%, transparent)", flexShrink: 0 }} />
+        </Box>
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 1.25, flex: 1, minWidth: 0 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}>
+            <Typography sx={{ fontSize: 17, fontWeight: 600, color: "color-mix(in srgb, var(--color-foreground) 92%, transparent)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: 1.2 }}>
+              {flowPanelData.srcName}
+            </Typography>
+            <Typography sx={{ fontSize: 12, fontWeight: 500, color: TEXT_DIM, lineHeight: 1, flexShrink: 0 }}>
+              ({flowPanelData.srcZone})
+            </Typography>
+          </Box>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}>
+            <Typography sx={{ fontSize: 17, fontWeight: 600, color: "color-mix(in srgb, var(--color-foreground) 92%, transparent)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: 1.2 }}>
+              {flowPanelData.destName}
+            </Typography>
+            <Typography sx={{ fontSize: 12, fontWeight: 500, color: TEXT_DIM, lineHeight: 1, flexShrink: 0 }}>
+              ({flowPanelData.destZone})
+            </Typography>
+          </Box>
+        </Box>
+      </Box>
+
+      {/* MW value + label */}
+      <Box sx={{ display: "flex", alignItems: "baseline", gap: 1, mb: 0.75 }}>
+        <Typography sx={{ fontSize: 36, fontWeight: 700, color: "color-mix(in srgb, var(--color-foreground) 92%, transparent)", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
+          {flowPanelData.mw.toFixed(2)}
+        </Typography>
+        <Typography sx={{ fontSize: 14, fontWeight: 500, color: TEXT_MID, lineHeight: 1 }}>MW</Typography>
+      </Box>
+      <Typography sx={{ fontSize: 14, color: "color-mix(in srgb, var(--color-foreground) 50%, transparent)", lineHeight: 1, mb: flowPanelData.metricValue !== null ? 1.75 : 2.5 }}>
+        Power exchange
+      </Typography>
+
+      {/* Metric value */}
+      {flowPanelData.metricValue !== null && (
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2.5 }}>
+          <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: flowPanelData.color, border: "1px solid rgba(0,0,0,0.2)", flexShrink: 0 }} />
+          <Typography sx={{ fontSize: 13, color: TEXT_DIM, lineHeight: 1.3 }}>
+            {"with a "}
+            <Box component="strong" sx={{ color: "color-mix(in srgb, var(--color-foreground) 85%, transparent)", fontVariantNumeric: "tabular-nums", fontSize: 14 }}>
+              {flowPanelData.metricValue.toFixed(2)} {flowPanelData.metricUnit}
+            </Box>
+            {" "}{flowPanelData.metricTitle.toLowerCase()}
+          </Typography>
+        </Box>
+      )}
+
+      {/* Divider */}
+      <Box sx={{ height: "1px", bgcolor: BORDER, mb: 2 }} />
+
+      {/* ENERGY chips */}
+      <Box sx={{ mb: 2 }}>
+        <Typography sx={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", color: TEXT_LOW, textTransform: "uppercase", mb: 1 }}>
+          Energy
+        </Typography>
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75 }}>
+          <Chip size="small" label={finalLabel} sx={getChipSx(finalKey, colors)} />
+          <Chip size="small" label={statusLabel} sx={getChipSx(statusKey, colors)} />
+          {dataStateLabel && <Chip size="small" label={dataStateLabel} sx={getChipSx(dataStateKey, colors)} />}
+          {flowPanelData.datasource && (
+            <Chip size="small" label={fmtDatasource(flowPanelData.datasource)} sx={getChipSx("neutral", colors)} />
+          )}
+        </Box>
+      </Box>
+
+      {/* ENVIRONMENTAL chips */}
+      <Box>
+        <Typography sx={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", color: TEXT_LOW, textTransform: "uppercase", mb: 1 }}>
+          Environmental
+        </Typography>
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75 }}>
+          <Chip size="small" label={coverageLabel} sx={getChipSx(coverageKey, colors)} />
+          <Chip size="small" label={scopeLabel} sx={getChipSx(scopeKey, colors)} />
+        </Box>
       </Box>
     </Box>
   );
@@ -511,7 +637,7 @@ function ZoneChart() {
   if (!hasSeries) return null;
 
   const H = 180;
-  const PAD = { t: 16, r: 20, b: 30, l: 52 };
+  const PAD = { t: 16, r: 20, b: 30, l: 46 };
   const plotW = w - PAD.l - PAD.r;
   const plotH = H - PAD.t - PAD.b;
   const n = zoneSeries.length;
@@ -878,7 +1004,7 @@ function MobileTopSheet({
         top: 0,
         left: 0,
         right: 0,
-        height: expanded ? "90vh" : `${MOBILE_TOP_BAR_H}px`,
+        height: expanded ? "100vh" : `${MOBILE_TOP_BAR_H}px`,
         ...panelSx,
         borderBottom: `1px solid ${BORDER}`,
         borderRadius: expanded ? "0 0 16px 16px" : 0,
@@ -899,7 +1025,8 @@ function MobileTopSheet({
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          px: 2,
+          pl: 0.5,
+        pr: 2,
         }}
       >
         <Box
@@ -911,8 +1038,8 @@ function MobileTopSheet({
           <Image
             src="/images/wattnet-logo-full-dark-transparent.svg"
             alt="wattnet"
-            width={100}
-            height={30}
+            width={120}
+            height={36}
             priority
           />
         </Box>
@@ -927,8 +1054,8 @@ function MobileTopSheet({
           <Image
             src="/images/wattnet-logo-full-light-transparent.svg"
             alt="wattnet"
-            width={100}
-            height={30}
+            width={120}
+            height={36}
             priority
           />
         </Box>
@@ -963,23 +1090,30 @@ function MobileTopSheet({
 // ── Mobile bottom sheet ────────────────────────────────────────────────────
 function MobileBottomSheet() {
   const { bottomSheetState, setBottomSheetState } = useBottomSheet();
-  const { selectedZone, zoneData, zonePanelOpen, openCount, closeZonePanel } =
-    useZonePanel();
+  const { selectedZone, zoneData, zonePanelOpen, openCount, closeZonePanel } = useZonePanel();
+  const { flowPanelOpen, flowPanelData, flowOpenCount, closeFlowPanel } = useFlowPanel();
+  const sheetContentRef = React.useRef<HTMLDivElement>(null);
   const dragStartY = React.useRef<number | null>(null);
 
+  const isFlow = flowPanelOpen;
+  const isZone = zonePanelOpen;
+  const isVisible = bottomSheetState !== "hidden";
+
   React.useEffect(() => {
-    if (openCount > 0) setBottomSheetState("full");
+    if (openCount > 0) setBottomSheetState("peek");
   }, [openCount, setBottomSheetState]);
 
   React.useEffect(() => {
-    if (!zonePanelOpen) setBottomSheetState("hidden");
-  }, [zonePanelOpen, setBottomSheetState]);
+    if (!zonePanelOpen && !flowPanelOpen) setBottomSheetState("hidden");
+  }, [zonePanelOpen, flowPanelOpen, setBottomSheetState]);
 
-  // Animate sheet closed first, then clean up panel state after transition
   const handleClose = React.useCallback(() => {
     setBottomSheetState("hidden");
-    setTimeout(() => closeZonePanel(), 400);
-  }, [setBottomSheetState, closeZonePanel]);
+    setTimeout(() => {
+      closeZonePanel();
+      closeFlowPanel();
+    }, 400);
+  }, [setBottomSheetState, closeZonePanel, closeFlowPanel]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     dragStartY.current = e.touches[0].clientY;
@@ -987,13 +1121,39 @@ function MobileBottomSheet() {
   const handleTouchEnd = (e: React.TouchEvent) => {
     if (dragStartY.current === null) return;
     const delta = dragStartY.current - e.changedTouches[0].clientY;
-    if (delta < -40 && bottomSheetState === "full") {
-      handleClose();
+    if (delta < -40) {
+      if (bottomSheetState === "full") setBottomSheetState("peek");
+      else if (bottomSheetState === "peek") handleClose();
+    } else if (delta > 40 && bottomSheetState === "peek" && isZone) {
+      setBottomSheetState("full");
     }
     dragStartY.current = null;
   };
 
-  const isVisible = bottomSheetState !== "hidden";
+  // Measure zone content for the "full" state (includes trend chart)
+  const [zoneFullH, setZoneFullH] = React.useState(0);
+  React.useLayoutEffect(() => {
+    if (!sheetContentRef.current || !isZone) return;
+    const ro = new ResizeObserver(() => {
+      if (sheetContentRef.current)
+        setZoneFullH(sheetContentRef.current.scrollHeight);
+    });
+    ro.observe(sheetContentRef.current);
+    return () => ro.disconnect();
+  }, [isZone, zonePanelOpen]);
+
+  const sheetHeight = (() => {
+    if (bottomSheetState === "hidden") return "0px";
+    if (isFlow) return "min(520px, 88vh)";
+    if (bottomSheetState === "full")
+      return zoneFullH > 0 ? `min(${zoneFullH + 24}px, 85vh)` : "85vh";
+    return `${MOBILE_PEEK_H}px`;
+  })();
+
+  const headerTitle = isFlow
+    ? (flowPanelData ? `${flowPanelData.srcZone} → ${flowPanelData.destZone}` : "")
+    : (selectedZone ?? "");
+  const headerSubtitle = isFlow ? null : (zoneData?.zoneCode ?? null);
 
   return (
     <Box
@@ -1002,7 +1162,7 @@ function MobileBottomSheet() {
         bottom: 0,
         left: 0,
         right: 0,
-        height: isVisible ? "90vh" : "0px",
+        height: sheetHeight,
         ...panelSx,
         borderTop: isVisible ? `1px solid ${BORDER}` : "none",
         borderRadius: "16px 16px 0 0",
@@ -1010,6 +1170,7 @@ function MobileBottomSheet() {
         display: "flex",
         flexDirection: "column",
         overflow: "hidden",
+        paddingBottom: "env(safe-area-inset-bottom)",
         transition: `height ${DURATION} ${EASING}`,
       }}
       onTouchStart={handleTouchStart}
@@ -1017,6 +1178,11 @@ function MobileBottomSheet() {
     >
       {isVisible && (
         <>
+          {/* Drag handle */}
+          <Box sx={{ display: "flex", justifyContent: "center", pt: 0.75, pb: 0.5, flexShrink: 0 }}>
+            <Box sx={{ width: 36, height: 3, borderRadius: 2, bgcolor: "rgba(255,255,255,0.18)" }} />
+          </Box>
+
           {/* Header */}
           <Box
             sx={{
@@ -1024,11 +1190,13 @@ function MobileBottomSheet() {
               alignItems: "center",
               justifyContent: "space-between",
               px: 2,
-              pt: 1.5,
+              pt: 0.75,
               pb: 1,
               flexShrink: 0,
               borderBottom: `1px solid ${BORDER}`,
+              cursor: bottomSheetState === "peek" && isZone ? "pointer" : "default",
             }}
+            onClick={bottomSheetState === "peek" && isZone ? () => setBottomSheetState("full") : undefined}
           >
             <Box sx={{ display: "flex", alignItems: "baseline", gap: 1, minWidth: 0 }}>
               <Typography
@@ -1042,9 +1210,9 @@ function MobileBottomSheet() {
                   textOverflow: "ellipsis",
                 }}
               >
-                {selectedZone ?? ""}
+                {headerTitle}
               </Typography>
-              {zoneData?.zoneCode && (
+              {headerSubtitle && (
                 <Typography
                   component="span"
                   sx={{
@@ -1055,16 +1223,15 @@ function MobileBottomSheet() {
                     whiteSpace: "nowrap",
                   }}
                 >
-                  ({zoneData.zoneCode})
+                  ({headerSubtitle})
                 </Typography>
               )}
             </Box>
             <IconButton
-              onClick={handleClose}
+              onClick={(e) => { e.stopPropagation(); handleClose(); }}
               size="small"
               sx={{
-                color:
-                  "color-mix(in srgb, var(--color-foreground) 30%, transparent)",
+                color: "color-mix(in srgb, var(--color-foreground) 30%, transparent)",
                 "&:hover": { color: "var(--color-foreground)" },
               }}
             >
@@ -1072,14 +1239,18 @@ function MobileBottomSheet() {
             </IconButton>
           </Box>
 
-          {/* Scrollable content */}
-          <Box sx={{ flex: 1, overflowY: "auto" }}>
-            <Box sx={{ px: 2, pt: 2, pb: 1 }}>
-              <ZoneDataContent />
-            </Box>
-            <ZoneChart />
-            <Box sx={{ height: 24 }} />
+          {/* Data content — always visible */}
+          <Box ref={sheetContentRef} sx={{ px: 2.5, pt: 2, pb: 2, flexShrink: 0 }}>
+            {isFlow ? <FlowDataContent /> : <ZoneDataContent />}
           </Box>
+
+          {/* Trend chart — zone full state only */}
+          {bottomSheetState === "full" && isZone && (
+            <Box sx={{ flex: 1, overflowY: "auto" }}>
+              <ZoneChart />
+              <Box sx={{ height: 24 }} />
+            </Box>
+          )}
         </>
       )}
     </Box>
@@ -1134,28 +1305,30 @@ function MobileLayout({ children }: Readonly<{ children: React.ReactNode }>) {
 // ── Initial loader — stable sibling, never recreated by layout changes ──────
 function FullscreenLoader() {
   const initialDataReady = useDashboardStore((s) => s.initialDataReady);
-  if (initialDataReady) return null;
   return (
-    <Box
-      sx={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 9999,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: "color-mix(in srgb, var(--color-panel) 93%, transparent)",
-        backdropFilter: "blur(20px)",
-        WebkitBackdropFilter: "blur(20px)",
-      }}
-    >
+    <Fade in={!initialDataReady} timeout={200} unmountOnExit>
       <Box
-        component="img"
-        src="/images/wattnet-loader.svg"
-        alt="Loading..."
-        sx={{ width: 150, height: 150 }}
-      />
-    </Box>
+        sx={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 9999,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          pointerEvents: "none",
+          backgroundColor: "color-mix(in srgb, var(--color-panel) 93%, transparent)",
+          backdropFilter: "blur(20px)",
+          WebkitBackdropFilter: "blur(20px)",
+        }}
+      >
+        <Box
+          component="img"
+          src="/images/wattnet-loader.svg"
+          alt="Loading..."
+          sx={{ width: 150, height: 150 }}
+        />
+      </Box>
+    </Fade>
   );
 }
 

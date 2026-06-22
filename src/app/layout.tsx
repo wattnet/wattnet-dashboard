@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Red_Hat_Text, Red_Hat_Display } from "next/font/google";
 import { Providers } from "../core/providers/providers";
 import "./globals.css";
@@ -12,6 +12,12 @@ const redHatDisplay = Red_Hat_Display({
   variable: "--font-red-hat-display",
   subsets: ["latin"],
 });
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
 
 export const metadata: Metadata = {
   title: "Dashboard - wattnet.eu",

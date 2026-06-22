@@ -15,15 +15,13 @@ export function useImportsData(
   const { data, error, isLoading } = useSWR<ZoneImports[]>(
     swrKey,
     async () => {
-      if (!ephemeralToken) return [];
-
       const query = new URLSearchParams({
         start: params.start,
         end: params.end,
       });
 
       const res = await fetch(`/api/imports?${query.toString()}`, {
-        headers: { "x-dashboard-token": ephemeralToken },
+        headers: { "x-dashboard-token": ephemeralToken! },
       });
 
       // Do NOT retry on 401 — regenerating a token here would race with the

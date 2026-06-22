@@ -10,7 +10,7 @@ import { decomposeTimeIndex, slotToTimestampMs } from "@/src/shared/utils/dateMa
 import { ProcessedFootprint } from "@/src/features/map/types/footprints";
 import { ScaleConfig } from "@/src/features/map/hooks/useMapScales";
 import { useAppTheme } from "@/src/core/theme/ThemeContext";
-import { useMapControls, useFlowTracing } from "@/src/features/dashboard/store/useDashboardStore";
+import { useMapControls, useFlowTracing, useFlowPanel } from "@/src/features/dashboard/store/useDashboardStore";
 import zoneCrossingsJson from "@/src/features/map/data/zoneCrossings.json";
 
 const ARROW_LEN_BASE = 30;
@@ -375,6 +375,7 @@ export interface FlowArrowsProps {
   startDate: Date;
   processedData: ProcessedFootprint[];
   legendConfig: ScaleConfig;
+  geoJSON?: FeatureCollection | null;
 }
 
 // ── Component ──────────────────────────────────────────────────────────────
@@ -385,10 +386,13 @@ export default function FlowArrows({
   startDate,
   processedData,
   legendConfig,
+  geoJSON: geoJSONProp,
 }: FlowArrowsProps) {
   const { currentPalette } = useAppTheme();
   const { scope } = useMapControls();
   const { flowTracing } = useFlowTracing();
+  const { openFlowPanel } = useFlowPanel();
+  const [isMobile, setIsMobile] = useState(false);
   const geoJSONRef = useRef<FeatureCollection | null>(null);
   const [geoJSONLoaded, setGeoJSONLoaded] = useState(false);
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
@@ -397,6 +401,14 @@ export default function FlowArrows({
   const arrowDOMRef = useRef<ArrowDOMItem[]>([]);
   const tooltipElRef = useRef<HTMLDivElement>(null);
   const tooltipSizeRef = useRef<{ w: number; h: number } | null>(null);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 899px)");
+    setIsMobile(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
 
   useEffect(() => {
     const container = mapRef.current?.getContainer();
@@ -416,6 +428,11 @@ export default function FlowArrows({
   }, []);
 
   useEffect(() => {
+    if (geoJSONProp) {
+      geoJSONRef.current = geoJSONProp;
+      setGeoJSONLoaded(true);
+      return;
+    }
     const controller = new AbortController();
     fetch("/maps/wattnet.geojson", { signal: controller.signal })
       .then((r) => r.json())
@@ -427,7 +444,7 @@ export default function FlowArrows({
         if (err.name !== "AbortError") console.error("Failed to load zone GeoJSON:", err);
       });
     return () => controller.abort();
-  }, []);
+  }, [geoJSONProp]);
 
   // Sync DOM arrow positions directly on every map render frame — no React re-render
   useEffect((): (() => void) | void => {
@@ -464,12 +481,13 @@ export default function FlowArrows({
   const borderCrossingsRef = useRef<Map<string, [number, number]>>(new Map());
 
   const { centroids, zoneNames, zoneFeatures } = useMemo(() => {
-    if (!geoJSONRef.current) return { centroids: {}, zoneNames: {}, zoneFeatures: {} };
+    const geojson = geoJSONProp ?? geoJSONRef.current;
+    if (!geojson) return { centroids: {}, zoneNames: {}, zoneFeatures: {} };
     borderCrossingsRef.current.clear();
-    const c = computeZoneCentroids(geoJSONRef.current);
+    const c = computeZoneCentroids(geojson);
     const names: Record<string, string> = {};
     const features: Record<string, Feature> = {};
-    for (const f of geoJSONRef.current.features) {
+    for (const f of geojson.features) {
       const { zoneName, countryName } = (f.properties ?? {}) as {
         zoneName?: string;
         countryName?: string;
@@ -481,7 +499,7 @@ export default function FlowArrows({
     }
     return { centroids: c, zoneNames: names, zoneFeatures: features };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [geoJSONLoaded]);
+  }, [geoJSONProp, geoJSONLoaded]);
 
   // Pre-merge series per zone — recomputed only when importsData changes, not on every tick
   const mergedImportsMap = useMemo(() => {
@@ -604,16 +622,34 @@ export default function FlowArrows({
     }
   }, [tooltipArrow?.srcZone, tooltipArrow?.destZone]);
 
-  if (!mapContainer) return null;
+  // Recompute DOM items only when arrows change, not on every render (e.g. tooltip hover)
+  const arrowDOMItems = useMemo(
+    () => arrows.map((a, i) => ({
+      idx: i,
+      srcCentroid: a.srcCentroid,
+      destCentroid: a.destCentroid,
+      crossing: a.crossing,
+      numChevrons: a.chevronPaths.length,
+    })),
+    [arrows],
+  );
+  arrowDOMRef.current = arrowDOMItems;
 
-  // Keep arrowDOMRef in sync with arrows for the map.on('render') handler
-  arrowDOMRef.current = arrows.map((a, i) => ({
-    idx: i,
-    srcCentroid: a.srcCentroid,
-    destCentroid: a.destCentroid,
-    crossing: a.crossing,
-    numChevrons: a.chevronPaths.length,
-  }));
+  // Memoized so mousemove re-renders don't re-sort/re-scan series data
+  const tooltipStatus = useMemo(
+    () => tooltipArrow
+      ? getImportStatus(
+          importsData,
+          tooltipArrow.srcZone,
+          tooltipArrow.destZone,
+          slotToTimestampMs(startDate, selectedTimeIndex),
+        )
+      : null,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [tooltipArrow?.srcZone, tooltipArrow?.destZone, importsData, startDate, selectedTimeIndex],
+  );
+
+  if (!mapContainer) return null;
 
   const svgEl = (
     <svg
@@ -674,6 +710,37 @@ export default function FlowArrows({
                 )
               }
               onMouseLeave={() => setTooltip(null)}
+              onTouchStart={(e) => {
+                if (isMobile) {
+                  e.stopPropagation();
+                  const targetMs = slotToTimestampMs(startDate, selectedTimeIndex);
+                  const status = getImportStatus(importsData, arrow.srcZone, arrow.destZone, targetMs);
+                  openFlowPanel({
+                    srcZone: arrow.srcZone,
+                    destZone: arrow.destZone,
+                    srcName: arrow.srcName,
+                    destName: arrow.destName,
+                    mw: arrow.mw,
+                    color: arrow.color,
+                    metricValue: arrow.metricValue,
+                    metricUnit: legendConfig.unit ?? "",
+                    metricTitle: legendConfig.title,
+                    datetime: formatDatetime(startDate, selectedTimeIndex),
+                    valid: status?.valid ?? false,
+                    zoneStatus: status?.zoneStatus ?? "",
+                    dataState: status?.dataState ?? "missing",
+                    datasource: status?.datasource ?? "",
+                    isForecast: status?.isForecast ?? false,
+                  });
+                } else {
+                  const touch = e.touches[0];
+                  setTooltip((prev) =>
+                    prev?.srcZone === arrow.srcZone && prev?.destZone === arrow.destZone
+                      ? null
+                      : { x: touch.clientX, y: touch.clientY, srcZone: arrow.srcZone, destZone: arrow.destZone },
+                  );
+                }
+              }}
             >
               <animate
                 attributeName="opacity"
@@ -744,14 +811,6 @@ export default function FlowArrows({
     </svg>
   );
 
-  const tooltipStatus = tooltipArrow
-    ? getImportStatus(
-        importsData,
-        tooltipArrow.srcZone,
-        tooltipArrow.destZone,
-        slotToTimestampMs(startDate, selectedTimeIndex),
-      )
-    : null;
   const tooltipDatetime = formatDatetime(startDate, selectedTimeIndex);
   const cc = currentPalette.chipColors;
 

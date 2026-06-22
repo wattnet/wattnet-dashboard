@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { DimensionKey, MetricKey } from '@/src/features/map/utils/mapScales';
 import { useShallow } from 'zustand/react/shallow';
 
-export type BottomSheetState = 'hidden' | 'full';
+export type BottomSheetState = 'hidden' | 'peek' | 'full';
 
 export interface CanvasRect {
   top: number;
@@ -23,6 +23,24 @@ export interface ZoneData {
   isForecast?: boolean;
 }
 
+export interface FlowPanelData {
+  srcZone: string;
+  destZone: string;
+  srcName: string;
+  destName: string;
+  mw: number;
+  color: string;
+  metricValue: number | null;
+  metricUnit: string;
+  metricTitle: string;
+  datetime: string;
+  valid: boolean;
+  zoneStatus: string;
+  dataState: string;
+  datasource: string;
+  isForecast: boolean;
+}
+
 export interface ZoneSeriesPoint {
   value: number | null;
   timestamp: string;
@@ -38,6 +56,9 @@ interface DashboardState {
   selectedZone: string | undefined;
   zoneData: ZoneData | null;
   openCount: number;
+  flowPanelOpen: boolean;
+  flowPanelData: FlowPanelData | null;
+  flowOpenCount: number;
   sidebarCollapsed: boolean;
   bottomSheetState: BottomSheetState;
   canvasRect: CanvasRect;
@@ -60,6 +81,8 @@ interface DashboardState {
   openZonePanel: (zoneName: string, data?: ZoneData) => void;
   updateZoneData: (data: ZoneData) => void;
   closeZonePanel: () => void;
+  openFlowPanel: (data: FlowPanelData) => void;
+  closeFlowPanel: () => void;
   toggleSidebar: () => void;
   collapseSidebar: () => void;
   expandSidebar: () => void;
@@ -76,6 +99,9 @@ export const useDashboardStore = create<DashboardState>((set) => ({
   selectedZone: undefined,
   zoneData: null,
   openCount: 0,
+  flowPanelOpen: false,
+  flowPanelData: null,
+  flowOpenCount: 0,
   sidebarCollapsed: false,
   bottomSheetState: 'hidden',
   canvasRect: { top: 0, left: 0, width: 0, height: 0 },
@@ -101,6 +127,7 @@ export const useDashboardStore = create<DashboardState>((set) => ({
       zoneData: data ?? state.zoneData,
       zonePanelOpen: true,
       openCount: state.openCount + 1,
+      flowPanelOpen: false,
     })),
 
   updateZoneData: (data) => set({ zoneData: data }),
@@ -110,6 +137,20 @@ export const useDashboardStore = create<DashboardState>((set) => ({
     setTimeout(() => {
       set({ selectedZone: undefined, zoneData: null });
     }, 500);
+  },
+
+  openFlowPanel: (data) =>
+    set((state) => ({
+      flowPanelData: data,
+      flowPanelOpen: true,
+      flowOpenCount: state.flowOpenCount + 1,
+      zonePanelOpen: false,
+      bottomSheetState: 'full',
+    })),
+
+  closeFlowPanel: () => {
+    set({ flowPanelOpen: false });
+    setTimeout(() => set({ flowPanelData: null }), 500);
   },
 
   toggleSidebar: () =>
@@ -151,6 +192,18 @@ export function useZonePanel() {
       openZonePanel: state.openZonePanel,
       updateZoneData: state.updateZoneData,
       closeZonePanel: state.closeZonePanel,
+    })),
+  );
+}
+
+export function useFlowPanel() {
+  return useDashboardStore(
+    useShallow((state) => ({
+      flowPanelOpen: state.flowPanelOpen,
+      flowPanelData: state.flowPanelData,
+      flowOpenCount: state.flowOpenCount,
+      openFlowPanel: state.openFlowPanel,
+      closeFlowPanel: state.closeFlowPanel,
     })),
   );
 }
