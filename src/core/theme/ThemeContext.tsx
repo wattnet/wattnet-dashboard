@@ -7,6 +7,7 @@ import {
   useEffect,
   ReactNode,
   useMemo,
+  Suspense,
 } from "react";
 import {
   ThemeProvider as MuiThemeProvider,
@@ -26,11 +27,7 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-export function AppThemeProvider({
-  children,
-}: {
-  readonly children: ReactNode;
-}) {
+function ThemeProviderInner({ children }: { children: ReactNode }) {
   const searchParams = useSearchParams();
   const urlTheme = parseThemeParam(searchParams.get("theme"));
 
@@ -68,41 +65,25 @@ export function AppThemeProvider({
     return createTheme({
       palette: {
         mode: currentPalette.mode,
-        primary: {
-          main: currentPalette.colors.primary,
-        },
-        secondary: {
-          main: currentPalette.colors.secondary,
-        },
+        primary: { main: currentPalette.colors.primary },
+        secondary: { main: currentPalette.colors.secondary },
         background: {
           default: currentPalette.colors.background,
           paper: currentPalette.colors.background,
         },
-        text: {
-          primary: currentPalette.colors.text,
-        },
+        text: { primary: currentPalette.colors.text },
       },
-      typography: {
-        fontFamily: "var(--font-sans)",
-      },
+      typography: { fontFamily: "var(--font-sans)" },
       components: {
         MuiButton: {
-          styleOverrides: {
-            root: {
-              textTransform: "none",
-            },
-          },
+          styleOverrides: { root: { textTransform: "none" } },
         },
       },
     });
   }, [currentPalette]);
 
   const contextValue = useMemo(
-    () => ({
-      theme,
-      setTheme,
-      currentPalette,
-    }),
+    () => ({ theme, setTheme, currentPalette }),
     [theme, currentPalette]
   );
 
@@ -110,6 +91,18 @@ export function AppThemeProvider({
     <ThemeContext.Provider value={contextValue}>
       <MuiThemeProvider theme={muiTheme}>{children}</MuiThemeProvider>
     </ThemeContext.Provider>
+  );
+}
+
+export function AppThemeProvider({
+  children,
+}: {
+  readonly children: ReactNode;
+}) {
+  return (
+    <Suspense fallback={null}>
+      <ThemeProviderInner>{children}</ThemeProviderInner>
+    </Suspense>
   );
 }
 

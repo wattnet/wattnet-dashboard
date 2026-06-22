@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef, useCallback, useEffect, type RefObject } from "react";
+import { useState, useMemo, useRef, useCallback, useEffect, Suspense } from "react";
 import type { FeatureCollection } from "geojson";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -89,7 +89,7 @@ const ZoomButtons = ({ mapRef }: ZoomButtonsProps) => (
   </>
 );
 
-export default function MapPage() {
+function MapContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -502,5 +502,13 @@ export default function MapPage() {
         </Box>
       )}
     </>
+  );
+}
+
+export default function MapPage() {
+  return (
+    <Suspense fallback={null}>
+      <MapContent />
+    </Suspense>
   );
 }
