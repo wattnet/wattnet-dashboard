@@ -1091,7 +1091,7 @@ function MobileTopSheet({
 function MobileBottomSheet() {
   const { bottomSheetState, setBottomSheetState } = useBottomSheet();
   const { selectedZone, zoneData, zonePanelOpen, openCount, closeZonePanel } = useZonePanel();
-  const { flowPanelOpen, flowPanelData, flowOpenCount, closeFlowPanel } = useFlowPanel();
+  const { flowPanelOpen, flowPanelData, closeFlowPanel } = useFlowPanel();
   const sheetContentRef = React.useRef<HTMLDivElement>(null);
   const dragStartY = React.useRef<number | null>(null);
 
