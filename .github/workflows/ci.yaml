@@ -33,7 +33,7 @@ jobs:
             --build-arg API_PASSWORD=${{ secrets.API_PASSWORD }} \
             --build-arg DASHBOARD_API_KEY=${{ secrets.DASHBOARD_API_KEY }} \
             --build-arg NEXT_PUBLIC_DASHBOARD_API_KEY=${{ secrets.NEXT_PUBLIC_DASHBOARD_API_KEY }} \
-            -t ${{ secrets.DOCKERHUB_USERNAME }}/wattnet-dashboard:${{ steps.version.outputs.VERSION }} \
+            -t wattnet/wattnet-dashboard:${{ steps.version.outputs.VERSION }} \
             .
 
       - name: Push Docker image
