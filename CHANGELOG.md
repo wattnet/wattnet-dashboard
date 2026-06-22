@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.5.0](https://github.com/wattnet/wattnet-dashboard/compare/v1.4.1...v1.5.0) (2026-06-22)
+
+
+### Features
+
+* add license and funding information to README and create LICENSE file ([f104c21](https://github.com/wattnet/wattnet-dashboard/commit/f104c21cf03712c4fc5031bc6f085be119964a37))
+* add scripts for computing and ensuring zone crossings ([abc2c2b](https://github.com/wattnet/wattnet-dashboard/commit/abc2c2b807a9814ecd7e0d6a5beda9033c77f151))
+* add zone crossings data, imports data fetching hook, and zone centroids computation ([eeec824](https://github.com/wattnet/wattnet-dashboard/commit/eeec8240d4964d092afa28281848212154ed6e07))
+* dynamic time selector ([69fa659](https://github.com/wattnet/wattnet-dashboard/commit/69fa65963950241b3049eda0668431f9cefe316c))
+* enhance map and date selector functionality ([65732eb](https://github.com/wattnet/wattnet-dashboard/commit/65732eb68312cdf6b989e943af2d6f5e77d608d5))
+* enhance tooltip positioning and size handling in FlowArrows component ([9a05c10](https://github.com/wattnet/wattnet-dashboard/commit/9a05c10e84e6b275ba76df9418ee6168582fd439))
+* implement slotToTimestampMs and isSameUTCDay functions for date management ([1e14c22](https://github.com/wattnet/wattnet-dashboard/commit/1e14c2250edc2e8b97cc378b9c8d4aff082513a4))
+* update funding information and add Swiss flag to FundingBody component ([7883c65](https://github.com/wattnet/wattnet-dashboard/commit/7883c659c8ef5897a91d0336d9d4db6d1a290177))
+
+
+### Bug Fixes
+
+* mobile layout with flowarrows info ([dcdac1a](https://github.com/wattnet/wattnet-dashboard/commit/dcdac1adb5908ab3bff76658ac4958bbefa11cc5))
+* round tooltipArrow.mw value for improved display ([0f4b18b](https://github.com/wattnet/wattnet-dashboard/commit/0f4b18bd089afc4fd301a925be8ded0b888f00a6))
+
 ## [1.4.1](https://github.com/wattnet/wattnet-dashboard/compare/v1.4.0...v1.4.1) (2026-06-12)
 
 
