@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { DimensionKey, MetricKey } from '@/src/features/map/utils/mapScales';
 import { useShallow } from 'zustand/react/shallow';
 
-export type BottomSheetState = 'hidden' | 'full';
+export type BottomSheetState = 'hidden' | 'peek' | 'full';
 
 export interface CanvasRect {
   top: number;
@@ -23,6 +23,29 @@ export interface ZoneData {
   isForecast?: boolean;
 }
 
+export interface FlowPanelData {
+  srcZone: string;
+  destZone: string;
+  srcName: string;
+  destName: string;
+  mw: number;
+  color: string;
+  metricValue: number | null;
+  metricUnit: string;
+  metricTitle: string;
+  datetime: string;
+  valid: boolean;
+  zoneStatus: string;
+  dataState: string;
+  datasource: string;
+  isForecast: boolean;
+}
+
+export interface ZoneSeriesPoint {
+  value: number | null;
+  timestamp: string;
+}
+
 interface DashboardState {
   // State
   metric: MetricKey;
@@ -33,9 +56,15 @@ interface DashboardState {
   selectedZone: string | undefined;
   zoneData: ZoneData | null;
   openCount: number;
+  flowPanelOpen: boolean;
+  flowPanelData: FlowPanelData | null;
+  flowOpenCount: number;
   sidebarCollapsed: boolean;
   bottomSheetState: BottomSheetState;
   canvasRect: CanvasRect;
+  zoneSeries: ZoneSeriesPoint[] | null;
+  zoneSeriesIndex: number;
+  initialDataReady: boolean;
 
   // Simple actions (setters)
   setMetric: (v: MetricKey) => void;
@@ -44,11 +73,16 @@ interface DashboardState {
   setFlowTracing: (v: boolean) => void;
   setBottomSheetState: (v: BottomSheetState) => void;
   setCanvasRect: (rect: CanvasRect) => void;
+  setZoneSeries: (series: ZoneSeriesPoint[] | null) => void;
+  setZoneSeriesIndex: (index: number) => void;
+  setInitialDataReady: () => void;
 
   // Complex actions
   openZonePanel: (zoneName: string, data?: ZoneData) => void;
   updateZoneData: (data: ZoneData) => void;
   closeZonePanel: () => void;
+  openFlowPanel: (data: FlowPanelData) => void;
+  closeFlowPanel: () => void;
   toggleSidebar: () => void;
   collapseSidebar: () => void;
   expandSidebar: () => void;
@@ -65,9 +99,15 @@ export const useDashboardStore = create<DashboardState>((set) => ({
   selectedZone: undefined,
   zoneData: null,
   openCount: 0,
+  flowPanelOpen: false,
+  flowPanelData: null,
+  flowOpenCount: 0,
   sidebarCollapsed: false,
   bottomSheetState: 'hidden',
   canvasRect: { top: 0, left: 0, width: 0, height: 0 },
+  zoneSeries: null,
+  zoneSeriesIndex: 0,
+  initialDataReady: false,
 
   // Setters
   setMetric: (metric) => set({ metric }),
@@ -76,23 +116,41 @@ export const useDashboardStore = create<DashboardState>((set) => ({
   setFlowTracing: (flowTracing) => set({ flowTracing }),
   setBottomSheetState: (bottomSheetState) => set({ bottomSheetState }),
   setCanvasRect: (canvasRect) => set({ canvasRect }),
+  setZoneSeries: (zoneSeries) => set({ zoneSeries }),
+  setZoneSeriesIndex: (zoneSeriesIndex) => set({ zoneSeriesIndex }),
+  setInitialDataReady: () => set({ initialDataReady: true }),
 
   // Complex actions
   openZonePanel: (zoneName, data) =>
     set((state) => ({
       selectedZone: zoneName,
       zoneData: data ?? state.zoneData,
-      zonePanelOpen: false,
+      zonePanelOpen: true,
       openCount: state.openCount + 1,
+      flowPanelOpen: false,
     })),
 
   updateZoneData: (data) => set({ zoneData: data }),
 
   closeZonePanel: () => {
-    set({ zonePanelOpen: false });
+    set({ zonePanelOpen: false, zoneSeries: null, zoneSeriesIndex: 0 });
     setTimeout(() => {
       set({ selectedZone: undefined, zoneData: null });
     }, 500);
+  },
+
+  openFlowPanel: (data) =>
+    set((state) => ({
+      flowPanelData: data,
+      flowPanelOpen: true,
+      flowOpenCount: state.flowOpenCount + 1,
+      zonePanelOpen: false,
+      bottomSheetState: 'full',
+    })),
+
+  closeFlowPanel: () => {
+    set({ flowPanelOpen: false });
+    setTimeout(() => set({ flowPanelData: null }), 500);
   },
 
   toggleSidebar: () =>
@@ -134,6 +192,27 @@ export function useZonePanel() {
       openZonePanel: state.openZonePanel,
       updateZoneData: state.updateZoneData,
       closeZonePanel: state.closeZonePanel,
+    })),
+  );
+}
+
+export function useFlowPanel() {
+  return useDashboardStore(
+    useShallow((state) => ({
+      flowPanelOpen: state.flowPanelOpen,
+      flowPanelData: state.flowPanelData,
+      flowOpenCount: state.flowOpenCount,
+      openFlowPanel: state.openFlowPanel,
+      closeFlowPanel: state.closeFlowPanel,
+    })),
+  );
+}
+
+export function useZoneChart() {
+  return useDashboardStore(
+    useShallow((state) => ({
+      zoneSeries: state.zoneSeries,
+      zoneSeriesIndex: state.zoneSeriesIndex,
     })),
   );
 }

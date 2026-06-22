@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
-import { useSearchParams } from "next/navigation";
+import { useState, useMemo, useRef, useCallback, useEffect, type RefObject } from "react";
+import type { FeatureCollection } from "geojson";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Box, IconButton } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
@@ -13,13 +14,17 @@ import Legend from "@/src/features/map/components/Legend";
 import {
   getInitialTimeIndex,
   getTodayUTC,
+  decomposeTimeIndex,
+  dayCountInRange,
+  slotToTimestampMs,
+  isSameUTCDay,
 } from "@/src/shared/utils/dateManager";
 import { processFootprints } from "@/src/features/map/utils/footprintAdapter";
 import GlobalTag from "@/src/features/map/components/GlobalTag";
 import MapContainer from "@/src/features/map/components/MapContainer";
 
 import { useTheme, useMediaQuery } from "@mui/material";
-import { MOBILE_TOP_BAR_H } from "@/src/app/(dashboard)/layout";
+import { MOBILE_TOP_BAR_H, MOBILE_PEEK_H } from "@/src/app/(dashboard)/layout";
 import type { Map } from "maplibre-gl";
 import {
   useMapControls,
@@ -27,12 +32,16 @@ import {
   useZonePanel,
   useCanvasRect,
   useBottomSheet,
+  useDashboardStore,
   ZoneData,
 } from "@/src/features/dashboard/store/useDashboardStore";
+import { useShallow } from "zustand/react/shallow";
 import { Portal } from "@/src/shared/components/Portal";
 import { MetricKey, useMapScales } from "@/src/features/map/hooks/useMapScales";
 import ThemeSwitcher from "@/src/features/map/components/ThemeSwitcher";
-import { parseMapParams } from "@/src/shared/utils/urlParams";
+import { parseMapParams, parsePlayParam, parseControlParams } from "@/src/shared/utils/urlParams";
+import FlowArrows from "@/src/features/map/components/FlowArrows";
+import { useImportsData } from "@/src/features/map/hooks/useImportsData";
 
 // ── Palette ─────────────────────────────────────────────────────
 const BORDER = "var(--color-border)";
@@ -47,8 +56,8 @@ const BTN_HOVER_BG =
   "color-mix(in srgb, var(--color-foreground) 15%, var(--color-panel))";
 
 const zoomBtnSx = {
-  width: 32,
-  height: 32,
+  width: { xs: 40, md: 32 },
+  height: { xs: 40, md: 32 },
   bgcolor: `color-mix(in srgb, ${PANEL_BG} 93%, transparent)`,
   backdropFilter: BACKDROP,
   WebkitBackdropFilter: BACKDROP,
@@ -58,9 +67,6 @@ const zoomBtnSx = {
   "&:hover": { color: BTN_HOVER_COLOR, bgcolor: BTN_HOVER_BG },
 };
 
-function mobileLegendBottom(_sheetState: string): number {
-  return LEGEND_MARGIN;
-}
 
 type ZoomButtonsProps = { mapRef: React.RefObject<Map | null> };
 
@@ -85,14 +91,17 @@ const ZoomButtons = ({ mapRef }: ZoomButtonsProps) => (
 
 export default function MapPage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
   const { initialCenter, initialZoom } = parseMapParams({
     lat: searchParams.get("lat"),
     lng: searchParams.get("lng"),
     zoom: searchParams.get("zoom"),
   });
 
-  const { metric, dimension, scope } = useMapControls();
-  const { flowTracing } = useFlowTracing();
+  const { metric, dimension, scope, setMetric, setDimension, setScope } = useMapControls();
+  const { flowTracing, setFlowTracing } = useFlowTracing();
   const { openZonePanel, closeZonePanel } = useZonePanel();
   const { canvasRect } = useCanvasRect();
   const { bottomSheetState } = useBottomSheet();
@@ -100,70 +109,154 @@ export default function MapPage() {
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
   const mapRef = useRef<Map | null>(null);
+  const [isMapReady, setIsMapReady] = useState(false);
+  const [mapGeoJSON, setMapGeoJSON] = useState<FeatureCollection | null>(null);
 
-  const [selectedDate, setSelectedDate] = useState(getTodayUTC);
+  // Apply control params from URL on first mount
+  useEffect(() => {
+    const p = parseControlParams({
+      metric: searchParams.get("metric"),
+      dimension: searchParams.get("dimension"),
+      scope: searchParams.get("scope"),
+      flowTracing: searchParams.get("flowTracing"),
+    });
+    if (p.metric !== undefined) setMetric(p.metric);
+    if (p.dimension !== undefined) setDimension(p.dimension);
+    if (p.scope !== undefined) setScope(p.scope);
+    if (p.flowTracing !== undefined) setFlowTracing(p.flowTracing);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Keep URL in sync whenever controls change
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("metric", metric);
+    params.set("dimension", dimension);
+    params.set("scope", scope);
+    if (flowTracing) params.delete("flowTracing");
+    else params.set("flowTracing", "false");
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [metric, dimension, scope, flowTracing]);
+
+  const [startDate, setStartDate] = useState(getTodayUTC);
+  const [endDate, setEndDate] = useState(getTodayUTC);
   const [selectedTimeIndex, setSelectedTimeIndex] =
     useState(getInitialTimeIndex);
+  const [isPlaying, setIsPlayingState] = useState(() =>
+    parsePlayParam(searchParams.get("play")),
+  );
+
+  const setIsPlaying = useCallback(
+    (playing: boolean) => {
+      setIsPlayingState(playing);
+      const params = new URLSearchParams(searchParams.toString());
+      if (playing) {
+        params.set("play", "true");
+      } else {
+        params.delete("play");
+      }
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    },
+    [searchParams, router, pathname],
+  );
+
+  const setDateRange = useCallback((start: Date, end: Date) => {
+    setStartDate(start);
+    setEndDate(end);
+    if (isSameUTCDay(end, getTodayUTC())) {
+      const N = dayCountInRange(start, end);
+      setSelectedTimeIndex((N - 1) * 96 + getInitialTimeIndex());
+    } else {
+      setSelectedTimeIndex(0);
+    }
+    setIsPlayingState(false);
+  }, []);
 
   const legendConfig = useMapScales(metric as MetricKey, dimension);
 
-  const dateKey = useMemo(
-    () =>
-      [
-        selectedDate.getUTCFullYear(),
-        String(selectedDate.getUTCMonth() + 1).padStart(2, "0"),
-        String(selectedDate.getUTCDate()).padStart(2, "0"),
-      ].join("-"),
-    [selectedDate]
+  const fmt = (d: Date) =>
+    [
+      d.getUTCFullYear(),
+      String(d.getUTCMonth() + 1).padStart(2, "0"),
+      String(d.getUTCDate()).padStart(2, "0"),
+    ].join("-");
+
+  const rangeKey = useMemo(
+    () => `${fmt(startDate)}__${fmt(endDate)}`,
+    [startDate, endDate],
   );
+
+  const [startKey, endKey] = rangeKey.split("__");
 
   const { data, loading, error, ephemeralToken, fetchToken } = useMetricData(
     {
       metric,
       dimension,
       scope,
-      start: `${dateKey}T00:00:00Z`,
-      end: `${dateKey}T23:59:59Z`,
+      start: `${startKey}T00:00:00Z`,
+      end: `${endKey}T23:59:59Z`,
       aggregate: false,
       use_global: flowTracing,
     },
-    dateKey
+    rangeKey,
   );
 
-  const isToday = useMemo(() => {
-    const today = getTodayUTC();
-    return (
-      selectedDate.getUTCFullYear() === today.getUTCFullYear() &&
-      selectedDate.getUTCMonth() === today.getUTCMonth() &&
-      selectedDate.getUTCDate() === today.getUTCDate()
-    );
-  }, [selectedDate]);
+  const setInitialDataReady = useDashboardStore((s) => s.setInitialDataReady);
+  const hasStartedLoading = useRef(false);
+  const initialDataReadyFired = useRef(false);
+  useEffect(() => {
+    if (loading) {
+      hasStartedLoading.current = true;
+    }
+    if (!loading && hasStartedLoading.current && !initialDataReadyFired.current) {
+      initialDataReadyFired.current = true;
+      setInitialDataReady();
+    }
+  }, [loading, setInitialDataReady]);
+
+  const isToday = useMemo(() => isSameUTCDay(endDate, getTodayUTC()), [endDate]);
 
   useDataRefresh({
     params: {
       metric,
       dimension,
       scope,
-      start: `${dateKey}T00:00:00Z`,
-      end: `${dateKey}T23:59:59Z`,
+      start: `${startKey}T00:00:00Z`,
+      end: `${endKey}T23:59:59Z`,
       aggregate: false,
       use_global: flowTracing,
     },
-    dateKey,
+    dateKey: rangeKey,
     ephemeralToken,
     fetchToken,
     enabled: isToday,
     selectedTimeIndex,
     setSelectedTimeIndex,
+    startDate,
   });
 
+  const { data: importsData } = useImportsData(
+    {
+      start: `${startKey}T00:00:00Z`,
+      end: `${endKey}T23:59:59Z`,
+    },
+    rangeKey,
+    ephemeralToken,
+  );
+
   const processedData = useMemo(
-    () => (data ? processFootprints(data) : []),
-    [data]
+    () => (Array.isArray(data) ? processFootprints(data, startDate, endDate) : []),
+    [data, startDate, endDate],
+  );
+
+  const displayDate = useMemo(
+    () => decomposeTimeIndex(startDate, selectedTimeIndex).date,
+    [startDate, selectedTimeIndex],
   );
 
   const globalDataStatusTag = useMemo(() => {
-    if (processedData.length === 0 || !selectedDate) return "no-data";
+    if (processedData.length === 0) return "no-data";
 
     const selectedItem = processedData[0].series?.[selectedTimeIndex];
     if (selectedItem?.value === null || selectedItem?.value === undefined) {
@@ -171,38 +264,55 @@ export default function MapPage() {
     }
 
     const now = getTodayUTC();
-
     const currentTimestamp = Date.UTC(
       now.getUTCFullYear(),
       now.getUTCMonth(),
       now.getUTCDate(),
       now.getUTCHours(),
-      Math.floor(now.getUTCMinutes() / 15) * 15
+      Math.floor(now.getUTCMinutes() / 15) * 15,
     );
 
-    const selectedHours = Math.floor(selectedTimeIndex / 4);
-    const selectedMinutes = (selectedTimeIndex % 4) * 15;
-
-    const selectedTimestamp = Date.UTC(
-      selectedDate.getUTCFullYear(),
-      selectedDate.getUTCMonth(),
-      selectedDate.getUTCDate(),
-      selectedHours,
-      selectedMinutes
-    );
+    const selectedTimestamp = slotToTimestampMs(startDate, selectedTimeIndex);
 
     if (selectedTimestamp > currentTimestamp) return "forecast";
     if (selectedTimestamp < currentTimestamp) return "historical";
 
     return "live";
-  }, [processedData, selectedDate, selectedTimeIndex]);
+  }, [processedData, startDate, selectedTimeIndex]);
+
+  // ── Zone chart data ────────────────────────────────────────────
+  const { zonePanelOpen, zoneCode, setZoneSeries, setZoneSeriesIndex } =
+    useDashboardStore(
+      useShallow((s) => ({
+        zonePanelOpen: s.zonePanelOpen,
+        zoneCode: s.zoneData?.zoneCode ?? null,
+        setZoneSeries: s.setZoneSeries,
+        setZoneSeriesIndex: s.setZoneSeriesIndex,
+      })),
+    );
+
+  useEffect(() => {
+    if (!zonePanelOpen || !zoneCode) { setZoneSeries(null); return; }
+    if (processedData.length === 0 || loading) return; // keep old series while stale data is present
+    const fp = processedData.find((d) => d.zone === zoneCode);
+    setZoneSeries(
+      fp ? fp.series.map((s) => ({ value: s.value, timestamp: s.timestamp })) : null,
+    );
+  }, [zonePanelOpen, zoneCode, processedData, loading, setZoneSeries]);
+
+  useEffect(() => {
+    if (zonePanelOpen) setZoneSeriesIndex(selectedTimeIndex);
+  }, [zonePanelOpen, selectedTimeIndex, setZoneSeriesIndex]);
 
   const handleZoneClick = (zoneName: string, zoneData: ZoneData) => {
     openZonePanel(zoneName, zoneData);
   };
 
   const mobileTopOffset = MOBILE_TOP_BAR_H + 8;
-  const mobileLegendBot = mobileLegendBottom(bottomSheetState);
+  const mobileLegendBot =
+    bottomSheetState === "peek" || bottomSheetState === "full"
+      ? `calc(${MOBILE_PEEK_H}px + ${LEGEND_MARGIN}px + env(safe-area-inset-bottom))`
+      : `calc(${LEGEND_MARGIN}px + env(safe-area-inset-bottom))`;
   const showDesktopOverlay = !isMobile && canvasRect.width > 0;
 
   const legendEl = (
@@ -216,18 +326,15 @@ export default function MapPage() {
 
   return (
     <>
-      <Portal
-        targetId={
-          isMobile
-            ? "mobile-sidebar-controls-slot"
-            : "desktop-sidebar-controls-slot"
-        }
-      >
+      <Portal targetId="desktop-sidebar-controls-slot">
         <DateSelector
-          selectedDate={selectedDate}
-          setSelectedDate={setSelectedDate}
+          startDate={startDate}
+          endDate={endDate}
+          setDateRange={setDateRange}
           selectedTimeIndex={selectedTimeIndex}
           setSelectedTimeIndex={setSelectedTimeIndex}
+          isPlaying={isPlaying}
+          setIsPlaying={setIsPlaying}
           data={processedData}
         />
       </Portal>
@@ -237,17 +344,30 @@ export default function MapPage() {
           data={processedData}
           metric={metric as MetricKey}
           loading={loading}
-          selectedDate={selectedDate}
+          selectedDate={displayDate}
           selectedTimeIndex={selectedTimeIndex}
           selectedDimension={dimension}
           onZoneClick={handleZoneClick}
           onEmptyClick={closeZonePanel}
           onMapReady={(m) => {
             mapRef.current = m;
+            setIsMapReady(true);
           }}
+          onGeoJSONLoad={setMapGeoJSON}
           initialCenter={initialCenter}
           initialZoom={initialZoom}
         />
+        {flowTracing && isMapReady && importsData.length > 0 && mapGeoJSON && (
+          <FlowArrows
+            mapRef={mapRef}
+            importsData={importsData}
+            selectedTimeIndex={selectedTimeIndex}
+            startDate={startDate}
+            processedData={processedData}
+            legendConfig={legendConfig}
+            geoJSON={mapGeoJSON}
+          />
+        )}
       </Box>
 
       {isMobile && (

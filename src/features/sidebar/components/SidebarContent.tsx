@@ -289,8 +289,7 @@ function FundingBody() {
           fontWeight: 400,
         }}
       >
-        This dashboard is provided by CSIC. The work is funded from the European
-        Union's Horizon Europe research and innovation programme through the{" "}
+        This dashboard is provided by CSIC. This work was developed within the{" "}
         <Box
           component="a"
           href="https://greendigit-project.eu/"
@@ -302,9 +301,10 @@ function FundingBody() {
             "&:hover": { textDecoration: "underline" },
           }}
         >
-          GreenDIGIT project
-        </Box>
-        , under the grant agreement No.{" "}
+          GreenDIGIT
+        </Box>{" "}
+        project, funded by the European Union's Horizon Europe research and
+        innovation programme under grant agreement No.{" "}
         <Box
           component="a"
           href="https://cordis.europa.eu/project/id/101131207"
@@ -318,23 +318,34 @@ function FundingBody() {
         >
           101131207
         </Box>
-        .
+        , and by the Swiss State Secretariat for Education, Research and
+        Innovation.
       </Typography>
       <Box
         sx={{
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          mt: 1.25,
+          mt: 1.5,
         }}
       >
-        <Image
-          src="/images/EN_FundedbytheEU_RGB_POS.png"
-          alt="Funded by the European Union"
-          width={150}
-          height={50}
-          style={{ objectFit: "contain" }}
-        />
+        {/* EU logo + Swiss flag grouped on the left */}
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Image
+            src="/images/EN_FundedbytheEU_RGB_POS.png"
+            alt="Funded by the European Union"
+            width={150}
+            height={50}
+            style={{ objectFit: "contain" }}
+          />
+          <Image
+            src="/images/Flag_of_Switzerland.svg"
+            alt="Swiss State Secretariat for Education, Research and Innovation (SERI)"
+            width={27}
+            height={27}
+            style={{ objectFit: "contain" }}
+          />
+        </Box>
         <Image
           src="/images/GreenDIGIT logo color horizontal2.png"
           alt="GreenDIGIT"
@@ -426,8 +437,8 @@ export function SidebarHeader() {
           fontWeight: 500,
         }}
       >
-        Interactive web dashboard for visualizing energy generation, CO₂
-        emissions, and environmental footprint metrics.
+        Interactive dashboard to explore electricity-related CO₂ emissions,
+        water footprint, and sustainability metrics across Europe.
       </Typography>
 
       <Box sx={{ mt: 1.75 }}>
@@ -573,8 +584,8 @@ export function MobileSidebarContent() {
               flex: 1,
             }}
           >
-            Interactive web dashboard for visualizing energy generation, CO₂
-            emissions, and environmental footprint metrics.
+            Interactive dashboard to explore electricity-related CO₂ emissions,
+            water footprint, and sustainability metrics across Europe.
           </Typography>
           <Box
             component="a"
@@ -637,7 +648,6 @@ export function MobileSidebarContent() {
 
       {/* Options — flat, no scroll wrapper */}
       <Box sx={{ px: 2.5, py: 2, borderBottom: `1px solid ${BORDER}` }}>
-        <Box id="mobile-sidebar-controls-slot" sx={{ mb: 2 }} />
         <OptionsBody />
       </Box>
 

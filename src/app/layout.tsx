@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Red_Hat_Text, Red_Hat_Display } from "next/font/google";
 import { Providers } from "../core/providers/providers";
 import "./globals.css";
@@ -13,10 +13,16 @@ const redHatDisplay = Red_Hat_Display({
   subsets: ["latin"],
 });
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
+
 export const metadata: Metadata = {
   title: "Dashboard - wattnet.eu",
   description:
-    "Interactive dashboard for wattnet, visualizing energy generation, CO₂ emissions, and environmental footprint metrics.",
+    "Interactive dashboard to explore electricity-related CO₂ emissions, water footprint, and sustainability metrics across Europe.",
 };
 
 export default function RootLayout({

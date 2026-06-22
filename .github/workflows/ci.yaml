@@ -38,4 +38,4 @@ jobs:
 
       - name: Push Docker image
         run: |
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/wattnet-dashboard:${{ steps.version.outputs.VERSION }}
+          docker push wattnet/wattnet-dashboard:${{ steps.version.outputs.VERSION }}

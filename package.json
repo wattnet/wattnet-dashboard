@@ -3,6 +3,9 @@
   "version": "1.4.1",
   "private": true,
   "scripts": {
+    "crossings": "node scripts/compute-zone-crossings.mjs",
+    "predev": "node scripts/ensure-zone-crossings.mjs",
+    "prebuild": "node scripts/ensure-zone-crossings.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",

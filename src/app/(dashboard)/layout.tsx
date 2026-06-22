@@ -4,6 +4,7 @@ import React from "react";
 import Image from "next/image";
 import {
   Box,
+  Fade,
   IconButton,
   Typography,
   Chip,
@@ -21,17 +22,20 @@ import SidebarContent, {
   MobileSidebarContent,
 } from "@/src/features/sidebar/components/SidebarContent";
 import {
+  useDashboardStore,
   useBottomSheet,
   useCanvasRect,
   useFlowTracing,
+  useFlowPanel,
   useMapControls,
   useSidebar,
   useZonePanel,
+  useZoneChart,
 } from "@/src/features/dashboard/store/useDashboardStore";
 import { useAppTheme } from "@/src/core/theme/ThemeContext";
 
 export const MOBILE_TOP_BAR_H = 48;
-export const MOBILE_PEEK_H = 64;
+export const MOBILE_PEEK_H = 240;
 
 // ── Palette ─────────────────────────────────────────────────────
 const BORDER = "var(--color-border)";
@@ -49,7 +53,7 @@ const DRAG_HANDLE =
   "color-mix(in srgb, var(--color-foreground) 15%, transparent)";
 
 const COLLAPSED_W = 56;
-const SIDEBAR_W = 400;
+const SIDEBAR_W = 445;
 const EASING = "cubic-bezier(0.16, 1, 0.3, 1)";
 const DURATION = "0.4s";
 
@@ -263,7 +267,7 @@ function ZoneDataContent() {
       </Typography>
     );
 
-  const valStr = zoneData.value != null ? zoneData.value.toFixed(1) : "—";
+  const valStr = zoneData.value != null ? zoneData.value.toFixed(2) : "—";
 
   // 1. Final / Not Final
   const finalKey: ChipKey = zoneData.valid ? "final" : "notFinal";
@@ -297,53 +301,46 @@ function ZoneDataContent() {
   const coverageLabel = flowTracing ? "Global" : "Local";
 
   return (
-    <Box sx={{ display: "flex", gap: 2, alignItems: "flex-start" }}>
-      {/* Left: value */}
-      <Box
-        sx={{
-          flex: 1,
-          minWidth: 0,
-          display: "flex",
-          flexDirection: "column",
-          gap: 1,
-        }}
-      >
+    <Box sx={{ display: "flex", gap: 3, alignItems: "flex-start" }}>
+      {/* Left: data */}
+      <Box sx={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
         {zoneData.date && (
           <Typography
             sx={{
-              fontSize: 14,
+              fontSize: 13,
+              fontWeight: 500,
               color: TEXT_DIM,
+              letterSpacing: "0.03em",
+              fontVariantNumeric: "tabular-nums",
+              lineHeight: 1,
+              mb: 1.5,
             }}
           >
             {zoneData.date}
           </Typography>
         )}
-        <Box sx={{ display: "flex", alignItems: "baseline", gap: 0.75 }}>
+        <Box sx={{ display: "flex", alignItems: "baseline", gap: 1 }}>
           <Typography
             sx={{
-              fontSize: 34,
+              fontSize: 36,
               fontWeight: 700,
-              color: "var(--color-primary)",
+              color: "color-mix(in srgb, var(--color-foreground) 92%, transparent)",
               lineHeight: 1,
+              fontVariantNumeric: "tabular-nums",
             }}
           >
             {valStr}
           </Typography>
-          <Typography
-            sx={{
-              fontSize: 16,
-              fontWeight: 500,
-              color: TEXT_MID,
-            }}
-          >
+          <Typography sx={{ fontSize: 14, fontWeight: 500, color: TEXT_MID, lineHeight: 1 }}>
             {zoneData.unit}
           </Typography>
         </Box>
         <Typography
           sx={{
             fontSize: 14,
-            color:
-              "color-mix(in srgb, var(--color-foreground) 35%, transparent)",
+            color: "color-mix(in srgb, var(--color-foreground) 50%, transparent)",
+            lineHeight: 1,
+            mt: 1.25,
           }}
         >
           {zoneData.label}
@@ -351,35 +348,157 @@ function ZoneDataContent() {
       </Box>
 
       {/* Right: chips */}
-      <Box
-        sx={{
-          display: "flex",
-          flexDirection: "column",
-          gap: 0.75,
-          flexShrink: 0,
-          pt: 0.25,
-        }}
-      >
-        <Chip
-          size="small"
-          label={finalLabel}
-          sx={getChipSx(finalKey, colors)}
-        />
-        <Chip
-          size="small"
-          label={statusLabel}
-          sx={getChipSx(statusKey, colors)}
-        />
-        <Chip
-          size="small"
-          label={scopeLabel}
-          sx={getChipSx(scopeKey, colors)}
-        />
-        <Chip
-          size="small"
-          label={coverageLabel}
-          sx={getChipSx(coverageKey, colors)}
-        />
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 1, flexShrink: 0, pt: 0.25 }}>
+        <Chip size="small" label={finalLabel} sx={getChipSx(finalKey, colors)} />
+        <Chip size="small" label={statusLabel} sx={getChipSx(statusKey, colors)} />
+        <Chip size="small" label={scopeLabel} sx={getChipSx(scopeKey, colors)} />
+        <Chip size="small" label={coverageLabel} sx={getChipSx(coverageKey, colors)} />
+      </Box>
+    </Box>
+  );
+}
+
+function fmtDatasource(raw: string): string {
+  const colonIdx = raw.indexOf(":");
+  const s = colonIdx === -1 ? raw : raw.slice(colonIdx + 1);
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+const TEXT_LOW = "color-mix(in srgb, var(--color-foreground) 28%, transparent)";
+
+// ── Flow data content ──────────────────────────────────────────────────────
+function FlowDataContent() {
+  const { flowPanelData } = useFlowPanel();
+  const { scope } = useMapControls();
+  const { flowTracing } = useFlowTracing();
+  const { currentPalette } = useAppTheme();
+  const colors = currentPalette.chipColors;
+
+  if (!flowPanelData)
+    return (
+      <Typography sx={{ fontSize: 13, color: TEXT_DIM }}>
+        No data available.
+      </Typography>
+    );
+
+  const finalKey: ChipKey = flowPanelData.valid ? "final" : "notFinal";
+  const finalLabel = flowPanelData.valid ? "Final" : "Not Final";
+
+  const raw = flowPanelData.zoneStatus;
+  let statusKey: ChipKey = "neutral";
+  let statusLabel = raw || "—";
+  if (raw === "complete") { statusKey = "complete"; statusLabel = "Complete"; }
+  else if (raw === "preview") { statusKey = "preview"; statusLabel = "Preview"; }
+  else if (raw === "missing" && flowPanelData.isForecast) { statusKey = "forecasted"; statusLabel = "Forecasted"; }
+  else if (raw === "missing") { statusKey = "missing"; statusLabel = "Missing"; }
+
+  const dataStateKey: ChipKey =
+    flowPanelData.dataState === "official" ? "complete" :
+    flowPanelData.dataState === "estimated" ? "preview" : "neutral";
+  const dataStateLabel =
+    flowPanelData.dataState === "official" ? "Official" :
+    flowPanelData.dataState === "estimated" ? "Estimated" : null;
+
+  const scopeKey: ChipKey = scope === "life-cycle" ? "lifecycle" : "operational";
+  const scopeLabel = scope === "life-cycle" ? "Life-cycle" : "Operational";
+  const coverageKey: ChipKey = flowTracing ? "global" : "local";
+  const coverageLabel = flowTracing ? "Global" : "Local";
+
+  return (
+    <Box sx={{ display: "flex", flexDirection: "column" }}>
+      {/* Datetime */}
+      <Typography sx={{ fontSize: 13, fontWeight: 500, color: TEXT_DIM, letterSpacing: "0.03em", lineHeight: 1, fontVariantNumeric: "tabular-nums", mb: 2 }}>
+        {flowPanelData.datetime}
+      </Typography>
+
+      {/* Zones + animated connector */}
+      <Box sx={{ display: "flex", gap: 2, mb: 2.5 }}>
+        <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", width: 10, pt: "6px", pb: "6px" }}>
+          <Box sx={{ width: 6, height: 6, borderRadius: "50%", bgcolor: "color-mix(in srgb, var(--color-foreground) 35%, transparent)", flexShrink: 0 }} />
+          <Box sx={{ flex: 1, minHeight: 6, width: 1.5, bgcolor: "color-mix(in srgb, var(--color-foreground) 18%, transparent)", my: "4px" }} />
+          <Box component="svg" width="8" height="12" viewBox="0 0 8 12" fill="none" sx={{ flexShrink: 0 }}>
+            <path d="M1 1L4 4.5L7 1" stroke="color-mix(in srgb, var(--color-foreground) 32%, transparent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <animate attributeName="opacity" values="0.15;1;0.15" dur="1.2s" begin="0s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" />
+            </path>
+            <path d="M1 7L4 10.5L7 7" stroke="color-mix(in srgb, var(--color-foreground) 32%, transparent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <animate attributeName="opacity" values="0.15;1;0.15" dur="1.2s" begin="0.4s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" />
+            </path>
+          </Box>
+          <Box sx={{ flex: 1, minHeight: 6, width: 1.5, bgcolor: "color-mix(in srgb, var(--color-foreground) 18%, transparent)", my: "4px" }} />
+          <Box sx={{ width: 6, height: 6, borderRadius: "50%", bgcolor: "color-mix(in srgb, var(--color-foreground) 35%, transparent)", flexShrink: 0 }} />
+        </Box>
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 1.25, flex: 1, minWidth: 0 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}>
+            <Typography sx={{ fontSize: 17, fontWeight: 600, color: "color-mix(in srgb, var(--color-foreground) 92%, transparent)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: 1.2 }}>
+              {flowPanelData.srcName}
+            </Typography>
+            <Typography sx={{ fontSize: 12, fontWeight: 500, color: TEXT_DIM, lineHeight: 1, flexShrink: 0 }}>
+              ({flowPanelData.srcZone})
+            </Typography>
+          </Box>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}>
+            <Typography sx={{ fontSize: 17, fontWeight: 600, color: "color-mix(in srgb, var(--color-foreground) 92%, transparent)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: 1.2 }}>
+              {flowPanelData.destName}
+            </Typography>
+            <Typography sx={{ fontSize: 12, fontWeight: 500, color: TEXT_DIM, lineHeight: 1, flexShrink: 0 }}>
+              ({flowPanelData.destZone})
+            </Typography>
+          </Box>
+        </Box>
+      </Box>
+
+      {/* MW value + label */}
+      <Box sx={{ display: "flex", alignItems: "baseline", gap: 1, mb: 0.75 }}>
+        <Typography sx={{ fontSize: 36, fontWeight: 700, color: "color-mix(in srgb, var(--color-foreground) 92%, transparent)", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
+          {flowPanelData.mw.toFixed(2)}
+        </Typography>
+        <Typography sx={{ fontSize: 14, fontWeight: 500, color: TEXT_MID, lineHeight: 1 }}>MW</Typography>
+      </Box>
+      <Typography sx={{ fontSize: 14, color: "color-mix(in srgb, var(--color-foreground) 50%, transparent)", lineHeight: 1, mb: flowPanelData.metricValue !== null ? 1.75 : 2.5 }}>
+        Power exchange
+      </Typography>
+
+      {/* Metric value */}
+      {flowPanelData.metricValue !== null && (
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2.5 }}>
+          <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: flowPanelData.color, border: "1px solid rgba(0,0,0,0.2)", flexShrink: 0 }} />
+          <Typography sx={{ fontSize: 13, color: TEXT_DIM, lineHeight: 1.3 }}>
+            {"with a "}
+            <Box component="strong" sx={{ color: "color-mix(in srgb, var(--color-foreground) 85%, transparent)", fontVariantNumeric: "tabular-nums", fontSize: 14 }}>
+              {flowPanelData.metricValue.toFixed(2)} {flowPanelData.metricUnit}
+            </Box>
+            {" "}{flowPanelData.metricTitle.toLowerCase()}
+          </Typography>
+        </Box>
+      )}
+
+      {/* Divider */}
+      <Box sx={{ height: "1px", bgcolor: BORDER, mb: 2 }} />
+
+      {/* ENERGY chips */}
+      <Box sx={{ mb: 2 }}>
+        <Typography sx={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", color: TEXT_LOW, textTransform: "uppercase", mb: 1 }}>
+          Energy
+        </Typography>
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75 }}>
+          <Chip size="small" label={finalLabel} sx={getChipSx(finalKey, colors)} />
+          <Chip size="small" label={statusLabel} sx={getChipSx(statusKey, colors)} />
+          {dataStateLabel && <Chip size="small" label={dataStateLabel} sx={getChipSx(dataStateKey, colors)} />}
+          {flowPanelData.datasource && (
+            <Chip size="small" label={fmtDatasource(flowPanelData.datasource)} sx={getChipSx("neutral", colors)} />
+          )}
+        </Box>
+      </Box>
+
+      {/* ENVIRONMENTAL chips */}
+      <Box>
+        <Typography sx={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", color: TEXT_LOW, textTransform: "uppercase", mb: 1 }}>
+          Environmental
+        </Typography>
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75 }}>
+          <Chip size="small" label={coverageLabel} sx={getChipSx(coverageKey, colors)} />
+          <Chip size="small" label={scopeLabel} sx={getChipSx(scopeKey, colors)} />
+        </Box>
       </Box>
     </Box>
   );
@@ -500,9 +619,218 @@ function Sidebar({ expandedWidth }: Readonly<{ expandedWidth: number }>) {
   );
 }
 
+// ── Zone chart ────────────────────────────────────────────────────────────
+function ZoneChart() {
+  const { zoneSeries, zoneSeriesIndex } = useZoneChart();
+  const wrapRef = React.useRef<HTMLDivElement>(null);
+  const [w, setW] = React.useState(300);
+
+  const hasSeries = !!zoneSeries && zoneSeries.length >= 2;
+
+  React.useEffect(() => {
+    if (!wrapRef.current) return;
+    const ro = new ResizeObserver(([e]) => setW(e.contentRect.width));
+    ro.observe(wrapRef.current);
+    return () => ro.disconnect();
+  }, [hasSeries]);
+
+  if (!hasSeries) return null;
+
+  const H = 180;
+  const PAD = { t: 16, r: 20, b: 30, l: 46 };
+  const plotW = w - PAD.l - PAD.r;
+  const plotH = H - PAD.t - PAD.b;
+  const n = zoneSeries.length;
+
+  const vals = zoneSeries
+    .map((s) => s.value)
+    .filter((v): v is number => v !== null);
+  if (vals.length < 2) return null;
+
+  const dataMin = Math.min(...vals);
+  const dataMax = Math.max(...vals);
+
+  // Nice Y axis with padding and round ticks
+  const niceYAxis = (lo: number, hi: number, targetTicks = 4) => {
+    const rawRange = hi - lo || 1;
+    const pad = rawRange * 0.12;
+    const paddedLo = lo - pad;
+    const paddedHi = hi + pad;
+    const range = paddedHi - paddedLo;
+    const roughStep = range / targetTicks;
+    const mag = Math.pow(10, Math.floor(Math.log10(roughStep)));
+    const norm = roughStep / mag;
+    const niceNorm = norm < 1.5 ? 1 : norm < 3 ? 2 : norm < 7 ? 5 : 10;
+    const step = niceNorm * mag;
+    const yMin = Math.floor(paddedLo / step) * step;
+    const yMax = Math.ceil(paddedHi / step) * step;
+    const ticks: number[] = [];
+    for (let t = yMin; t <= yMax + step * 0.001; t += step) {
+      ticks.push(Math.round(t * 1e9) / 1e9);
+    }
+    return { yMin, yMax, ticks, step };
+  };
+
+  const { yMin, yMax, ticks: yTicks, step: yStep } = niceYAxis(dataMin, dataMax);
+  const rangeV = yMax - yMin;
+
+  const xOf = (i: number) => PAD.l + (i / (n - 1)) * plotW;
+  const yOf = (v: number) => PAD.t + (1 - (v - yMin) / rangeV) * plotH;
+
+  const yDecimals = Math.max(0, -Math.floor(Math.log10(yStep)));
+  const fmtVal = (v: number) => {
+    if (Math.abs(v) >= 1000) {
+      const k = v / 1000;
+      return `${Number.isInteger(k) ? k : k.toFixed(1)}k`;
+    }
+    return yDecimals === 0 ? Math.round(v).toString() : v.toFixed(yDecimals);
+  };
+
+  // Build path segments (skip null gaps)
+  const segments: { line: string; firstX: number; lastX: number }[] = [];
+  let cmds: string[] = [];
+  let firstX = 0;
+  let lastX = 0;
+
+  for (let i = 0; i < n; i++) {
+    const v = zoneSeries[i].value;
+    if (v === null) {
+      if (cmds.length) { segments.push({ line: cmds.join(""), firstX, lastX }); cmds = []; }
+    } else {
+      const x = xOf(i); const y = yOf(v);
+      if (!cmds.length) { firstX = x; cmds.push(`M${x.toFixed(1)},${y.toFixed(1)}`); }
+      else cmds.push(`L${x.toFixed(1)},${y.toFixed(1)}`);
+      lastX = x;
+    }
+  }
+  if (cmds.length) segments.push({ line: cmds.join(""), firstX, lastX });
+
+  const linePath = segments.map((s) => s.line).join(" ");
+  const areaPath = segments
+    .map((s) =>
+      `${s.line}L${s.lastX.toFixed(1)},${(H - PAD.b).toFixed(1)}L${s.firstX.toFixed(1)},${(H - PAD.b).toFixed(1)}Z`,
+    )
+    .join(" ");
+
+  // Day separators (every 96 slots = 1 day)
+  const daySeps: number[] = [];
+  for (let i = 96; i < n; i += 96) daySeps.push(xOf(i));
+
+  // X axis labels: dates for multi-day, hour marks for single day
+  const fmtDate = (ts: string) => {
+    const d = new Date(ts);
+    const day = String(d.getUTCDate()).padStart(2, "0");
+    const month = String(d.getUTCMonth() + 1).padStart(2, "0");
+    const year = String(d.getUTCFullYear()).slice(2);
+    return `${day}/${month}/${year}`;
+  };
+  const xLabels: { x: number; label: string; anchor: string }[] = [];
+  if (n > 96) {
+    for (let i = 96; i < n; i += 96) {
+      const ts = zoneSeries[i]?.timestamp;
+      if (ts) xLabels.push({ x: xOf(i), label: fmtDate(ts), anchor: "middle" });
+    }
+  } else {
+    xLabels.push(
+      { x: xOf(0), label: "0h", anchor: "start" },
+      { x: xOf(Math.round((n - 1) / 2)), label: "12h", anchor: "middle" },
+      { x: xOf(n - 1), label: "24h", anchor: "end" },
+    );
+  }
+
+  // Current position
+  const curX = xOf(Math.min(zoneSeriesIndex, n - 1));
+  const curV = zoneSeries[Math.min(zoneSeriesIndex, n - 1)]?.value;
+  const curY = curV != null ? yOf(curV) : null;
+
+  const axisColor = "var(--color-foreground)";
+  const axisOpacity = 0.3;
+  const labelOpacity = 0.4;
+
+  return (
+    <Box
+      ref={wrapRef}
+      sx={{ width: "100%", mt: 2.5, pt: 2, borderTop: `1px solid ${BORDER}` }}
+    >
+      <Typography
+        sx={{
+          fontSize: 10.5,
+          fontWeight: 600,
+          color: TEXT_DIM,
+          letterSpacing: "0.08em",
+          mb: 1,
+          px: 2.5,
+        }}
+      >
+        TREND
+      </Typography>
+      <svg width={w} height={H} style={{ display: "block" }}>
+        <defs>
+          <linearGradient id="wn-zc-fill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="var(--color-primary)" stopOpacity="0.3" />
+            <stop offset="100%" stopColor="var(--color-primary)" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+
+        {/* Y gridlines + labels */}
+        {yTicks.map((t) => {
+          const y = yOf(t);
+          if (y < PAD.t - 2 || y > H - PAD.b + 2) return null;
+          return (
+            <g key={t}>
+              <line x1={PAD.l} y1={y} x2={w - PAD.r} y2={y}
+                stroke={axisColor} strokeWidth={0.5} strokeOpacity={0.1} />
+              <text x={PAD.l - 5} y={y} textAnchor="end" dominantBaseline="middle"
+                fontSize={12} fill={axisColor} fillOpacity={labelOpacity}>
+                {fmtVal(t)}
+              </text>
+            </g>
+          );
+        })}
+
+        {/* X axis baseline */}
+        <line x1={PAD.l} y1={H - PAD.b} x2={w - PAD.r} y2={H - PAD.b}
+          stroke={axisColor} strokeWidth={0.5} strokeOpacity={axisOpacity} />
+
+        {/* Day separators */}
+        {daySeps.map((x, i) => (
+          <line key={i} x1={x} y1={PAD.t} x2={x} y2={H - PAD.b}
+            stroke={axisColor} strokeWidth={0.5} strokeOpacity={0.12} />
+        ))}
+
+        {/* X axis labels */}
+        {xLabels.map(({ x, label, anchor }, i) => (
+          <text key={i} x={x} y={H - PAD.b + 5} textAnchor={anchor}
+            dominantBaseline="hanging" fontSize={13} fill={axisColor} fillOpacity={labelOpacity}>
+            {label}
+          </text>
+        ))}
+
+        {/* Area fill */}
+        {areaPath && <path d={areaPath} fill="url(#wn-zc-fill)" />}
+
+        {/* Line */}
+        {linePath && (
+          <path d={linePath} fill="none"
+            stroke="var(--color-primary)" strokeWidth={1.5}
+            strokeLinecap="round" strokeLinejoin="round" />
+        )}
+
+        {/* Current position marker */}
+        <line x1={curX} y1={PAD.t} x2={curX} y2={H - PAD.b}
+          stroke={axisColor} strokeWidth={1} strokeOpacity={0.3} strokeDasharray="3,2" />
+        {curY !== null && (
+          <circle cx={curX} cy={curY} r={4}
+            fill="var(--color-primary)" stroke={PANEL_BG} strokeWidth={2} />
+        )}
+      </svg>
+    </Box>
+  );
+}
+
 // ── Desktop zone panel ─────────────────────────────────────────────────────
 function ZonePanel({ expandedWidth }: Readonly<{ expandedWidth: number }>) {
-  const { zonePanelOpen, selectedZone, closeZonePanel } = useZonePanel();
+  const { zonePanelOpen, selectedZone, zoneData, closeZonePanel } = useZonePanel();
   const { collapseSidebar } = useSidebar();
   const theme = useTheme();
   const isNarrow = useMediaQuery(theme.breakpoints.down("lg"));
@@ -552,19 +880,36 @@ function ZonePanel({ expandedWidth }: Readonly<{ expandedWidth: number }>) {
             flexShrink: 0,
           }}
         >
-          <Typography
-            sx={{
-              fontSize: 14,
-              fontWeight: 600,
-              color:
-                "color-mix(in srgb, var(--color-foreground) 85%, transparent)",
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-            }}
-          >
-            {selectedZone ?? ""}
-          </Typography>
+          <Box sx={{ display: "flex", alignItems: "baseline", gap: 1, minWidth: 0, overflow: "hidden" }}>
+            <Typography
+              sx={{
+                fontSize: 18,
+                fontWeight: 600,
+                color: "color-mix(in srgb, var(--color-foreground) 92%, transparent)",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                lineHeight: 1.2,
+              }}
+            >
+              {selectedZone ?? ""}
+            </Typography>
+            {zoneData?.zoneCode && (
+              <Typography
+                component="span"
+                sx={{
+                  fontSize: 12,
+                  fontWeight: 500,
+                  color: "color-mix(in srgb, var(--color-foreground) 45%, transparent)",
+                  letterSpacing: "0.04em",
+                  whiteSpace: "nowrap",
+                  flexShrink: 0,
+                }}
+              >
+                ({zoneData.zoneCode})
+              </Typography>
+            )}
+          </Box>
           <IconButton
             onClick={closeZonePanel}
             size="small"
@@ -577,8 +922,11 @@ function ZonePanel({ expandedWidth }: Readonly<{ expandedWidth: number }>) {
             <CloseIcon fontSize="small" />
           </IconButton>
         </Box>
-        <Box sx={{ flex: 1, overflowY: "auto", p: 2.5 }}>
-          <ZoneDataContent />
+        <Box sx={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+          <Box sx={{ p: 2.5 }}>
+            <ZoneDataContent />
+          </Box>
+          <ZoneChart />
         </Box>
       </Box>
     </Box>
@@ -656,7 +1004,7 @@ function MobileTopSheet({
         top: 0,
         left: 0,
         right: 0,
-        height: expanded ? "90vh" : `${MOBILE_TOP_BAR_H}px`,
+        height: expanded ? "100vh" : `${MOBILE_TOP_BAR_H}px`,
         ...panelSx,
         borderBottom: `1px solid ${BORDER}`,
         borderRadius: expanded ? "0 0 16px 16px" : 0,
@@ -677,7 +1025,8 @@ function MobileTopSheet({
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          px: 2,
+          pl: 0.5,
+        pr: 2,
         }}
       >
         <Box
@@ -689,8 +1038,8 @@ function MobileTopSheet({
           <Image
             src="/images/wattnet-logo-full-dark-transparent.svg"
             alt="wattnet"
-            width={100}
-            height={30}
+            width={120}
+            height={36}
             priority
           />
         </Box>
@@ -705,8 +1054,8 @@ function MobileTopSheet({
           <Image
             src="/images/wattnet-logo-full-light-transparent.svg"
             alt="wattnet"
-            width={100}
-            height={30}
+            width={120}
+            height={36}
             priority
           />
         </Box>
@@ -723,18 +1072,17 @@ function MobileTopSheet({
         />
       </Box>
 
-      {/* Content — full sheet scrollable */}
-      {expanded && (
-        <Box
-          sx={{
-            flex: 1,
-            minHeight: 0,
-            overflowY: "auto",
-          }}
-        >
-          <MobileSidebarContent />
-        </Box>
-      )}
+      {/* Content — always mounted so the Portal slot exists in DOM */}
+      <Box
+        sx={{
+          flex: 1,
+          minHeight: 0,
+          overflowY: "auto",
+          display: expanded ? "block" : "none",
+        }}
+      >
+        <MobileSidebarContent />
+      </Box>
     </Box>
   );
 }
@@ -742,23 +1090,30 @@ function MobileTopSheet({
 // ── Mobile bottom sheet ────────────────────────────────────────────────────
 function MobileBottomSheet() {
   const { bottomSheetState, setBottomSheetState } = useBottomSheet();
-  const { selectedZone, zonePanelOpen, openCount, closeZonePanel } =
-    useZonePanel();
+  const { selectedZone, zoneData, zonePanelOpen, openCount, closeZonePanel } = useZonePanel();
+  const { flowPanelOpen, flowPanelData, closeFlowPanel } = useFlowPanel();
+  const sheetContentRef = React.useRef<HTMLDivElement>(null);
   const dragStartY = React.useRef<number | null>(null);
 
+  const isFlow = flowPanelOpen;
+  const isZone = zonePanelOpen;
+  const isVisible = bottomSheetState !== "hidden";
+
   React.useEffect(() => {
-    if (openCount > 0) setBottomSheetState("full");
+    if (openCount > 0) setBottomSheetState("peek");
   }, [openCount, setBottomSheetState]);
 
   React.useEffect(() => {
-    if (!zonePanelOpen) setBottomSheetState("hidden");
-  }, [zonePanelOpen, setBottomSheetState]);
+    if (!zonePanelOpen && !flowPanelOpen) setBottomSheetState("hidden");
+  }, [zonePanelOpen, flowPanelOpen, setBottomSheetState]);
 
-  // Animate sheet closed first, then clean up panel state after transition
   const handleClose = React.useCallback(() => {
     setBottomSheetState("hidden");
-    setTimeout(() => closeZonePanel(), 400);
-  }, [setBottomSheetState, closeZonePanel]);
+    setTimeout(() => {
+      closeZonePanel();
+      closeFlowPanel();
+    }, 400);
+  }, [setBottomSheetState, closeZonePanel, closeFlowPanel]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     dragStartY.current = e.touches[0].clientY;
@@ -766,13 +1121,39 @@ function MobileBottomSheet() {
   const handleTouchEnd = (e: React.TouchEvent) => {
     if (dragStartY.current === null) return;
     const delta = dragStartY.current - e.changedTouches[0].clientY;
-    if (delta < -40 && bottomSheetState === "full") {
-      handleClose();
+    if (delta < -40) {
+      if (bottomSheetState === "full") setBottomSheetState("peek");
+      else if (bottomSheetState === "peek") handleClose();
+    } else if (delta > 40 && bottomSheetState === "peek" && isZone) {
+      setBottomSheetState("full");
     }
     dragStartY.current = null;
   };
 
-  const isVisible = bottomSheetState !== "hidden";
+  // Measure zone content for the "full" state (includes trend chart)
+  const [zoneFullH, setZoneFullH] = React.useState(0);
+  React.useLayoutEffect(() => {
+    if (!sheetContentRef.current || !isZone) return;
+    const ro = new ResizeObserver(() => {
+      if (sheetContentRef.current)
+        setZoneFullH(sheetContentRef.current.scrollHeight);
+    });
+    ro.observe(sheetContentRef.current);
+    return () => ro.disconnect();
+  }, [isZone, zonePanelOpen]);
+
+  const sheetHeight = (() => {
+    if (bottomSheetState === "hidden") return "0px";
+    if (isFlow) return "min(520px, 88vh)";
+    if (bottomSheetState === "full")
+      return zoneFullH > 0 ? `min(${zoneFullH + 24}px, 85vh)` : "85vh";
+    return `${MOBILE_PEEK_H}px`;
+  })();
+
+  const headerTitle = isFlow
+    ? (flowPanelData ? `${flowPanelData.srcZone} → ${flowPanelData.destZone}` : "")
+    : (selectedZone ?? "");
+  const headerSubtitle = isFlow ? null : (zoneData?.zoneCode ?? null);
 
   return (
     <Box
@@ -781,7 +1162,7 @@ function MobileBottomSheet() {
         bottom: 0,
         left: 0,
         right: 0,
-        height: isVisible ? "90vh" : "0px",
+        height: sheetHeight,
         ...panelSx,
         borderTop: isVisible ? `1px solid ${BORDER}` : "none",
         borderRadius: "16px 16px 0 0",
@@ -789,6 +1170,7 @@ function MobileBottomSheet() {
         display: "flex",
         flexDirection: "column",
         overflow: "hidden",
+        paddingBottom: "env(safe-area-inset-bottom)",
         transition: `height ${DURATION} ${EASING}`,
       }}
       onTouchStart={handleTouchStart}
@@ -796,6 +1178,11 @@ function MobileBottomSheet() {
     >
       {isVisible && (
         <>
+          {/* Drag handle */}
+          <Box sx={{ display: "flex", justifyContent: "center", pt: 0.75, pb: 0.5, flexShrink: 0 }}>
+            <Box sx={{ width: 36, height: 3, borderRadius: 2, bgcolor: "rgba(255,255,255,0.18)" }} />
+          </Box>
+
           {/* Header */}
           <Box
             sx={{
@@ -803,28 +1190,48 @@ function MobileBottomSheet() {
               alignItems: "center",
               justifyContent: "space-between",
               px: 2,
-              pt: 1.5,
+              pt: 0.75,
               pb: 1,
               flexShrink: 0,
               borderBottom: `1px solid ${BORDER}`,
+              cursor: bottomSheetState === "peek" && isZone ? "pointer" : "default",
             }}
+            onClick={bottomSheetState === "peek" && isZone ? () => setBottomSheetState("full") : undefined}
           >
-            <Typography
-              sx={{
-                fontSize: 14,
-                fontWeight: 600,
-                color:
-                  "color-mix(in srgb, var(--color-foreground) 85%, transparent)",
-              }}
-            >
-              {selectedZone ?? ""}
-            </Typography>
+            <Box sx={{ display: "flex", alignItems: "baseline", gap: 1, minWidth: 0 }}>
+              <Typography
+                sx={{
+                  fontSize: 18,
+                  fontWeight: 600,
+                  color: "color-mix(in srgb, var(--color-foreground) 92%, transparent)",
+                  lineHeight: 1.2,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {headerTitle}
+              </Typography>
+              {headerSubtitle && (
+                <Typography
+                  component="span"
+                  sx={{
+                    fontSize: 12,
+                    fontWeight: 500,
+                    color: "color-mix(in srgb, var(--color-foreground) 45%, transparent)",
+                    letterSpacing: "0.04em",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  ({headerSubtitle})
+                </Typography>
+              )}
+            </Box>
             <IconButton
-              onClick={handleClose}
+              onClick={(e) => { e.stopPropagation(); handleClose(); }}
               size="small"
               sx={{
-                color:
-                  "color-mix(in srgb, var(--color-foreground) 30%, transparent)",
+                color: "color-mix(in srgb, var(--color-foreground) 30%, transparent)",
                 "&:hover": { color: "var(--color-foreground)" },
               }}
             >
@@ -832,18 +1239,18 @@ function MobileBottomSheet() {
             </IconButton>
           </Box>
 
-          {/* Scrollable content */}
-          <Box
-            sx={{
-              flex: 1,
-              overflowY: "auto",
-              px: 2,
-              pt: 2,
-              pb: 3,
-            }}
-          >
-            <ZoneDataContent />
+          {/* Data content — always visible */}
+          <Box ref={sheetContentRef} sx={{ px: 2.5, pt: 2, pb: 2, flexShrink: 0 }}>
+            {isFlow ? <FlowDataContent /> : <ZoneDataContent />}
           </Box>
+
+          {/* Trend chart — zone full state only */}
+          {bottomSheetState === "full" && isZone && (
+            <Box sx={{ flex: 1, overflowY: "auto" }}>
+              <ZoneChart />
+              <Box sx={{ height: 24 }} />
+            </Box>
+          )}
         </>
       )}
     </Box>
@@ -895,11 +1302,46 @@ function MobileLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   );
 }
 
+// ── Initial loader — stable sibling, never recreated by layout changes ──────
+function FullscreenLoader() {
+  const initialDataReady = useDashboardStore((s) => s.initialDataReady);
+  return (
+    <Fade in={!initialDataReady} timeout={200} unmountOnExit>
+      <Box
+        sx={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 9999,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          pointerEvents: "none",
+          backgroundColor: "color-mix(in srgb, var(--color-panel) 93%, transparent)",
+          backdropFilter: "blur(20px)",
+          WebkitBackdropFilter: "blur(20px)",
+        }}
+      >
+        <Box
+          component="img"
+          src="/images/wattnet-loader.svg"
+          alt="Loading..."
+          sx={{ width: 150, height: 150 }}
+        />
+      </Box>
+    </Fade>
+  );
+}
+
 // ── Root layout ────────────────────────────────────────────────────────────
 export default function DashboardLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  return <DashboardLayoutInner>{children}</DashboardLayoutInner>;
+  return (
+    <>
+      <FullscreenLoader />
+      <DashboardLayoutInner>{children}</DashboardLayoutInner>
+    </>
+  );
 }
 
 function DashboardLayoutInner({
@@ -908,6 +1350,7 @@ function DashboardLayoutInner({
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const isNarrow = useMediaQuery(theme.breakpoints.down("lg"));
+  const { sidebarCollapsed } = useSidebar();
 
   const [mounted, setMounted] = React.useState(false);
 
@@ -915,52 +1358,15 @@ function DashboardLayoutInner({
     setMounted(true);
   }, []);
 
-  if (!mounted) {
-    return (
-      <Box
-        sx={{
-          width: "100vw",
-          height: "100vh",
-          bgcolor: "var(--color-background)",
-          position: "relative",
-          overflow: "hidden",
-          zIndex: 10,
-        }}
-      >
-        <Background />
-
-        <Box
-          sx={{
-            position: "absolute",
-            inset: 0,
-            zIndex: 50,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            backgroundColor: "color-mix(in srgb, var(--color-panel) 93%, transparent)",
-            backdropFilter: "blur(20px)",
-            WebkitBackdropFilter: "blur(20px)",
-          }}
-        >
-          <Box
-            component="img"
-            src="/images/wattnet-loader.svg"
-            alt="Loading..."
-            sx={{ width: 150, height: 150 }}
-          />
-        </Box>
-      </Box>
-    );
-  }
+  if (!mounted) return null;
 
   if (isMobile) return <MobileLayout>{children}</MobileLayout>;
 
   const sidebarExpandedWidth = isNarrow
     ? Math.round(window.innerWidth * 0.5)
     : SIDEBAR_W;
-  const zonePanelExpandedWidth = isNarrow
-    ? Math.round(window.innerWidth * 0.5)
-    : 380;
+  const sidebarCurrentWidth = sidebarCollapsed ? COLLAPSED_W : sidebarExpandedWidth;
+  const zonePanelExpandedWidth = Math.round((window.innerWidth - sidebarCurrentWidth) / 2);
 
   return (
     <Box

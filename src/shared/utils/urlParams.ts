@@ -1,4 +1,5 @@
 import type { ThemeMode } from "@/src/core/theme/ThemeContext";
+import type { MetricKey, DimensionKey } from "@/src/features/map/hooks/useMapScales";
 
 const MAP_BOUNDS = {
   lng: { min: -60, max: 82 },
@@ -13,6 +14,39 @@ function clamp(value: number, min: number, max: number): number {
 export function parseThemeParam(raw: string | null): ThemeMode | undefined {
   if (raw === "dark" || raw === "light" || raw === "colorblind") return raw;
   return undefined;
+}
+
+export function parsePlayParam(raw: string | null): boolean {
+  return raw !== null;
+}
+
+const VALID_METRICS: MetricKey[] = ["footprint", "impact", "green-score"];
+const VALID_DIMENSIONS: DimensionKey[] = ["carbon", "water"];
+const VALID_SCOPES = ["life-cycle", "operational"] as const;
+
+export interface ControlParams {
+  metric?: MetricKey;
+  dimension?: DimensionKey;
+  scope?: string;
+  flowTracing?: boolean;
+}
+
+export function parseControlParams(params: {
+  metric: string | null;
+  dimension: string | null;
+  scope: string | null;
+  flowTracing: string | null;
+}): ControlParams {
+  const result: ControlParams = {};
+  if (VALID_METRICS.includes(params.metric as MetricKey))
+    result.metric = params.metric as MetricKey;
+  if (VALID_DIMENSIONS.includes(params.dimension as DimensionKey))
+    result.dimension = params.dimension as DimensionKey;
+  if (VALID_SCOPES.includes(params.scope as (typeof VALID_SCOPES)[number]))
+    result.scope = params.scope!;
+  if (params.flowTracing !== null)
+    result.flowTracing = params.flowTracing !== "false";
+  return result;
 }
 
 export function parseMapParams(params: {

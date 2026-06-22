@@ -14,8 +14,8 @@ const TOOLTIP_TEXT =
 const BORDER = "var(--color-border)";
 
 const btnSx = {
-  width: 32,
-  height: 32,
+  width: { xs: 40, md: 32 },
+  height: { xs: 40, md: 32 },
   bgcolor: "color-mix(in srgb, var(--color-panel) 93%, transparent)",
   backdropFilter: "blur(20px)",
   WebkitBackdropFilter: "blur(20px)",
