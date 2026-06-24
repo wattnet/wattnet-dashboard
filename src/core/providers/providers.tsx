@@ -9,6 +9,7 @@ import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { es, enGB } from "date-fns/locale";
 
 import { AppThemeProvider } from "../theme/ThemeContext";
+import { PlausibleProvider } from "../analytics/PlausibleProvider";
 
 export function Providers({
   children,
@@ -18,23 +19,25 @@ export function Providers({
   const locale = i18n.language === "es" ? es : enGB;
 
   return (
-    <AppThemeProvider>
-      <I18nextProvider i18n={i18n}>
-        <LocalizationProvider
-          dateAdapter={AdapterDateFns}
-          adapterLocale={locale}
-        >
-          <SWRConfig
-            value={{
-              fetcher: (url: string) => fetch(url).then((res) => res.json()),
-              revalidateOnFocus: false,
-              dedupingInterval: 60 * 60_000,
-            }}
+    <PlausibleProvider>
+      <AppThemeProvider>
+        <I18nextProvider i18n={i18n}>
+          <LocalizationProvider
+            dateAdapter={AdapterDateFns}
+            adapterLocale={locale}
           >
-            {children}
-          </SWRConfig>
-        </LocalizationProvider>
-      </I18nextProvider>
-    </AppThemeProvider>
+            <SWRConfig
+              value={{
+                fetcher: (url: string) => fetch(url).then((res) => res.json()),
+                revalidateOnFocus: false,
+                dedupingInterval: 60 * 60_000,
+              }}
+            >
+              {children}
+            </SWRConfig>
+          </LocalizationProvider>
+        </I18nextProvider>
+      </AppThemeProvider>
+    </PlausibleProvider>
   );
 }
