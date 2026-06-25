@@ -89,6 +89,13 @@ const ZoomButtons = ({ mapRef }: ZoomButtonsProps) => (
   </>
 );
 
+const fmtDate = (d: Date) =>
+  [
+    d.getUTCFullYear(),
+    String(d.getUTCMonth() + 1).padStart(2, "0"),
+    String(d.getUTCDate()).padStart(2, "0"),
+  ].join("-");
+
 function MapContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -175,19 +182,9 @@ function MapContent() {
 
   const legendConfig = useMapScales(metric as MetricKey, dimension);
 
-  const fmt = (d: Date) =>
-    [
-      d.getUTCFullYear(),
-      String(d.getUTCMonth() + 1).padStart(2, "0"),
-      String(d.getUTCDate()).padStart(2, "0"),
-    ].join("-");
-
-  const rangeKey = useMemo(
-    () => `${fmt(startDate)}__${fmt(endDate)}`,
-    [startDate, endDate],
-  );
-
-  const [startKey, endKey] = rangeKey.split("__");
+  const startKey = useMemo(() => fmtDate(startDate), [startDate]);
+  const endKey = useMemo(() => fmtDate(endDate), [endDate]);
+  const rangeKey = `${startKey}__${endKey}`;
 
   const { data, loading, error, ephemeralToken, fetchToken } = useMetricData(
     {

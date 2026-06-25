@@ -10,13 +10,19 @@ import { slotToTimestampMs } from "@/src/shared/utils/dateManager";
 import { ProcessedFootprint } from "@/src/features/map/types/footprints";
 import { ScaleConfig } from "@/src/features/map/hooks/useMapScales";
 import { useAppTheme } from "@/src/core/theme/ThemeContext";
-import { useMapControls, useFlowTracing, useFlowPanel } from "@/src/features/dashboard/store/useDashboardStore";
+import {
+  useMapControls,
+  useFlowTracing,
+  useFlowPanel,
+} from "@/src/features/dashboard/store/useDashboardStore";
+import { formatDatasource } from "@/src/shared/utils/datasource";
 import zoneCrossingsJson from "@/src/features/map/data/zoneCrossings.json";
 
 const ARROW_LEN_BASE = 30;
 const SHAFT_W_BASE = 5;
 const HEAD_LEN_BASE = 13;
 const HEAD_W_BASE = 15;
+const N_CHEVRONS = 4;
 
 function arrowScale(zoom: number): number {
   return Math.max(0.5, (zoom - 2) * 0.35);
@@ -45,7 +51,8 @@ function interpolateZoneColor(
   colors: string[],
 ): string {
   if (value <= mapValues[0]) return colors[0];
-  if (value >= mapValues[mapValues.length - 1]) return colors[colors.length - 1];
+  if (value >= mapValues[mapValues.length - 1])
+    return colors[colors.length - 1];
   for (let i = 0; i < mapValues.length - 1; i++) {
     if (value >= mapValues[i] && value <= mapValues[i + 1]) {
       const t = (value - mapValues[i]) / (mapValues[i + 1] - mapValues[i]);
@@ -66,7 +73,7 @@ function pointInRing(point: [number, number], ring: number[][]): boolean {
   for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
     const [xi, yi] = ring[i];
     const [xj, yj] = ring[j];
-    if ((yi > py) !== (yj > py) && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi)
+    if (yi > py !== yj > py && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi)
       inside = !inside;
   }
   return inside;
@@ -77,13 +84,15 @@ function pointInFeature(feature: Feature, point: [number, number]): boolean {
   if (g.type === "Polygon") {
     const rings = g.coordinates as number[][][];
     if (!pointInRing(point, rings[0])) return false;
-    for (let i = 1; i < rings.length; i++) if (pointInRing(point, rings[i])) return false;
+    for (let i = 1; i < rings.length; i++)
+      if (pointInRing(point, rings[i])) return false;
     return true;
   }
   if (g.type === "MultiPolygon") {
     return (g.coordinates as number[][][][]).some((poly) => {
       if (!pointInRing(point, poly[0])) return false;
-      for (let i = 1; i < poly.length; i++) if (pointInRing(point, poly[i])) return false;
+      for (let i = 1; i < poly.length; i++)
+        if (pointInRing(point, poly[i])) return false;
       return true;
     });
   }
@@ -99,11 +108,16 @@ function findBorderCrossing(
   if (!pointInFeature(srcFeature, c1)) {
     return [(c1[0] + c2[0]) / 2, (c1[1] + c2[1]) / 2];
   }
-  let lo = 0, hi = 1;
+  let lo = 0,
+    hi = 1;
   for (let k = 0; k < iters; k++) {
     const mid = (lo + hi) / 2;
-    const pt: [number, number] = [c1[0] + (c2[0] - c1[0]) * mid, c1[1] + (c2[1] - c1[1]) * mid];
-    if (pointInFeature(srcFeature, pt)) lo = mid; else hi = mid;
+    const pt: [number, number] = [
+      c1[0] + (c2[0] - c1[0]) * mid,
+      c1[1] + (c2[1] - c1[1]) * mid,
+    ];
+    if (pointInFeature(srcFeature, pt)) lo = mid;
+    else hi = mid;
   }
   const t = (lo + hi) / 2;
   return [c1[0] + (c2[0] - c1[0]) * t, c1[1] + (c2[1] - c1[1]) * t];
@@ -117,7 +131,8 @@ interface ArrowGeometry {
 }
 
 function makeChevronPath(
-  cx: number, cy: number,
+  cx: number,
+  cy: number,
   angle: number,
   depth: number,
   span: number,
@@ -176,19 +191,20 @@ function makeArrowGeometry(
 
   const d = `M ${pts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" L ")} Z`;
 
-  // N chevrons evenly spaced along the full arrow length (tail → tip).
-  // The clipPath trims any chevron that extends beyond the arrowhead silhouette.
-  const N_CHEVRONS = 5;
-  const chDepth = Math.max(3, 5 * scale);
-  const chSpan = Math.max(6, HEAD_W_BASE * scale);
+  const chDepth = Math.max(3, shaftW * 1.2);
+  const chSpan = Math.max(6, headW);
+  const tStart = 0.1;
+  const tEnd = 0.75;
   const chevronPaths: string[] = [];
   for (let k = 1; k <= N_CHEVRONS; k++) {
-    const t = (k - 1) / N_CHEVRONS;
+    const t = tStart + ((k - 1) * (tEnd - tStart)) / (N_CHEVRONS - 1);
     chevronPaths.push(
       makeChevronPath(
         tailX + cos * arrowLen * t,
         tailY + sin * arrowLen * t,
-        angle, chDepth, chSpan,
+        angle,
+        chDepth,
+        chSpan,
       ),
     );
   }
@@ -255,10 +271,15 @@ function lookupValue(
 function formatDatetime(startDate: Date, timeIndex: number): string {
   const d = new Date(slotToTimestampMs(startDate, timeIndex));
   const datePart = d.toLocaleDateString("en-GB", {
-    timeZone: "UTC", day: "numeric", month: "short", year: "numeric",
+    timeZone: "UTC",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
   });
   const timePart = d.toLocaleTimeString("en-GB", {
-    timeZone: "UTC", hour: "2-digit", minute: "2-digit",
+    timeZone: "UTC",
+    hour: "2-digit",
+    minute: "2-digit",
   });
   return `${datePart} · ${timePart} UTC`;
 }
@@ -303,13 +324,15 @@ function getImportStatus(
   return null;
 }
 
-function formatDatasource(raw: string): string {
-  const colonIdx = raw.indexOf(":");
-  const s = colonIdx === -1 ? raw : raw.slice(colonIdx + 1);
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
-
-function Chip({ label, color, dashed = false }: { label: string; color: string; dashed?: boolean }) {
+function Chip({
+  label,
+  color,
+  dashed = false,
+}: {
+  label: string;
+  color: string;
+  dashed?: boolean;
+}) {
   return (
     <span
       style={{
@@ -341,24 +364,24 @@ interface ArrowItem {
   srcName: string;
   destName: string;
   mw: number;
-  d: string;
-  chevronPaths: string[];
-  chevronStrokeW: number;
   color: string;
   metricValue: number | null;
-  // geographic coords for frame-by-frame DOM re-projection
   srcCentroid: [number, number];
   destCentroid: [number, number];
   crossing: [number, number];
 }
 
-// Minimal data stored in a ref for direct DOM updates (avoids React re-renders on pan/zoom)
+// Cached element refs for direct DOM updates — avoids getElementById on every render frame
 interface ArrowDOMItem {
-  idx: number;
   srcCentroid: [number, number];
   destCentroid: [number, number];
   crossing: [number, number];
-  numChevrons: number;
+  clipEl: SVGPathElement | null;
+  bodyEl: SVGPathElement | null;
+  iglowEl: SVGPathElement | null;
+  hitEl: SVGPathElement | null;
+  chevGEls: (SVGPathElement | null)[];
+  chevSEls: (SVGPathElement | null)[];
 }
 
 interface TooltipState {
@@ -401,6 +424,11 @@ export default function FlowArrows({
   const arrowDOMRef = useRef<ArrowDOMItem[]>([]);
   const tooltipElRef = useRef<HTMLDivElement>(null);
   const tooltipSizeRef = useRef<{ w: number; h: number } | null>(null);
+  // Stable animation delays keyed by `${arrow.key}:body` / `${arrow.key}:${ci}`.
+  // Computed once on first appearance and never updated, so re-renders (slider
+  // ticks, color changes) don't touch animation-delay in the DOM and the
+  // browser never restarts the animation mid-playback.
+  const animDelayRef = useRef<Map<string, string>>(new Map());
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 899px)");
@@ -441,35 +469,56 @@ export default function FlowArrows({
         setGeoJSONLoaded(true);
       })
       .catch((err) => {
-        if (err.name !== "AbortError") console.error("Failed to load zone GeoJSON:", err);
+        if (err.name !== "AbortError")
+          console.error("Failed to load zone GeoJSON:", err);
       });
     return () => controller.abort();
   }, [geoJSONProp]);
 
-  // Sync DOM arrow positions directly on every map render frame — no React re-render
+  // Sync DOM arrow positions directly on every map render frame — no React re-render, no getElementById
   useEffect((): (() => void) | void => {
     const map = mapRef.current;
     if (!map) return;
     const update = () => {
-      const svg = svgRef.current;
-      if (!svg || arrowDOMRef.current.length === 0) return;
+      const items = arrowDOMRef.current;
+      if (items.length === 0) return;
       const scale = arrowScale(map.getZoom());
-      for (const { idx, srcCentroid, destCentroid, crossing, numChevrons } of arrowDOMRef.current) {
+      const shaftW = SHAFT_W_BASE * scale;
+      const sStr = String(Math.max(1, shaftW * 0.55));
+      const swStr = String(Math.max(2, shaftW * 0.55 + 1.8));
+      for (const {
+        srcCentroid,
+        destCentroid,
+        crossing,
+        clipEl,
+        bodyEl,
+        iglowEl,
+        hitEl,
+        chevGEls,
+        chevSEls,
+      } of items) {
         const p1 = map.project(srcCentroid);
         const p2 = map.project(destCentroid);
         const pX = map.project(crossing);
-        const { d, chevronPaths, chevronStrokeW } = makeArrowGeometry(
-          p1.x, p1.y, p2.x, p2.y, scale, pX.x, pX.y,
+        const { d, chevronPaths } = makeArrowGeometry(
+          p1.x,
+          p1.y,
+          p2.x,
+          p2.y,
+          scale,
+          pX.x,
+          pX.y,
         );
-        (svg.getElementById(`wn-clip-${idx}`) as SVGPathElement | null)?.setAttribute("d", d);
-        (svg.getElementById(`wn-body-${idx}`) as SVGPathElement | null)?.setAttribute("d", d);
-        (svg.getElementById(`wn-iglow-${idx}`) as SVGPathElement | null)?.setAttribute("d", d);
-        for (let ci = 0; ci < numChevrons; ci++) {
+        clipEl?.setAttribute("d", d);
+        bodyEl?.setAttribute("d", d);
+        iglowEl?.setAttribute("d", d);
+        hitEl?.setAttribute("d", d);
+        for (let ci = 0; ci < chevGEls.length; ci++) {
           const cp = chevronPaths[ci] ?? "";
-          const g = svg.getElementById(`wn-chev-g-${idx}-${ci}`) as SVGPathElement | null;
-          const s = svg.getElementById(`wn-chev-s-${idx}-${ci}`) as SVGPathElement | null;
-          if (g) { g.setAttribute("d", cp); g.setAttribute("stroke-width", String(chevronStrokeW * 2.5)); }
-          if (s) { s.setAttribute("d", cp); s.setAttribute("stroke-width", String(chevronStrokeW)); }
+          const g = chevGEls[ci];
+          const s = chevSEls[ci];
+          if (g) { g.setAttribute("d", cp); g.setAttribute("stroke-width", swStr); }
+          if (s) { s.setAttribute("d", cp); s.setAttribute("stroke-width", sStr); }
         }
       }
     };
@@ -477,6 +526,35 @@ export default function FlowArrows({
     return () => map.off("render", update);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Wheel events from hit paths bubble through the SVG but not into MapLibre's
+  // canvas container (they are siblings in the DOM). Re-dispatch to the canvas
+  // so scroll-zoom keeps working while hovering over an arrow.
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const handler = (e: WheelEvent) => {
+      const canvas = mapRef.current?.getCanvas();
+      if (!canvas) return;
+      canvas.dispatchEvent(new WheelEvent("wheel", {
+        bubbles: true,
+        cancelable: e.cancelable,
+        deltaX: e.deltaX,
+        deltaY: e.deltaY,
+        deltaZ: e.deltaZ,
+        deltaMode: e.deltaMode,
+        ctrlKey: e.ctrlKey,
+        shiftKey: e.shiftKey,
+        altKey: e.altKey,
+        clientX: e.clientX,
+        clientY: e.clientY,
+      }));
+    };
+    svg.addEventListener("wheel", handler, { passive: true });
+    return () => svg.removeEventListener("wheel", handler);
+  // mapContainer gates when the SVG is actually in the DOM
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapContainer]);
 
   const borderCrossingsRef = useRef<Map<string, [number, number]>>(new Map());
 
@@ -511,12 +589,10 @@ export default function FlowArrows({
   }, [importsData]);
 
   const arrows = useMemo((): ArrowItem[] => {
-    const map = mapRef.current;
-    if (!map || importsData.length === 0 || Object.keys(centroids).length === 0)
+    if (importsData.length === 0 || Object.keys(centroids).length === 0)
       return [];
 
     const targetMs = slotToTimestampMs(startDate, selectedTimeIndex);
-    const scale = arrowScale(map.getZoom());
     const result: ArrowItem[] = [];
     const seen = new Set<string>();
     const fpByZone = new Map(processedData.map((d) => [d.zone, d]));
@@ -539,9 +615,6 @@ export default function FlowArrows({
         const destCentroid = centroids[destZone];
         if (!srcCentroid || !destCentroid) continue;
 
-        const p1 = map.project(srcCentroid as [number, number]);
-        const p2 = map.project(destCentroid as [number, number]);
-
         const srcFp = fpByZone.get(srcZone);
         const metricValue = srcFp?.series?.[selectedTimeIndex]?.value ?? null;
 
@@ -558,7 +631,9 @@ export default function FlowArrows({
         // then runtime binary-search fallback cached in borderCrossingsRef.
         const [zA, zB] = [srcZone, destZone].sort();
         const crossKey = `${zA}:${zB}`;
-        const staticPt = (zoneCrossingsJson as unknown as Record<string, [number, number]>)[crossKey];
+        const staticPt = (
+          zoneCrossingsJson as unknown as Record<string, [number, number]>
+        )[crossKey];
         let crossingGeo: [number, number];
         if (staticPt) {
           crossingGeo = staticPt;
@@ -580,11 +655,6 @@ export default function FlowArrows({
           }
           crossingGeo = cached;
         }
-        const pCross = map.project(crossingGeo);
-
-        const { d, chevronPaths, chevronStrokeW } = makeArrowGeometry(
-          p1.x, p1.y, p2.x, p2.y, scale, pCross.x, pCross.y,
-        );
 
         result.push({
           key: `${srcZone}->${destZone}`,
@@ -593,9 +663,6 @@ export default function FlowArrows({
           srcName: zoneNames[srcZone] ?? srcZone,
           destName: zoneNames[destZone] ?? destZone,
           mw: value,
-          d,
-          chevronPaths,
-          chevronStrokeW,
           color,
           metricValue,
           srcCentroid: srcCentroid as [number, number],
@@ -606,13 +673,27 @@ export default function FlowArrows({
     }
     return result;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mergedImportsMap, importsData, selectedTimeIndex, startDate, centroids, zoneNames, zoneFeatures, processedData, legendConfig]);
+  }, [
+    mergedImportsMap,
+    importsData,
+    selectedTimeIndex,
+    startDate,
+    centroids,
+    zoneNames,
+    zoneFeatures,
+    processedData,
+    legendConfig,
+  ]);
 
   // Look up arrow in both directions so the tooltip survives a direction flip
   const tooltipArrow = tooltip
-    ? (arrows.find((a) => a.srcZone === tooltip.srcZone && a.destZone === tooltip.destZone)
-        ?? arrows.find((a) => a.srcZone === tooltip.destZone && a.destZone === tooltip.srcZone)
-        ?? null)
+    ? (arrows.find(
+        (a) => a.srcZone === tooltip.srcZone && a.destZone === tooltip.destZone,
+      ) ??
+      arrows.find(
+        (a) => a.srcZone === tooltip.destZone && a.destZone === tooltip.srcZone,
+      ) ??
+      null)
     : null;
 
   useLayoutEffect(() => {
@@ -622,31 +703,72 @@ export default function FlowArrows({
     }
   }, [tooltipArrow?.srcZone, tooltipArrow?.destZone]);
 
-  // Recompute DOM items only when arrows change, not on every render (e.g. tooltip hover)
+  // Build skeleton DOM items when arrows change; element refs are populated in useLayoutEffect below
   const arrowDOMItems = useMemo(
-    () => arrows.map((a, i) => ({
-      idx: i,
-      srcCentroid: a.srcCentroid,
-      destCentroid: a.destCentroid,
-      crossing: a.crossing,
-      numChevrons: a.chevronPaths.length,
-    })),
+    () =>
+      arrows.map((a) => ({
+        srcCentroid: a.srcCentroid,
+        destCentroid: a.destCentroid,
+        crossing: a.crossing,
+        clipEl: null as SVGPathElement | null,
+        bodyEl: null as SVGPathElement | null,
+        iglowEl: null as SVGPathElement | null,
+        hitEl: null as SVGPathElement | null,
+        chevGEls: Array<SVGPathElement | null>(N_CHEVRONS).fill(null),
+        chevSEls: Array<SVGPathElement | null>(N_CHEVRONS).fill(null),
+      })),
     [arrows],
   );
-  arrowDOMRef.current = arrowDOMItems;
+
+  // Collect element refs into arrowDOMRef after React paints so the render loop can use them directly.
+  // mapContainer is included so this re-runs once the portal SVG is actually in the DOM — without it,
+  // the first run (while mapContainer is still null and the SVG hasn't rendered yet) finds svgRef.current
+  // null and exits early; if arrowDOMItems hasn't changed by the time the portal renders, the arrows stay
+  // with d="" forever (the "cache makes arrows disappear" bug).
+  useLayoutEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const items = arrowDOMItems.map((item, i) => ({
+      ...item,
+      clipEl: svg.getElementById(`wn-clip-${i}`) as SVGPathElement | null,
+      bodyEl: svg.getElementById(`wn-body-${i}`) as SVGPathElement | null,
+      iglowEl: svg.getElementById(`wn-iglow-${i}`) as SVGPathElement | null,
+      hitEl: svg.getElementById(`wn-hit-${i}`) as SVGPathElement | null,
+      chevGEls: Array.from(
+        { length: N_CHEVRONS },
+        (_, ci) =>
+          svg.getElementById(`wn-chev-g-${i}-${ci}`) as SVGPathElement | null,
+      ),
+      chevSEls: Array.from(
+        { length: N_CHEVRONS },
+        (_, ci) =>
+          svg.getElementById(`wn-chev-s-${i}-${ci}`) as SVGPathElement | null,
+      ),
+    }));
+    arrowDOMRef.current = items;
+    mapRef.current?.triggerRepaint();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [arrowDOMItems, mapContainer]);
 
   // Memoized so mousemove re-renders don't re-sort/re-scan series data
   const tooltipStatus = useMemo(
-    () => tooltipArrow
-      ? getImportStatus(
-          importsData,
-          tooltipArrow.srcZone,
-          tooltipArrow.destZone,
-          slotToTimestampMs(startDate, selectedTimeIndex),
-        )
-      : null,
+    () =>
+      tooltipArrow
+        ? getImportStatus(
+            importsData,
+            tooltipArrow.srcZone,
+            tooltipArrow.destZone,
+            slotToTimestampMs(startDate, selectedTimeIndex),
+          )
+        : null,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [tooltipArrow?.srcZone, tooltipArrow?.destZone, importsData, startDate, selectedTimeIndex],
+    [
+      tooltipArrow?.srcZone,
+      tooltipArrow?.destZone,
+      importsData,
+      startDate,
+      selectedTimeIndex,
+    ],
   );
 
   if (!mapContainer) return null;
@@ -662,152 +784,205 @@ export default function FlowArrows({
         pointerEvents: "none",
         overflow: "visible",
         zIndex: 2,
+        filter: "drop-shadow(0px 1px 2px rgba(0,0,0,0.3))",
       }}
     >
       <defs>
+        <style>{`
+          @keyframes wn-body-pulse { 0%,100% { opacity:.85 } 50% { opacity:1 } }
+          @keyframes wn-chev-pulse { 0%,100% { opacity:.08 } 50% { opacity:.88 } }
+          .wn-body-pulse { animation: wn-body-pulse 2.5s ease-in-out infinite; }
+          .wn-chev-pulse { animation: wn-chev-pulse 1.4s cubic-bezier(.4,0,.6,1) infinite; }
+        `}</style>
         {/* Inner glow: blur then composite "in" to keep effect inside shape */}
-        <filter id="wn-inner-glow" x="0%" y="0%" width="100%" height="100%" colorInterpolationFilters="sRGB">
+        <filter
+          id="wn-inner-glow"
+          x="0%"
+          y="0%"
+          width="100%"
+          height="100%"
+          colorInterpolationFilters="sRGB"
+        >
           <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="blur" />
           <feComposite in="blur" in2="SourceGraphic" operator="in" />
         </filter>
-        {/* Chevron glow: soft halo behind each chevron stroke */}
-        <filter id="wn-chev-glow" x="-80%" y="-80%" width="260%" height="260%" colorInterpolationFilters="sRGB">
-          <feGaussianBlur in="SourceGraphic" stdDeviation="1.8" result="blur" />
-          <feMerge>
-            <feMergeNode in="blur" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
+        <filter id="wn-chev-shadow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="0.7" />
         </filter>
         {arrows.map((arrow, i) => (
           <clipPath key={`clip-${arrow.key}`} id={`wn-arrow-clip-${i}`}>
-            <path id={`wn-clip-${i}`} d={arrow.d} />
+            <path id={`wn-clip-${i}`} d="" />
           </clipPath>
         ))}
       </defs>
 
-      {arrows.map((arrow, i) => {
-        const phaseOffset = ((i * 0.45) % 2.5).toFixed(2);
-        return (
-          <g
-            key={arrow.key}
-            style={{ filter: "drop-shadow(0px 1px 2px rgba(0,0,0,0.3))" }}
-          >
-            {/* Arrow body */}
-            <path
-              id={`wn-body-${i}`}
-              d={arrow.d}
-              fill={arrow.color}
-              stroke="rgba(0,0,0,0.55)"
-              strokeWidth={1.2}
-              strokeLinejoin="round"
-              style={{ pointerEvents: "auto", cursor: "default" }}
-              onMouseEnter={(e) =>
-                setTooltip({ x: e.clientX, y: e.clientY, srcZone: arrow.srcZone, destZone: arrow.destZone })
-              }
-              onMouseMove={(e) =>
-                setTooltip((prev) =>
-                  prev ? { ...prev, x: e.clientX, y: e.clientY } : prev,
-                )
-              }
-              onMouseLeave={() => setTooltip(null)}
-              onTouchStart={(e) => {
-                if (isMobile) {
-                  e.stopPropagation();
-                  const targetMs = slotToTimestampMs(startDate, selectedTimeIndex);
-                  const status = getImportStatus(importsData, arrow.srcZone, arrow.destZone, targetMs);
-                  openFlowPanel({
-                    srcZone: arrow.srcZone,
-                    destZone: arrow.destZone,
-                    srcName: arrow.srcName,
-                    destName: arrow.destName,
-                    mw: arrow.mw,
-                    color: arrow.color,
-                    metricValue: arrow.metricValue,
-                    metricUnit: legendConfig.unit ?? "",
-                    metricTitle: legendConfig.title,
-                    datetime: formatDatetime(startDate, selectedTimeIndex),
-                    valid: status?.valid ?? false,
-                    zoneStatus: status?.zoneStatus ?? "",
-                    dataState: status?.dataState ?? "missing",
-                    datasource: status?.datasource ?? "",
-                    isForecast: status?.isForecast ?? false,
-                  });
-                } else {
-                  const touch = e.touches[0];
-                  setTooltip((prev) =>
-                    prev?.srcZone === arrow.srcZone && prev?.destZone === arrow.destZone
-                      ? null
-                      : { x: touch.clientX, y: touch.clientY, srcZone: arrow.srcZone, destZone: arrow.destZone },
-                  );
-                }
-              }}
-            >
-              <animate
-                attributeName="opacity"
-                values="0.85;1;0.85"
-                dur="2.5s"
-                repeatCount="indefinite"
-                begin={`${phaseOffset}s`}
+      {(() => {
+        // Prune cache entries for arrows that are no longer rendered.
+        const liveKeys = new Set(
+          arrows.flatMap((a) => [
+            `${a.key}:body`,
+            ...Array.from({ length: N_CHEVRONS }, (_, ci) => `${a.key}:${ci}`),
+          ]),
+        );
+        for (const k of animDelayRef.current.keys()) {
+          if (!liveKeys.has(k)) animDelayRef.current.delete(k);
+        }
+        // Snapshot time for any new entries added this render.
+        const nowSec = performance.now() / 1000;
+        return arrows.map((arrow, i) => {
+          const phaseBase = (i * 0.45) % 2.5;
+
+          // Return cached delay, or compute+cache on first appearance.
+          // The value never changes after that, so React won't update the DOM
+          // style and the browser won't restart the animation.
+          const bodyDelayKey = `${arrow.key}:body`;
+          if (!animDelayRef.current.has(bodyDelayKey)) {
+            animDelayRef.current.set(
+              bodyDelayKey,
+              `-${((nowSec - phaseBase) % 2.5).toFixed(3)}s`,
+            );
+          }
+          const bodyDelay = animDelayRef.current.get(bodyDelayKey)!;
+
+          const chevDelay = (ci: number) => {
+            const k = `${arrow.key}:${ci}`;
+            if (!animDelayRef.current.has(k)) {
+              animDelayRef.current.set(
+                k,
+                `-${((nowSec - phaseBase - ci * 0.28) % 1.4).toFixed(3)}s`,
+              );
+            }
+            return animDelayRef.current.get(k)!;
+          };
+          const chColor = lightenArrowColor(arrow.color);
+          return (
+            <g key={arrow.key}>
+              {/* Arrow body */}
+              <path
+                id={`wn-body-${i}`}
+                d=""
+                fill={arrow.color}
+                stroke="rgba(0,0,0,0.55)"
+                strokeWidth={1.2}
+                strokeLinejoin="round"
+                className="wn-body-pulse"
+                style={{ pointerEvents: "none", animationDelay: bodyDelay }}
               />
-            </path>
 
-            {/* Inner glow */}
-            <path
-              id={`wn-iglow-${i}`}
-              d={arrow.d}
-              fill="rgba(255,255,255,0.22)"
-              stroke="none"
-              filter="url(#wn-inner-glow)"
-              style={{ pointerEvents: "none" }}
-            />
+              {/* Inner glow */}
+              <path
+                id={`wn-iglow-${i}`}
+                d=""
+                fill="rgba(255,255,255,0.22)"
+                stroke="none"
+                filter="url(#wn-inner-glow)"
+                style={{ pointerEvents: "none" }}
+              />
 
-            {/* Chevron ripple — glow halo + sharp stroke, clipped to arrow */}
-            {arrow.chevronPaths.map((chevPath, ci) => {
-              const chColor = lightenArrowColor(arrow.color);
-              return (
+              {/* Chevron ripple — clipped to arrow shape */}
+              {Array.from({ length: N_CHEVRONS }, (_, ci) => (
                 <g
                   key={ci}
                   clipPath={`url(#wn-arrow-clip-${i})`}
-                  style={{ pointerEvents: "none", filter: "drop-shadow(0px 1px 3px rgba(0,0,0,0.5))" }}
+                  className="wn-chev-pulse"
+                  style={{
+                    pointerEvents: "none",
+                    animationDelay: chevDelay(ci),
+                  }}
                 >
-                  <animate
-                    attributeName="opacity"
-                    values="0.08;0.88;0.08"
-                    dur="1.4s"
-                    begin={`${(parseFloat(phaseOffset) + ci * 0.28).toFixed(2)}s`}
-                    repeatCount="indefinite"
-                    calcMode="spline"
-                    keyTimes="0;0.5;1"
-                    keySplines="0.4 0 0.6 1;0.4 0 0.6 1"
-                  />
-                  {/* glow halo */}
                   <path
                     id={`wn-chev-g-${i}-${ci}`}
-                    d={chevPath}
+                    d=""
                     fill="none"
-                    stroke={chColor}
-                    strokeWidth={arrow.chevronStrokeW * 2.5}
+                    stroke="rgba(0,0,0,0.14)"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    filter="url(#wn-chev-glow)"
-                    opacity={0.2}
+                    filter="url(#wn-chev-shadow)"
                   />
-                  {/* sharp stroke — lightened arrow color */}
                   <path
                     id={`wn-chev-s-${i}-${ci}`}
-                    d={chevPath}
+                    d=""
                     fill="none"
                     stroke={chColor}
-                    strokeWidth={arrow.chevronStrokeW}
                     strokeLinecap="round"
                     strokeLinejoin="round"
                   />
                 </g>
-              );
-            })}
-          </g>
-        );
-      })}
+              ))}
+
+              {/* Transparent hit area — wider than the visible arrow for easier hover/tap */}
+              <path
+                id={`wn-hit-${i}`}
+                d=""
+                fill="transparent"
+                stroke="transparent"
+                strokeWidth={28}
+                strokeLinejoin="round"
+                style={{ pointerEvents: "auto", cursor: "default" }}
+                onMouseEnter={(e) =>
+                  setTooltip({
+                    x: e.clientX,
+                    y: e.clientY,
+                    srcZone: arrow.srcZone,
+                    destZone: arrow.destZone,
+                  })
+                }
+                onMouseMove={(e) =>
+                  setTooltip((prev) =>
+                    prev ? { ...prev, x: e.clientX, y: e.clientY } : prev,
+                  )
+                }
+                onMouseLeave={() => setTooltip(null)}
+                onTouchStart={(e) => {
+                  if (isMobile) {
+                    e.stopPropagation();
+                    const targetMs = slotToTimestampMs(
+                      startDate,
+                      selectedTimeIndex,
+                    );
+                    const status = getImportStatus(
+                      importsData,
+                      arrow.srcZone,
+                      arrow.destZone,
+                      targetMs,
+                    );
+                    openFlowPanel({
+                      srcZone: arrow.srcZone,
+                      destZone: arrow.destZone,
+                      srcName: arrow.srcName,
+                      destName: arrow.destName,
+                      mw: arrow.mw,
+                      color: arrow.color,
+                      metricValue: arrow.metricValue,
+                      metricUnit: legendConfig.unit ?? "",
+                      metricTitle: legendConfig.title,
+                      datetime: formatDatetime(startDate, selectedTimeIndex),
+                      valid: status?.valid ?? false,
+                      zoneStatus: status?.zoneStatus ?? "",
+                      dataState: status?.dataState ?? "missing",
+                      datasource: status?.datasource ?? "",
+                      isForecast: status?.isForecast ?? false,
+                    });
+                  } else {
+                    const touch = e.touches[0];
+                    setTooltip((prev) =>
+                      prev?.srcZone === arrow.srcZone &&
+                      prev?.destZone === arrow.destZone
+                        ? null
+                        : {
+                            x: touch.clientX,
+                            y: touch.clientY,
+                            srcZone: arrow.srcZone,
+                            destZone: arrow.destZone,
+                          },
+                    );
+                  }
+                }}
+              />
+            </g>
+          );
+        });
+      })()}
     </svg>
   );
 
@@ -818,9 +993,15 @@ export default function FlowArrows({
   const tw = tooltipSizeRef.current?.w ?? 0;
   const th = tooltipSizeRef.current?.h ?? 0;
   const rawLeft = (tooltip?.x ?? 0) + 16;
-  const rawTop  = (tooltip?.y ?? 0) - 14;
-  const clampedLeft = Math.max(TOOLTIP_MARGIN, Math.min(rawLeft, window.innerWidth  - tw - TOOLTIP_MARGIN));
-  const clampedTop  = Math.max(TOOLTIP_MARGIN, Math.min(rawTop,  window.innerHeight - th - TOOLTIP_MARGIN));
+  const rawTop = (tooltip?.y ?? 0) - 14;
+  const clampedLeft = Math.max(
+    TOOLTIP_MARGIN,
+    Math.min(rawLeft, window.innerWidth - tw - TOOLTIP_MARGIN),
+  );
+  const clampedTop = Math.max(
+    TOOLTIP_MARGIN,
+    Math.min(rawTop, window.innerHeight - th - TOOLTIP_MARGIN),
+  );
 
   return (
     <>
@@ -836,10 +1017,12 @@ export default function FlowArrows({
             zIndex: 9999,
             pointerEvents: "none",
             fontFamily: '"Red Hat Text", system-ui, sans-serif',
-            background: "color-mix(in srgb, var(--color-panel) 93%, transparent)",
+            background:
+              "color-mix(in srgb, var(--color-panel) 93%, transparent)",
             backdropFilter: "blur(20px)",
             WebkitBackdropFilter: "blur(20px)",
-            border: "1px solid color-mix(in srgb, var(--color-foreground) 10%, transparent)",
+            border:
+              "1px solid color-mix(in srgb, var(--color-foreground) 10%, transparent)",
             borderRadius: 12,
             boxShadow: "0 8px 32px rgba(0,0,0,0.3)",
             overflow: "hidden",
@@ -848,77 +1031,355 @@ export default function FlowArrows({
           }}
         >
           {/* Left: main content */}
-          <div style={{ padding: "14px 16px", display: "flex", flexDirection: "column", gap: 5 }}>
-            <div style={{ fontSize: 14, fontWeight: 500, color: "color-mix(in srgb, var(--color-foreground) 30%, transparent)", letterSpacing: "0.03em", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
+          <div
+            style={{
+              padding: "14px 16px",
+              display: "flex",
+              flexDirection: "column",
+              gap: 5,
+            }}
+          >
+            <div
+              style={{
+                fontSize: 14,
+                fontWeight: 500,
+                color:
+                  "color-mix(in srgb, var(--color-foreground) 30%, transparent)",
+                letterSpacing: "0.03em",
+                lineHeight: 1,
+                fontVariantNumeric: "tabular-nums",
+              }}
+            >
               {tooltipDatetime}
             </div>
 
             {/* Zone names + animated connector
                 ROW_H=22px, padding = ROW_H/2 - dot_r = 11-3 = 8px → exact center alignment */}
             <div style={{ display: "flex", gap: 10, margin: "2px 0" }}>
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 10, paddingTop: 8, paddingBottom: 8 }}>
-                <div style={{ width: 6, height: 6, borderRadius: "50%", background: "color-mix(in srgb, var(--color-foreground) 35%, transparent)", flexShrink: 0 }} />
-                <div style={{ flex: 1, width: 1.5, background: "color-mix(in srgb, var(--color-foreground) 18%, transparent)", margin: "3px 0" }} />
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  width: 10,
+                  paddingTop: 8,
+                  paddingBottom: 8,
+                }}
+              >
+                <div
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: "50%",
+                    background:
+                      "color-mix(in srgb, var(--color-foreground) 35%, transparent)",
+                    flexShrink: 0,
+                  }}
+                />
+                <div
+                  style={{
+                    flex: 1,
+                    width: 1.5,
+                    background:
+                      "color-mix(in srgb, var(--color-foreground) 18%, transparent)",
+                    margin: "3px 0",
+                  }}
+                />
                 {/* Two-chevron ripple: opacity wave flows top→bottom suggesting downward transfer */}
-                <svg width="8" height="12" viewBox="0 0 8 12" fill="none" style={{ flexShrink: 0 }}>
-                  <path d="M1 1L4 4.5L7 1" stroke="color-mix(in srgb, var(--color-foreground) 32%, transparent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <animate attributeName="opacity" values="0.15;1;0.15" dur="1.2s" begin="0s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" />
+                <svg
+                  width="8"
+                  height="12"
+                  viewBox="0 0 8 12"
+                  fill="none"
+                  style={{ flexShrink: 0 }}
+                >
+                  <path
+                    d="M1 1L4 4.5L7 1"
+                    stroke="color-mix(in srgb, var(--color-foreground) 32%, transparent)"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <animate
+                      attributeName="opacity"
+                      values="0.15;1;0.15"
+                      dur="1.2s"
+                      begin="0s"
+                      repeatCount="indefinite"
+                      calcMode="spline"
+                      keyTimes="0;0.5;1"
+                      keySplines="0.4 0 0.6 1;0.4 0 0.6 1"
+                    />
                   </path>
-                  <path d="M1 7L4 10.5L7 7" stroke="color-mix(in srgb, var(--color-foreground) 32%, transparent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <animate attributeName="opacity" values="0.15;1;0.15" dur="1.2s" begin="0.4s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" />
+                  <path
+                    d="M1 7L4 10.5L7 7"
+                    stroke="color-mix(in srgb, var(--color-foreground) 32%, transparent)"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <animate
+                      attributeName="opacity"
+                      values="0.15;1;0.15"
+                      dur="1.2s"
+                      begin="0.4s"
+                      repeatCount="indefinite"
+                      calcMode="spline"
+                      keyTimes="0;0.5;1"
+                      keySplines="0.4 0 0.6 1;0.4 0 0.6 1"
+                    />
                   </path>
                 </svg>
-                <div style={{ flex: 1, width: 1.5, background: "color-mix(in srgb, var(--color-foreground) 18%, transparent)", margin: "3px 0" }} />
-                <div style={{ width: 6, height: 6, borderRadius: "50%", background: "color-mix(in srgb, var(--color-foreground) 35%, transparent)", flexShrink: 0 }} />
+                <div
+                  style={{
+                    flex: 1,
+                    width: 1.5,
+                    background:
+                      "color-mix(in srgb, var(--color-foreground) 18%, transparent)",
+                    margin: "3px 0",
+                  }}
+                />
+                <div
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: "50%",
+                    background:
+                      "color-mix(in srgb, var(--color-foreground) 35%, transparent)",
+                    flexShrink: 0,
+                  }}
+                />
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1, minWidth: 0 }}>
-                <div style={{ height: 22, display: "flex", alignItems: "center", gap: 5 }}>
-                  <span style={{ fontSize: 18, fontWeight: 600, color: "color-mix(in srgb, var(--color-foreground) 92%, transparent)", whiteSpace: "nowrap", lineHeight: 1 }}>{tooltipArrow.srcName}</span>
-                  <span style={{ fontSize: 12, fontWeight: 500, color: "color-mix(in srgb, var(--color-foreground) 42%, transparent)", lineHeight: 1 }}>({tooltipArrow.srcZone})</span>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 6,
+                  flex: 1,
+                  minWidth: 0,
+                }}
+              >
+                <div
+                  style={{
+                    height: 22,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 18,
+                      fontWeight: 600,
+                      color:
+                        "color-mix(in srgb, var(--color-foreground) 92%, transparent)",
+                      whiteSpace: "nowrap",
+                      lineHeight: 1,
+                    }}
+                  >
+                    {tooltipArrow.srcName}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 500,
+                      color:
+                        "color-mix(in srgb, var(--color-foreground) 42%, transparent)",
+                      lineHeight: 1,
+                    }}
+                  >
+                    ({tooltipArrow.srcZone})
+                  </span>
                 </div>
-                <div style={{ height: 22, display: "flex", alignItems: "center", gap: 5 }}>
-                  <span style={{ fontSize: 18, fontWeight: 600, color: "color-mix(in srgb, var(--color-foreground) 92%, transparent)", whiteSpace: "nowrap", lineHeight: 1 }}>{tooltipArrow.destName}</span>
-                  <span style={{ fontSize: 12, fontWeight: 500, color: "color-mix(in srgb, var(--color-foreground) 42%, transparent)", lineHeight: 1 }}>({tooltipArrow.destZone})</span>
+                <div
+                  style={{
+                    height: 22,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 18,
+                      fontWeight: 600,
+                      color:
+                        "color-mix(in srgb, var(--color-foreground) 92%, transparent)",
+                      whiteSpace: "nowrap",
+                      lineHeight: 1,
+                    }}
+                  >
+                    {tooltipArrow.destName}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 500,
+                      color:
+                        "color-mix(in srgb, var(--color-foreground) 42%, transparent)",
+                      lineHeight: 1,
+                    }}
+                  >
+                    ({tooltipArrow.destZone})
+                  </span>
                 </div>
               </div>
             </div>
 
-            <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 6 }}>
-              <span style={{ fontSize: 34, fontWeight: 700, color: "color-mix(in srgb, var(--color-foreground) 92%, transparent)", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "baseline",
+                gap: 6,
+                marginTop: 6,
+              }}
+            >
+              <span
+                style={{
+                  fontSize: 34,
+                  fontWeight: 700,
+                  color:
+                    "color-mix(in srgb, var(--color-foreground) 92%, transparent)",
+                  lineHeight: 1,
+                  fontVariantNumeric: "tabular-nums",
+                }}
+              >
                 {tooltipArrow.mw.toFixed(2)}
               </span>
-              <span style={{ fontSize: 14, fontWeight: 500, color: "color-mix(in srgb, var(--color-foreground) 40%, transparent)", lineHeight: 1 }}>MW</span>
+              <span
+                style={{
+                  fontSize: 14,
+                  fontWeight: 500,
+                  color:
+                    "color-mix(in srgb, var(--color-foreground) 40%, transparent)",
+                  lineHeight: 1,
+                }}
+              >
+                MW
+              </span>
             </div>
-            <div style={{ fontSize: 15, color: "color-mix(in srgb, var(--color-foreground) 50%, transparent)", lineHeight: 1 }}>Power exchange</div>
+            <div
+              style={{
+                fontSize: 15,
+                color:
+                  "color-mix(in srgb, var(--color-foreground) 50%, transparent)",
+                lineHeight: 1,
+              }}
+            >
+              Power exchange
+            </div>
 
             {tooltipArrow.metricValue !== null && (
-              <div style={{ fontSize: 14, color: "color-mix(in srgb, var(--color-foreground) 50%, transparent)", display: "flex", alignItems: "center", gap: 6, lineHeight: 1, marginTop: 12 }}>
-                <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: tooltipArrow.color, border: "1px solid rgba(0,0,0,0.2)", flexShrink: 0 }} />
+              <div
+                style={{
+                  fontSize: 14,
+                  color:
+                    "color-mix(in srgb, var(--color-foreground) 50%, transparent)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  lineHeight: 1,
+                  marginTop: 12,
+                }}
+              >
+                <span
+                  style={{
+                    display: "inline-block",
+                    width: 8,
+                    height: 8,
+                    borderRadius: "50%",
+                    background: tooltipArrow.color,
+                    border: "1px solid rgba(0,0,0,0.2)",
+                    flexShrink: 0,
+                  }}
+                />
                 with a{" "}
-                <strong style={{ color: "color-mix(in srgb, var(--color-foreground) 85%, transparent)", fontVariantNumeric: "tabular-nums", fontSize: 15 }}>
-                  {tooltipArrow.metricValue.toFixed(2)} {legendConfig.unit ?? ""}
-                </strong>
-                {" "}{legendConfig.title.toLowerCase()}
+                <strong
+                  style={{
+                    color:
+                      "color-mix(in srgb, var(--color-foreground) 85%, transparent)",
+                    fontVariantNumeric: "tabular-nums",
+                    fontSize: 15,
+                  }}
+                >
+                  {tooltipArrow.metricValue.toFixed(2)}{" "}
+                  {legendConfig.unit ?? ""}
+                </strong>{" "}
+                {legendConfig.title.toLowerCase()}
               </div>
             )}
           </div>
 
           {/* Right: pills column — top Energy 2×2, full-width divider, bottom Environmental 2-col */}
-          <div style={{ borderLeft: "1px solid var(--color-border)", display: "flex", flexDirection: "column", minWidth: 156 }}>
+          <div
+            style={{
+              borderLeft: "1px solid var(--color-border)",
+              display: "flex",
+              flexDirection: "column",
+              minWidth: 156,
+            }}
+          >
             {tooltipStatus ? (
               <>
                 {/* ENERGY — 2×2 grid, flex:1 pushes Environmental to bottom */}
-                <div style={{ padding: "14px 12px", display: "flex", flexDirection: "column", gap: 6, flex: 1 }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", color: "color-mix(in srgb, var(--color-foreground) 28%, transparent)", textTransform: "uppercase" as const }}>Energy</span>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4 }}>
-                    <Chip label={tooltipStatus.valid ? "Final" : "Not Final"} color={tooltipStatus.valid ? cc.final : cc.notFinal} />
-                    {tooltipStatus.zoneStatus === "complete" && <Chip label="Complete" color={cc.complete} />}
-                    {tooltipStatus.zoneStatus === "preview" && <Chip label="Preview" color={cc.preview} />}
-                    {tooltipStatus.zoneStatus === "missing" && tooltipStatus.isForecast && <Chip label="Forecasted" color={cc.forecasted} dashed />}
-                    {tooltipStatus.zoneStatus === "missing" && !tooltipStatus.isForecast && <Chip label="Missing" color={cc.missing} />}
-                    {tooltipStatus.dataState === "official" && <Chip label="Official" color={cc.complete} />}
-                    {tooltipStatus.dataState === "estimated" && <Chip label="Estimated" color={cc.preview} />}
-                    {tooltipStatus.datasource && <Chip label={formatDatasource(tooltipStatus.datasource)} color={cc.neutral} />}
+                <div
+                  style={{
+                    padding: "14px 12px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 6,
+                    flex: 1,
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      letterSpacing: "0.08em",
+                      color:
+                        "color-mix(in srgb, var(--color-foreground) 28%, transparent)",
+                      textTransform: "uppercase" as const,
+                    }}
+                  >
+                    Energy
+                  </span>
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: 4,
+                    }}
+                  >
+                    <Chip
+                      label={tooltipStatus.valid ? "Final" : "Not Final"}
+                      color={tooltipStatus.valid ? cc.final : cc.notFinal}
+                    />
+                    {tooltipStatus.zoneStatus === "complete" && (
+                      <Chip label="Complete" color={cc.complete} />
+                    )}
+                    {tooltipStatus.zoneStatus === "preview" && (
+                      <Chip label="Preview" color={cc.preview} />
+                    )}
+                    {tooltipStatus.zoneStatus === "missing" &&
+                      tooltipStatus.isForecast && (
+                        <Chip label="Forecasted" color={cc.forecasted} dashed />
+                      )}
+                    {tooltipStatus.zoneStatus === "missing" &&
+                      !tooltipStatus.isForecast && (
+                        <Chip label="Missing" color={cc.missing} />
+                      )}
+                    {tooltipStatus.dataState === "official" && (
+                      <Chip label="Official" color={cc.complete} />
+                    )}
+                    {tooltipStatus.dataState === "estimated" && (
+                      <Chip label="Estimated" color={cc.preview} />
+                    )}
+                    {tooltipStatus.datasource && (
+                      <Chip
+                        label={formatDatasource(tooltipStatus.datasource)}
+                        color={cc.neutral}
+                      />
+                    )}
                   </div>
                 </div>
 
@@ -926,11 +1387,45 @@ export default function FlowArrows({
                 <div style={{ height: 1, background: "var(--color-border)" }} />
 
                 {/* ENVIRONMENTAL — same 2-col grid for aligned columns */}
-                <div style={{ padding: "10px 12px 14px", display: "flex", flexDirection: "column", gap: 6 }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", color: "color-mix(in srgb, var(--color-foreground) 28%, transparent)", textTransform: "uppercase" as const }}>Environmental</span>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4 }}>
-                    <Chip label={flowTracing ? "Global" : "Local"} color={flowTracing ? cc.global : cc.local} />
-                    <Chip label={scope === "life-cycle" ? "Life-cycle" : "Operational"} color={scope === "life-cycle" ? cc.lifecycle : cc.operational} />
+                <div
+                  style={{
+                    padding: "10px 12px 14px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 6,
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      letterSpacing: "0.08em",
+                      color:
+                        "color-mix(in srgb, var(--color-foreground) 28%, transparent)",
+                      textTransform: "uppercase" as const,
+                    }}
+                  >
+                    Environmental
+                  </span>
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: 4,
+                    }}
+                  >
+                    <Chip
+                      label={flowTracing ? "Global" : "Local"}
+                      color={flowTracing ? cc.global : cc.local}
+                    />
+                    <Chip
+                      label={
+                        scope === "life-cycle" ? "Life-cycle" : "Operational"
+                      }
+                      color={
+                        scope === "life-cycle" ? cc.lifecycle : cc.operational
+                      }
+                    />
                   </div>
                 </div>
               </>

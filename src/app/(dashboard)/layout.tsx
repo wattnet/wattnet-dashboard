@@ -33,6 +33,7 @@ import {
   useZoneChart,
 } from "@/src/features/dashboard/store/useDashboardStore";
 import { useAppTheme } from "@/src/core/theme/ThemeContext";
+import { formatDatasource } from "@/src/shared/utils/datasource";
 
 export const MOBILE_TOP_BAR_H = 48;
 export const MOBILE_PEEK_H = 240;
@@ -358,11 +359,6 @@ function ZoneDataContent() {
   );
 }
 
-function fmtDatasource(raw: string): string {
-  const colonIdx = raw.indexOf(":");
-  const s = colonIdx === -1 ? raw : raw.slice(colonIdx + 1);
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
 
 const TEXT_LOW = "color-mix(in srgb, var(--color-foreground) 28%, transparent)";
 
@@ -485,7 +481,7 @@ function FlowDataContent() {
           <Chip size="small" label={statusLabel} sx={getChipSx(statusKey, colors)} />
           {dataStateLabel && <Chip size="small" label={dataStateLabel} sx={getChipSx(dataStateKey, colors)} />}
           {flowPanelData.datasource && (
-            <Chip size="small" label={fmtDatasource(flowPanelData.datasource)} sx={getChipSx("neutral", colors)} />
+            <Chip size="small" label={formatDatasource(flowPanelData.datasource)} sx={getChipSx("neutral", colors)} />
           )}
         </Box>
       </Box>
@@ -619,6 +615,26 @@ function Sidebar({ expandedWidth }: Readonly<{ expandedWidth: number }>) {
   );
 }
 
+function niceYAxis(lo: number, hi: number, targetTicks = 4) {
+  const rawRange = hi - lo || 1;
+  const pad = rawRange * 0.12;
+  const paddedLo = lo - pad;
+  const paddedHi = hi + pad;
+  const range = paddedHi - paddedLo;
+  const roughStep = range / targetTicks;
+  const mag = Math.pow(10, Math.floor(Math.log10(roughStep)));
+  const norm = roughStep / mag;
+  const niceNorm = norm < 1.5 ? 1 : norm < 3 ? 2 : norm < 7 ? 5 : 10;
+  const step = niceNorm * mag;
+  const yMin = Math.floor(paddedLo / step) * step;
+  const yMax = Math.ceil(paddedHi / step) * step;
+  const ticks: number[] = [];
+  for (let t = yMin; t <= yMax + step * 0.001; t += step) {
+    ticks.push(Math.round(t * 1e9) / 1e9);
+  }
+  return { yMin, yMax, ticks, step };
+}
+
 // ── Zone chart ────────────────────────────────────────────────────────────
 function ZoneChart() {
   const { zoneSeries, zoneSeriesIndex } = useZoneChart();
@@ -649,27 +665,6 @@ function ZoneChart() {
 
   const dataMin = Math.min(...vals);
   const dataMax = Math.max(...vals);
-
-  // Nice Y axis with padding and round ticks
-  const niceYAxis = (lo: number, hi: number, targetTicks = 4) => {
-    const rawRange = hi - lo || 1;
-    const pad = rawRange * 0.12;
-    const paddedLo = lo - pad;
-    const paddedHi = hi + pad;
-    const range = paddedHi - paddedLo;
-    const roughStep = range / targetTicks;
-    const mag = Math.pow(10, Math.floor(Math.log10(roughStep)));
-    const norm = roughStep / mag;
-    const niceNorm = norm < 1.5 ? 1 : norm < 3 ? 2 : norm < 7 ? 5 : 10;
-    const step = niceNorm * mag;
-    const yMin = Math.floor(paddedLo / step) * step;
-    const yMax = Math.ceil(paddedHi / step) * step;
-    const ticks: number[] = [];
-    for (let t = yMin; t <= yMax + step * 0.001; t += step) {
-      ticks.push(Math.round(t * 1e9) / 1e9);
-    }
-    return { yMin, yMax, ticks, step };
-  };
 
   const { yMin, yMax, ticks: yTicks, step: yStep } = niceYAxis(dataMin, dataMax);
   const rangeV = yMax - yMin;
@@ -724,7 +719,7 @@ function ZoneChart() {
     const year = String(d.getUTCFullYear()).slice(2);
     return `${day}/${month}/${year}`;
   };
-  const xLabels: { x: number; label: string; anchor: string }[] = [];
+  const xLabels: { x: number; label: string; anchor: "start" | "middle" | "end" }[] = [];
   if (n > 96) {
     for (let i = 96; i < n; i += 96) {
       const ts = zoneSeries[i]?.timestamp;

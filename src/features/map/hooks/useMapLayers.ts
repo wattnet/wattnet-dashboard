@@ -9,6 +9,7 @@ import {
   useFlowTracing,
   useZonePanel,
 } from '../../dashboard/store/useDashboardStore';
+import { slotToTimestampMs } from '@/src/shared/utils/dateManager';
 import { useAppTheme } from '@/src/core/theme/ThemeContext';
 import { ThemePalette } from '@/src/core/theme/themes';
 import { ProcessedFootprint } from '../types/footprints';
@@ -93,18 +94,7 @@ function isTouchDevice(): boolean {
 }
 
 function formatDatetime(date: Date, timeIndex: number): string {
-  const slot = timeIndex % 96;
-  const hours = Math.floor(slot / 4);
-  const minutes = (slot % 4) * 15;
-  const d = new Date(
-    Date.UTC(
-      date.getUTCFullYear(),
-      date.getUTCMonth(),
-      date.getUTCDate(),
-      hours,
-      minutes,
-    ),
-  );
+  const d = new Date(slotToTimestampMs(date, timeIndex));
   const datePart = d.toLocaleDateString('en-GB', {
     timeZone: 'UTC',
     day: 'numeric',
@@ -120,19 +110,7 @@ function formatDatetime(date: Date, timeIndex: number): string {
 }
 
 function calcIsForecast(date: Date, timeIndex: number): boolean {
-  const slot = timeIndex % 96;
-  const hours = Math.floor(slot / 4);
-  const minutes = (slot % 4) * 15;
-  const selected = new Date(
-    Date.UTC(
-      date.getUTCFullYear(),
-      date.getUTCMonth(),
-      date.getUTCDate(),
-      hours,
-      minutes,
-    ),
-  );
-  return selected.getTime() > Date.now();
+  return slotToTimestampMs(date, timeIndex) > Date.now();
 }
 
 interface ChipDef {
@@ -233,9 +211,7 @@ export function useMapLayers(
   processedDataRef.current = processedData;
 
   const scaleConfigRef = useRef(scaleConfig);
-  useEffect(() => {
-    scaleConfigRef.current = scaleConfig;
-  }, [scaleConfig]);
+  scaleConfigRef.current = scaleConfig;
 
   const metricRef = useRef(metric);
   const scopeRef = useRef(scope);
@@ -244,24 +220,12 @@ export function useMapLayers(
   const dateRef = useRef(selectedDate);
   const zonePanelOpenRef = useRef(zonePanelOpen);
 
-  useEffect(() => {
-    metricRef.current = metric;
-  }, [metric]);
-  useEffect(() => {
-    scopeRef.current = scope;
-  }, [scope]);
-  useEffect(() => {
-    flowTracingRef.current = flowTracing;
-  }, [flowTracing]);
-  useEffect(() => {
-    timeIndexRef.current = selectedTimeIndex;
-  }, [selectedTimeIndex]);
-  useEffect(() => {
-    dateRef.current = selectedDate;
-  }, [selectedDate]);
-  useEffect(() => {
-    zonePanelOpenRef.current = zonePanelOpen;
-  }, [zonePanelOpen]);
+  metricRef.current = metric;
+  scopeRef.current = scope;
+  flowTracingRef.current = flowTracing;
+  timeIndexRef.current = selectedTimeIndex;
+  dateRef.current = selectedDate;
+  zonePanelOpenRef.current = zonePanelOpen;
 
   useEffect(() => {
     if (!map) return;

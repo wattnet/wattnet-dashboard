@@ -88,6 +88,10 @@ interface DashboardState {
   expandSidebar: () => void;
 }
 
+// Module-level timer IDs so openZonePanel / openFlowPanel can cancel pending clear timeouts.
+let closeZonePanelTimer: ReturnType<typeof setTimeout> | null = null;
+let closeFlowPanelTimer: ReturnType<typeof setTimeout> | null = null;
+
 // --- STORE CREATION ---
 export const useDashboardStore = create<DashboardState>((set) => ({
   // Initial values
@@ -121,36 +125,53 @@ export const useDashboardStore = create<DashboardState>((set) => ({
   setInitialDataReady: () => set({ initialDataReady: true }),
 
   // Complex actions
-  openZonePanel: (zoneName, data) =>
+  openZonePanel: (zoneName, data) => {
+    // Cancel any pending post-close clear so it doesn't wipe the new zone's data.
+    if (closeZonePanelTimer !== null) {
+      clearTimeout(closeZonePanelTimer);
+      closeZonePanelTimer = null;
+    }
     set((state) => ({
       selectedZone: zoneName,
       zoneData: data ?? state.zoneData,
       zonePanelOpen: true,
       openCount: state.openCount + 1,
       flowPanelOpen: false,
-    })),
+    }));
+  },
 
   updateZoneData: (data) => set({ zoneData: data }),
 
   closeZonePanel: () => {
     set({ zonePanelOpen: false, zoneSeries: null, zoneSeriesIndex: 0 });
-    setTimeout(() => {
+    if (closeZonePanelTimer !== null) clearTimeout(closeZonePanelTimer);
+    closeZonePanelTimer = setTimeout(() => {
+      closeZonePanelTimer = null;
       set({ selectedZone: undefined, zoneData: null });
     }, 500);
   },
 
-  openFlowPanel: (data) =>
+  openFlowPanel: (data) => {
+    if (closeFlowPanelTimer !== null) {
+      clearTimeout(closeFlowPanelTimer);
+      closeFlowPanelTimer = null;
+    }
     set((state) => ({
       flowPanelData: data,
       flowPanelOpen: true,
       flowOpenCount: state.flowOpenCount + 1,
       zonePanelOpen: false,
       bottomSheetState: 'full',
-    })),
+    }));
+  },
 
   closeFlowPanel: () => {
     set({ flowPanelOpen: false });
-    setTimeout(() => set({ flowPanelData: null }), 500);
+    if (closeFlowPanelTimer !== null) clearTimeout(closeFlowPanelTimer);
+    closeFlowPanelTimer = setTimeout(() => {
+      closeFlowPanelTimer = null;
+      set({ flowPanelData: null });
+    }, 500);
   },
 
   toggleSidebar: () =>

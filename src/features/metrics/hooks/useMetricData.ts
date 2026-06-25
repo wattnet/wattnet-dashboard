@@ -2,6 +2,7 @@ import useSWR from 'swr';
 import { Footprint } from '@/src/features/map/types/footprints';
 import { FootprintQueryParams } from '@/src/shared/types/queryParams';
 import { useEffect, useState, useCallback } from 'react';
+import { buildSwrKey } from '@/src/shared/hooks/useDataRefresh';
 
 export function useMetricData(params: FootprintQueryParams, dateKey: string) {
   const [ephemeralToken, setEphemeralToken] = useState<string | null>(null);
@@ -17,12 +18,7 @@ export function useMetricData(params: FootprintQueryParams, dateKey: string) {
     fetchToken();
   }, [fetchToken]);
 
-  const dimensionPart =
-    params.metric === 'green-score' ? '' : `-${params.dimension}`;
-
-  const swrKey = ephemeralToken
-    ? `${dateKey}.${params.metric}${dimensionPart}-${params.scope}-${params.use_global}`
-    : null;
+  const swrKey = buildSwrKey(params, dateKey, ephemeralToken);
 
   const { data, error, isLoading } = useSWR<Footprint[]>(
     swrKey,

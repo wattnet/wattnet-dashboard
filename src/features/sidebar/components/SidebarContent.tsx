@@ -169,7 +169,7 @@ function OptionsBody() {
     } else if (metric == "green-score") {
       setScope("operational");
     }
-  }, [metric, dimension, scope, flowTracing]);
+  }, [metric]);
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2.75 }}>

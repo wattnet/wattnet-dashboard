@@ -33,7 +33,7 @@ function currentFlatSlotIndex(startDate: Date): number {
 /**
  * Builds the SWR cache key.
  */
-function buildSwrKey(
+export function buildSwrKey(
   params: FootprintQueryParams,
   dateKey: string,
   ephemeralToken: string | null,
