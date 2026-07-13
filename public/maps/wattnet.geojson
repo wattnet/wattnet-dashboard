@@ -3814,18 +3814,6 @@
     {
       "type": "Feature",
       "properties": {
-        "zoneName": "IM",
-        "countryKey": "IM",
-        "countryName": "Isle of Man"
-      },
-      "geometry": {
-        "type": "MultiPolygon",
-        "coordinates": []
-      }
-    },
-    {
-      "type": "Feature",
-      "properties": {
         "zoneName": "IS",
         "countryKey": "IS",
         "countryName": "Iceland"
