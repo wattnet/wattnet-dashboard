@@ -364,19 +364,19 @@ export function SidebarHeader() {
     <Box
       sx={{
         px: 2.5,
-        pt: 1.75,
+        pt: 2.5,
         pb: 2,
         borderBottom: `1px solid ${BORDER}`,
         flexShrink: 0,
         position: "relative",
       }}
     >
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1, ml: "-6px", mb: 1.5 }}>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1, ml: "1px", mb: 2.25 }}>
         <Image
           src="/images/wattnet-logo-icon-color-transparent.svg"
           alt="wattnet"
-          width={40}
-          height={40}
+          width={38}
+          height={38}
           priority
         />
         <Box
@@ -384,10 +384,12 @@ export function SidebarHeader() {
           sx={{
             fontFamily: "var(--font-display)",
             fontWeight: 800,
-            fontSize: 22,
+            fontSize: 25,
             letterSpacing: "-0.01em",
             color: "var(--color-foreground)",
             lineHeight: 1,
+            position: "relative",
+            top: "-1px",
           }}
         >
           wattnet
@@ -410,6 +412,8 @@ export function SidebarHeader() {
             alignSelf: "center",
             flexShrink: 0,
             ml: "auto",
+            position: "relative",
+            top: "-1px",
             "&:hover": { opacity: 0.85 },
           }}
         >
