@@ -41,15 +41,18 @@ const GEO_PATH = join(ROOT, "public/maps/wattnet.geojson");
 const OUT_PATH = join(ROOT, "src/features/map/data/zoneCrossings.json");
 
 const SHARED_DEG  = 0.015; // < ~1.5 km  →  treat as shared border vertex
-const NEARBY_DEG  = 0.6;   // < ~60 km   →  treat as adjacent (maritime / close)
+const NEARBY_DEG  = 4.0;   // < ~400 km  →  treat as adjacent (covers all known
+                            // submarine cable interconnectors in Europe)
 const SECTION_GAP = 0.5;   // gap > 0.5° between consecutive ring-ordered shared
                             // vertices triggers a new border section
 
 // Manual overrides — values here take precedence over the computed result.
-// Add pairs where the algorithm produces a wrong or misleading position.
+// Add pairs where the algorithm produces a wrong or misleading position,
+// or where zones are farther apart than NEARBY_DEG (e.g. long submarine cables).
 const MANUAL_OVERRIDES = {
   "GB:IE":   [-5.5,      53.3     ], // Irish Sea — no land border, wider than NEARBY_DEG
   "NO4:SE2": [13.71641,  64.04621 ], // E-W section of border (user override)
+  "GB:NO2":  [3.0,       57.5     ], // NordLink / Viking cable — North Sea, ~600 km
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
