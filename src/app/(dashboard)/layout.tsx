@@ -1024,35 +1024,29 @@ function MobileTopSheet({
         pr: 2,
         }}
       >
-        <Box
-          sx={{
-            display: "none",
-            '[data-theme="dark"] &': { display: "block" },
-          }}
-        >
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, ml: "10px" }}>
           <Image
-            src="/images/wattnet-logo-full-dark-transparent.svg"
+            src="/images/wattnet-logo-icon-color-transparent.svg"
             alt="wattnet"
-            width={120}
-            height={36}
+            width={32}
+            height={32}
             priority
+            style={{ display: "block" }}
           />
-        </Box>
-
-        <Box
-          sx={{
-            display: "none",
-            '[data-theme="light"] &': { display: "block" },
-            '[data-theme="colorblind"] &': { display: "block" },
-          }}
-        >
-          <Image
-            src="/images/wattnet-logo-full-light-transparent.svg"
-            alt="wattnet"
-            width={120}
-            height={36}
-            priority
-          />
+          <Box
+            component="span"
+            sx={{
+              fontFamily: "var(--font-display)",
+              fontWeight: 800,
+              fontSize: 18,
+              letterSpacing: "-0.01em",
+              color: "var(--color-foreground)",
+              lineHeight: 1,
+              mb: "2px",
+            }}
+          >
+            wattnet
+          </Box>
         </Box>
 
         <CollapseBtn

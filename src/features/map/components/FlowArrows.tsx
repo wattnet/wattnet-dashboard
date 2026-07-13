@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, useMemo } from "react";
 import { createPortal } from "react-dom";
 import type { Map as MapLibreMap } from "maplibre-gl";
-import type { FeatureCollection, Feature } from "geojson";
+import type { FeatureCollection } from "geojson";
 import { ZoneImports, ImportSeries } from "@/src/features/map/types/imports";
 import { computeZoneCentroids } from "@/src/features/map/utils/zoneCentroids";
 import { slotToTimestampMs } from "@/src/shared/utils/dateManager";
@@ -64,63 +64,6 @@ function interpolateZoneColor(
 
 function lightenArrowColor(color: string): string {
   return lerpColor(color, "#ffffff", 0.55);
-}
-
-// ── Border crossing (point-in-polygon + binary search) ────────────────────
-function pointInRing(point: [number, number], ring: number[][]): boolean {
-  const [px, py] = point;
-  let inside = false;
-  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-    const [xi, yi] = ring[i];
-    const [xj, yj] = ring[j];
-    if (yi > py !== yj > py && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi)
-      inside = !inside;
-  }
-  return inside;
-}
-
-function pointInFeature(feature: Feature, point: [number, number]): boolean {
-  const g = feature.geometry;
-  if (g.type === "Polygon") {
-    const rings = g.coordinates as number[][][];
-    if (!pointInRing(point, rings[0])) return false;
-    for (let i = 1; i < rings.length; i++)
-      if (pointInRing(point, rings[i])) return false;
-    return true;
-  }
-  if (g.type === "MultiPolygon") {
-    return (g.coordinates as number[][][][]).some((poly) => {
-      if (!pointInRing(point, poly[0])) return false;
-      for (let i = 1; i < poly.length; i++)
-        if (pointInRing(point, poly[i])) return false;
-      return true;
-    });
-  }
-  return false;
-}
-
-function findBorderCrossing(
-  c1: [number, number],
-  c2: [number, number],
-  srcFeature: Feature,
-  iters = 18,
-): [number, number] {
-  if (!pointInFeature(srcFeature, c1)) {
-    return [(c1[0] + c2[0]) / 2, (c1[1] + c2[1]) / 2];
-  }
-  let lo = 0,
-    hi = 1;
-  for (let k = 0; k < iters; k++) {
-    const mid = (lo + hi) / 2;
-    const pt: [number, number] = [
-      c1[0] + (c2[0] - c1[0]) * mid,
-      c1[1] + (c2[1] - c1[1]) * mid,
-    ];
-    if (pointInFeature(srcFeature, pt)) lo = mid;
-    else hi = mid;
-  }
-  const t = (lo + hi) / 2;
-  return [c1[0] + (c2[0] - c1[0]) * t, c1[1] + (c2[1] - c1[1]) * t];
 }
 
 // ── Arrow geometry ─────────────────────────────────────────────────────────
@@ -214,6 +157,52 @@ function makeArrowGeometry(
     chevronPaths,
     chevronStrokeW: Math.max(2, 3 * scale),
   };
+}
+
+function makeGhostArrowPath(
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  scale: number,
+  cx: number,
+  cy: number,
+): string {
+  const arrowLen = ARROW_LEN_BASE * scale * 1.05;
+  const headLen = HEAD_LEN_BASE * scale * 0.85;
+  const headW = HEAD_W_BASE * scale * 0.85;
+  const shaftW = SHAFT_W_BASE * scale;
+
+  const angle = Math.atan2(y2 - y1, x2 - x1);
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  const px = -sin,
+    py = cos;
+  const hw = shaftW / 2,
+    hbw = headW / 2;
+
+  const tip1X = cx + cos * (arrowLen / 2),
+    tip1Y = cy + sin * (arrowLen / 2);
+  const neck1X = tip1X - cos * headLen,
+    neck1Y = tip1Y - sin * headLen;
+  const tip2X = cx - cos * (arrowLen / 2),
+    tip2Y = cy - sin * (arrowLen / 2);
+  const neck2X = tip2X + cos * headLen,
+    neck2Y = tip2Y + sin * headLen;
+
+  const pts: [number, number][] = [
+    [tip1X, tip1Y],
+    [neck1X + px * hbw, neck1Y + py * hbw],
+    [neck1X + px * hw, neck1Y + py * hw],
+    [neck2X + px * hw, neck2Y + py * hw],
+    [neck2X + px * hbw, neck2Y + py * hbw],
+    [tip2X, tip2Y],
+    [neck2X - px * hbw, neck2Y - py * hbw],
+    [neck2X - px * hw, neck2Y - py * hw],
+    [neck1X - px * hw, neck1Y - py * hw],
+    [neck1X - px * hbw, neck1Y - py * hbw],
+  ];
+  return `M ${pts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" L ")} Z`;
 }
 
 // ── Data helpers ───────────────────────────────────────────────────────────
@@ -384,6 +373,25 @@ interface ArrowDOMItem {
   chevSEls: (SVGPathElement | null)[];
 }
 
+interface GhostArrowItem {
+  key: string;
+  zoneA: string;
+  zoneB: string;
+  nameA: string;
+  nameB: string;
+  srcCentroid: [number, number];
+  destCentroid: [number, number];
+  crossing: [number, number];
+}
+
+interface GhostDOMItem {
+  srcCentroid: [number, number];
+  destCentroid: [number, number];
+  crossing: [number, number];
+  pathEl: SVGPathElement | null;
+  hitEl: SVGPathElement | null;
+}
+
 interface TooltipState {
   x: number;
   y: number;
@@ -422,6 +430,15 @@ export default function FlowArrows({
   const [mapContainer, setMapContainer] = useState<HTMLElement | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const arrowDOMRef = useRef<ArrowDOMItem[]>([]);
+  const ghostDOMRef = useRef<GhostDOMItem[]>([]);
+  const [ghostTooltip, setGhostTooltip] = useState<{
+    x: number;
+    y: number;
+    zoneA: string;
+    zoneB: string;
+    nameA: string;
+    nameB: string;
+  } | null>(null);
   const tooltipElRef = useRef<HTMLDivElement>(null);
   const tooltipSizeRef = useRef<{ w: number; h: number } | null>(null);
   // Stable animation delays keyed by `${arrow.key}:body` / `${arrow.key}:${ci}`.
@@ -481,7 +498,8 @@ export default function FlowArrows({
     if (!map) return;
     const update = () => {
       const items = arrowDOMRef.current;
-      if (items.length === 0) return;
+      const ghosts = ghostDOMRef.current;
+      if (items.length === 0 && ghosts.length === 0) return;
       const scale = arrowScale(map.getZoom());
       const shaftW = SHAFT_W_BASE * scale;
       const sStr = String(Math.max(1, shaftW * 0.55));
@@ -517,8 +535,38 @@ export default function FlowArrows({
           const cp = chevronPaths[ci] ?? "";
           const g = chevGEls[ci];
           const s = chevSEls[ci];
-          if (g) { g.setAttribute("d", cp); g.setAttribute("stroke-width", swStr); }
-          if (s) { s.setAttribute("d", cp); s.setAttribute("stroke-width", sStr); }
+          if (g) {
+            g.setAttribute("d", cp);
+            g.setAttribute("stroke-width", swStr);
+          }
+          if (s) {
+            s.setAttribute("d", cp);
+            s.setAttribute("stroke-width", sStr);
+          }
+        }
+      }
+      if (ghosts.length > 0) {
+        for (const {
+          srcCentroid,
+          destCentroid,
+          crossing,
+          pathEl,
+          hitEl,
+        } of ghosts) {
+          const p1 = map.project(srcCentroid);
+          const p2 = map.project(destCentroid);
+          const pX = map.project(crossing);
+          const d = makeGhostArrowPath(
+            p1.x,
+            p1.y,
+            p2.x,
+            p2.y,
+            scale,
+            pX.x,
+            pX.y,
+          );
+          pathEl?.setAttribute("d", d);
+          hitEl?.setAttribute("d", d);
         }
       }
     };
@@ -536,46 +584,41 @@ export default function FlowArrows({
     const handler = (e: WheelEvent) => {
       const canvas = mapRef.current?.getCanvas();
       if (!canvas) return;
-      canvas.dispatchEvent(new WheelEvent("wheel", {
-        bubbles: true,
-        cancelable: e.cancelable,
-        deltaX: e.deltaX,
-        deltaY: e.deltaY,
-        deltaZ: e.deltaZ,
-        deltaMode: e.deltaMode,
-        ctrlKey: e.ctrlKey,
-        shiftKey: e.shiftKey,
-        altKey: e.altKey,
-        clientX: e.clientX,
-        clientY: e.clientY,
-      }));
+      canvas.dispatchEvent(
+        new WheelEvent("wheel", {
+          bubbles: true,
+          cancelable: e.cancelable,
+          deltaX: e.deltaX,
+          deltaY: e.deltaY,
+          deltaZ: e.deltaZ,
+          deltaMode: e.deltaMode,
+          ctrlKey: e.ctrlKey,
+          shiftKey: e.shiftKey,
+          altKey: e.altKey,
+          clientX: e.clientX,
+          clientY: e.clientY,
+        }),
+      );
     };
     svg.addEventListener("wheel", handler, { passive: true });
     return () => svg.removeEventListener("wheel", handler);
-  // mapContainer gates when the SVG is actually in the DOM
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // mapContainer gates when the SVG is actually in the DOM
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapContainer]);
 
-  const borderCrossingsRef = useRef<Map<string, [number, number]>>(new Map());
-
-  const { centroids, zoneNames, zoneFeatures } = useMemo(() => {
+  const { centroids, zoneNames } = useMemo(() => {
     const geojson = geoJSONProp ?? geoJSONRef.current;
-    if (!geojson) return { centroids: {}, zoneNames: {}, zoneFeatures: {} };
-    borderCrossingsRef.current.clear();
+    if (!geojson) return { centroids: {}, zoneNames: {} };
     const c = computeZoneCentroids(geojson);
     const names: Record<string, string> = {};
-    const features: Record<string, Feature> = {};
     for (const f of geojson.features) {
       const { zoneName, countryName } = (f.properties ?? {}) as {
         zoneName?: string;
         countryName?: string;
       };
-      if (zoneName) {
-        names[zoneName] = countryName ?? zoneName;
-        features[zoneName] = f;
-      }
+      if (zoneName) names[zoneName] = countryName ?? zoneName;
     }
-    return { centroids: c, zoneNames: names, zoneFeatures: features };
+    return { centroids: c, zoneNames: names };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [geoJSONProp, geoJSONLoaded]);
 
@@ -593,6 +636,7 @@ export default function FlowArrows({
       return [];
 
     const targetMs = slotToTimestampMs(startDate, selectedTimeIndex);
+    const isForecastSlot = targetMs > Date.now();
     const result: ArrowItem[] = [];
     const seen = new Set<string>();
     const fpByZone = new Map(processedData.map((d) => [d.zone, d]));
@@ -606,7 +650,10 @@ export default function FlowArrows({
         const pairKey = [destZone, srcZone].sort().join(":");
         if (seen.has(pairKey)) continue;
 
-        const value = lookupValue(tsMap, targetMs);
+        // For forecast timestamps: no tolerance — exchange data doesn't exist yet
+        const value = isForecastSlot
+          ? (tsMap.get(targetMs) ?? null)
+          : lookupValue(tsMap, targetMs);
         if (value === null || value <= 0) continue;
 
         seen.add(pairKey);
@@ -627,33 +674,17 @@ export default function FlowArrows({
               )
             : "rgba(255,255,255,0.75)";
 
-        // Crossing lookup: static JSON first (run scripts/compute-zone-crossings.mjs),
-        // then runtime binary-search fallback cached in borderCrossingsRef.
         const [zA, zB] = [srcZone, destZone].sort();
         const crossKey = `${zA}:${zB}`;
-        const staticPt = (
+        const crossingGeo = (
           zoneCrossingsJson as unknown as Record<string, [number, number]>
         )[crossKey];
-        let crossingGeo: [number, number];
-        if (staticPt) {
-          crossingGeo = staticPt;
-        } else {
-          let cached = borderCrossingsRef.current.get(crossKey);
-          if (!cached) {
-            const cA = centroids[zA] as [number, number];
-            const cB = centroids[zB] as [number, number];
-            const fA = zoneFeatures[zA];
-            const fB = zoneFeatures[zB];
-            const cAB = fA ? findBorderCrossing(cA, cB, fA) : null;
-            const cBA = fB ? findBorderCrossing(cB, cA, fB) : null;
-            if (cAB && cBA) {
-              cached = [(cAB[0] + cBA[0]) / 2, (cAB[1] + cBA[1]) / 2];
-            } else {
-              cached = cAB ?? cBA ?? [(cA[0] + cB[0]) / 2, (cA[1] + cB[1]) / 2];
-            }
-            borderCrossingsRef.current.set(crossKey, cached);
-          }
-          crossingGeo = cached;
+        if (!crossingGeo) {
+          if (process.env.NODE_ENV === "development")
+            console.warn(
+              `[FlowArrows] No crossing for ${crossKey} — run: yarn crossings`,
+            );
+          continue;
         }
 
         result.push({
@@ -680,10 +711,78 @@ export default function FlowArrows({
     startDate,
     centroids,
     zoneNames,
-    zoneFeatures,
     processedData,
     legendConfig,
   ]);
+
+  // Ghost pairs — all interconnectors known from importsData structure, regardless of current value
+  const ghostPairs = useMemo((): GhostArrowItem[] => {
+    if (importsData.length === 0 || Object.keys(centroids).length === 0)
+      return [];
+    const crossingsMap = zoneCrossingsJson as unknown as Record<
+      string,
+      [number, number]
+    >;
+    const seen = new Set<string>();
+    const pairs: GhostArrowItem[] = [];
+    for (const zoneImport of importsData) {
+      const destZone = zoneImport.zone;
+      const destCentroid = centroids[destZone];
+      if (!destCentroid) continue;
+      for (const series of zoneImport.series) {
+        for (const block of series.imports) {
+          const srcZone = block.source;
+          const [zA, zB] = [srcZone, destZone].sort();
+          const pairKey = `${zA}:${zB}`;
+          if (seen.has(pairKey)) continue;
+          const crossing = crossingsMap[pairKey];
+          if (!crossing) continue;
+          const srcCentroid = centroids[srcZone];
+          if (!srcCentroid) continue;
+          seen.add(pairKey);
+          pairs.push({
+            key: pairKey,
+            zoneA: zA,
+            zoneB: zB,
+            nameA: zoneNames[zA] ?? zA,
+            nameB: zoneNames[zB] ?? zB,
+            srcCentroid: srcCentroid as [number, number],
+            destCentroid: destCentroid as [number, number],
+            crossing,
+          });
+        }
+      }
+    }
+    return pairs;
+  }, [importsData, centroids, zoneNames]);
+
+  const showGhosts = arrows.length === 0 && ghostPairs.length > 0;
+
+  const ghostDOMItems = useMemo(
+    () =>
+      ghostPairs.map((g) => ({
+        ...g,
+        pathEl: null as SVGPathElement | null,
+        hitEl: null as SVGPathElement | null,
+      })),
+    [ghostPairs],
+  );
+
+  useLayoutEffect(() => {
+    const svg = svgRef.current;
+    if (!svg || !showGhosts) {
+      ghostDOMRef.current = [];
+      setGhostTooltip(null);
+      return;
+    }
+    ghostDOMRef.current = ghostDOMItems.map((item, i) => ({
+      ...item,
+      pathEl: svg.getElementById(`wn-ghost-${i}`) as SVGPathElement | null,
+      hitEl: svg.getElementById(`wn-ghost-hit-${i}`) as SVGPathElement | null,
+    }));
+    mapRef.current?.triggerRepaint();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ghostDOMItems, mapContainer, showGhosts]);
 
   // Look up arrow in both directions so the tooltip survives a direction flip
   const tooltipArrow = tooltip
@@ -789,10 +888,12 @@ export default function FlowArrows({
     >
       <defs>
         <style>{`
-          @keyframes wn-body-pulse { 0%,100% { opacity:.85 } 50% { opacity:1 } }
-          @keyframes wn-chev-pulse { 0%,100% { opacity:.08 } 50% { opacity:.88 } }
-          .wn-body-pulse { animation: wn-body-pulse 2.5s ease-in-out infinite; }
-          .wn-chev-pulse { animation: wn-chev-pulse 1.4s cubic-bezier(.4,0,.6,1) infinite; }
+          @keyframes wn-body-pulse  { 0%,100% { opacity:.85 } 50% { opacity:1 } }
+          @keyframes wn-chev-pulse  { 0%,100% { opacity:.08 } 50% { opacity:.88 } }
+          @keyframes wn-ghost-pulse     { 0%,100% { opacity:.45 } 50% { opacity:1 } }
+          .wn-body-pulse       { animation: wn-body-pulse     2.5s ease-in-out infinite; }
+          .wn-chev-pulse       { animation: wn-chev-pulse     1.4s cubic-bezier(.4,0,.6,1) infinite; }
+          .wn-ghost-pulse      { animation: wn-ghost-pulse    1.8s cubic-bezier(.4,0,.6,1) infinite; }
         `}</style>
         {/* Inner glow: blur then composite "in" to keep effect inside shape */}
         <filter
@@ -806,7 +907,13 @@ export default function FlowArrows({
           <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="blur" />
           <feComposite in="blur" in2="SourceGraphic" operator="in" />
         </filter>
-        <filter id="wn-chev-shadow" x="-50%" y="-50%" width="200%" height="200%">
+        <filter
+          id="wn-chev-shadow"
+          x="-50%"
+          y="-50%"
+          width="200%"
+          height="200%"
+        >
           <feGaussianBlur in="SourceGraphic" stdDeviation="0.7" />
         </filter>
         {arrows.map((arrow, i) => (
@@ -817,171 +924,239 @@ export default function FlowArrows({
       </defs>
 
       {(() => {
-        // Prune cache entries for arrows that are no longer rendered.
-        const liveKeys = new Set(
-          arrows.flatMap((a) => [
+        // Snapshot time once — shared by ghost and real arrow delay seeds.
+        const nowSec = performance.now() / 1000;
+
+        // Prune cache: remove keys for arrows/ghosts no longer rendered.
+        const liveKeys = new Set([
+          ...arrows.flatMap((a) => [
             `${a.key}:body`,
             ...Array.from({ length: N_CHEVRONS }, (_, ci) => `${a.key}:${ci}`),
           ]),
-        );
+          ...(showGhosts ? ghostPairs.map((g) => `ghost:${g.key}:body`) : []),
+        ]);
         for (const k of animDelayRef.current.keys()) {
           if (!liveKeys.has(k)) animDelayRef.current.delete(k);
         }
-        // Snapshot time for any new entries added this render.
-        const nowSec = performance.now() / 1000;
-        return arrows.map((arrow, i) => {
-          const phaseBase = (i * 0.45) % 2.5;
 
-          // Return cached delay, or compute+cache on first appearance.
-          // The value never changes after that, so React won't update the DOM
-          // style and the browser won't restart the animation.
-          const bodyDelayKey = `${arrow.key}:body`;
-          if (!animDelayRef.current.has(bodyDelayKey)) {
+        // Helper: return cached delay, or compute+cache on first appearance.
+        // Using performance.now() as seed means each key gets a unique phase
+        // relative to real time — once cached it never changes, so React won't
+        // touch animationDelay in the DOM and the browser won't restart the animation.
+        const stableDelay = (key: string, cycle: number, offset: number) => {
+          if (!animDelayRef.current.has(key)) {
             animDelayRef.current.set(
-              bodyDelayKey,
-              `-${((nowSec - phaseBase) % 2.5).toFixed(3)}s`,
+              key,
+              `-${((nowSec - offset) % cycle).toFixed(3)}s`,
             );
           }
-          const bodyDelay = animDelayRef.current.get(bodyDelayKey)!;
+          return animDelayRef.current.get(key)!;
+        };
 
-          const chevDelay = (ci: number) => {
-            const k = `${arrow.key}:${ci}`;
-            if (!animDelayRef.current.has(k)) {
-              animDelayRef.current.set(
-                k,
-                `-${((nowSec - phaseBase - ci * 0.28) % 1.4).toFixed(3)}s`,
-              );
-            }
-            return animDelayRef.current.get(k)!;
-          };
-          const chColor = lightenArrowColor(arrow.color);
-          return (
-            <g key={arrow.key}>
-              {/* Arrow body */}
-              <path
-                id={`wn-body-${i}`}
-                d=""
-                fill={arrow.color}
-                stroke="rgba(0,0,0,0.55)"
-                strokeWidth={1.2}
-                strokeLinejoin="round"
-                className="wn-body-pulse"
-                style={{ pointerEvents: "none", animationDelay: bodyDelay }}
-              />
+        return (
+          <>
+            {/* Ghost arrows — shown only when no real exchange data for this timestamp */}
+            {showGhosts &&
+              ghostPairs.map((ghost, i) => {
+                const phaseBase = (i * 0.45) % 2.5;
+                const bodyDelay = stableDelay(
+                  `ghost:${ghost.key}:body`,
+                  3,
+                  phaseBase,
+                );
+                return (
+                  <g key={ghost.key} style={{ pointerEvents: "none" }}>
+                    <path
+                      id={`wn-ghost-${i}`}
+                      d=""
+                      stroke="none"
+                      className="wn-ghost-pulse"
+                      style={{
+                        fill: "color-mix(in srgb, #334155 70%, transparent)",
+                        animationDelay: bodyDelay,
+                      }}
+                    />
+                    <path
+                      id={`wn-ghost-hit-${i}`}
+                      d=""
+                      fill="transparent"
+                      stroke="transparent"
+                      strokeWidth={28}
+                      strokeLinejoin="round"
+                      style={{ pointerEvents: "auto", cursor: "default" }}
+                      onMouseEnter={(e) =>
+                        setGhostTooltip({ x: e.clientX, y: e.clientY, zoneA: ghost.zoneA, zoneB: ghost.zoneB, nameA: ghost.nameA, nameB: ghost.nameB })
+                      }
+                      onMouseMove={(e) =>
+                        setGhostTooltip((prev) =>
+                          prev ? { ...prev, x: e.clientX, y: e.clientY } : prev,
+                        )
+                      }
+                      onMouseLeave={() => setGhostTooltip(null)}
+                    />
+                  </g>
+                );
+              })}
 
-              {/* Inner glow */}
-              <path
-                id={`wn-iglow-${i}`}
-                d=""
-                fill="rgba(255,255,255,0.22)"
-                stroke="none"
-                filter="url(#wn-inner-glow)"
-                style={{ pointerEvents: "none" }}
-              />
+            {/* Real arrows */}
+            {arrows.map((arrow, i) => {
+              const phaseBase = (i * 0.45) % 2.5;
 
-              {/* Chevron ripple — clipped to arrow shape */}
-              {Array.from({ length: N_CHEVRONS }, (_, ci) => (
-                <g
-                  key={ci}
-                  clipPath={`url(#wn-arrow-clip-${i})`}
-                  className="wn-chev-pulse"
-                  style={{
-                    pointerEvents: "none",
-                    animationDelay: chevDelay(ci),
-                  }}
-                >
+              // Return cached delay, or compute+cache on first appearance.
+              // The value never changes after that, so React won't update the DOM
+              // style and the browser won't restart the animation.
+              const bodyDelayKey = `${arrow.key}:body`;
+              if (!animDelayRef.current.has(bodyDelayKey)) {
+                animDelayRef.current.set(
+                  bodyDelayKey,
+                  `-${((nowSec - phaseBase) % 2.5).toFixed(3)}s`,
+                );
+              }
+              const bodyDelay = animDelayRef.current.get(bodyDelayKey)!;
+
+              const chevDelay = (ci: number) => {
+                const k = `${arrow.key}:${ci}`;
+                if (!animDelayRef.current.has(k)) {
+                  animDelayRef.current.set(
+                    k,
+                    `-${((nowSec - phaseBase - ci * 0.28) % 1.4).toFixed(3)}s`,
+                  );
+                }
+                return animDelayRef.current.get(k)!;
+              };
+              const chColor = lightenArrowColor(arrow.color);
+              return (
+                <g key={arrow.key}>
+                  {/* Arrow body */}
                   <path
-                    id={`wn-chev-g-${i}-${ci}`}
+                    id={`wn-body-${i}`}
                     d=""
-                    fill="none"
-                    stroke="rgba(0,0,0,0.14)"
-                    strokeLinecap="round"
+                    fill={arrow.color}
+                    stroke="rgba(100,100,100,0.45)"
+                    strokeWidth={1.2}
                     strokeLinejoin="round"
-                    filter="url(#wn-chev-shadow)"
+                    className="wn-body-pulse"
+                    style={{ pointerEvents: "none", animationDelay: bodyDelay }}
                   />
+
+                  {/* Inner glow */}
                   <path
-                    id={`wn-chev-s-${i}-${ci}`}
+                    id={`wn-iglow-${i}`}
                     d=""
-                    fill="none"
-                    stroke={chColor}
-                    strokeLinecap="round"
+                    fill="rgba(255,255,255,0.22)"
+                    stroke="none"
+                    filter="url(#wn-inner-glow)"
+                    style={{ pointerEvents: "none" }}
+                  />
+
+                  {/* Chevron ripple — clipped to arrow shape */}
+                  {Array.from({ length: N_CHEVRONS }, (_, ci) => (
+                    <g
+                      key={ci}
+                      clipPath={`url(#wn-arrow-clip-${i})`}
+                      className="wn-chev-pulse"
+                      style={{
+                        pointerEvents: "none",
+                        animationDelay: chevDelay(ci),
+                      }}
+                    >
+                      <path
+                        id={`wn-chev-g-${i}-${ci}`}
+                        d=""
+                        fill="none"
+                        stroke="rgba(0,0,0,0.14)"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        filter="url(#wn-chev-shadow)"
+                      />
+                      <path
+                        id={`wn-chev-s-${i}-${ci}`}
+                        d=""
+                        fill="none"
+                        stroke={chColor}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </g>
+                  ))}
+
+                  {/* Transparent hit area — wider than the visible arrow for easier hover/tap */}
+                  <path
+                    id={`wn-hit-${i}`}
+                    d=""
+                    fill="transparent"
+                    stroke="transparent"
+                    strokeWidth={28}
                     strokeLinejoin="round"
+                    style={{ pointerEvents: "auto", cursor: "default" }}
+                    onMouseEnter={(e) =>
+                      setTooltip({
+                        x: e.clientX,
+                        y: e.clientY,
+                        srcZone: arrow.srcZone,
+                        destZone: arrow.destZone,
+                      })
+                    }
+                    onMouseMove={(e) =>
+                      setTooltip((prev) =>
+                        prev ? { ...prev, x: e.clientX, y: e.clientY } : prev,
+                      )
+                    }
+                    onMouseLeave={() => setTooltip(null)}
+                    onTouchStart={(e) => {
+                      if (isMobile) {
+                        e.stopPropagation();
+                        const targetMs = slotToTimestampMs(
+                          startDate,
+                          selectedTimeIndex,
+                        );
+                        const status = getImportStatus(
+                          importsData,
+                          arrow.srcZone,
+                          arrow.destZone,
+                          targetMs,
+                        );
+                        openFlowPanel({
+                          srcZone: arrow.srcZone,
+                          destZone: arrow.destZone,
+                          srcName: arrow.srcName,
+                          destName: arrow.destName,
+                          mw: arrow.mw,
+                          color: arrow.color,
+                          metricValue: arrow.metricValue,
+                          metricUnit: legendConfig.unit ?? "",
+                          metricTitle: legendConfig.title,
+                          datetime: formatDatetime(
+                            startDate,
+                            selectedTimeIndex,
+                          ),
+                          valid: status?.valid ?? false,
+                          zoneStatus: status?.zoneStatus ?? "",
+                          dataState: status?.dataState ?? "missing",
+                          datasource: status?.datasource ?? "",
+                          isForecast: status?.isForecast ?? false,
+                        });
+                      } else {
+                        const touch = e.touches[0];
+                        setTooltip((prev) =>
+                          prev?.srcZone === arrow.srcZone &&
+                          prev?.destZone === arrow.destZone
+                            ? null
+                            : {
+                                x: touch.clientX,
+                                y: touch.clientY,
+                                srcZone: arrow.srcZone,
+                                destZone: arrow.destZone,
+                              },
+                        );
+                      }
+                    }}
                   />
                 </g>
-              ))}
-
-              {/* Transparent hit area — wider than the visible arrow for easier hover/tap */}
-              <path
-                id={`wn-hit-${i}`}
-                d=""
-                fill="transparent"
-                stroke="transparent"
-                strokeWidth={28}
-                strokeLinejoin="round"
-                style={{ pointerEvents: "auto", cursor: "default" }}
-                onMouseEnter={(e) =>
-                  setTooltip({
-                    x: e.clientX,
-                    y: e.clientY,
-                    srcZone: arrow.srcZone,
-                    destZone: arrow.destZone,
-                  })
-                }
-                onMouseMove={(e) =>
-                  setTooltip((prev) =>
-                    prev ? { ...prev, x: e.clientX, y: e.clientY } : prev,
-                  )
-                }
-                onMouseLeave={() => setTooltip(null)}
-                onTouchStart={(e) => {
-                  if (isMobile) {
-                    e.stopPropagation();
-                    const targetMs = slotToTimestampMs(
-                      startDate,
-                      selectedTimeIndex,
-                    );
-                    const status = getImportStatus(
-                      importsData,
-                      arrow.srcZone,
-                      arrow.destZone,
-                      targetMs,
-                    );
-                    openFlowPanel({
-                      srcZone: arrow.srcZone,
-                      destZone: arrow.destZone,
-                      srcName: arrow.srcName,
-                      destName: arrow.destName,
-                      mw: arrow.mw,
-                      color: arrow.color,
-                      metricValue: arrow.metricValue,
-                      metricUnit: legendConfig.unit ?? "",
-                      metricTitle: legendConfig.title,
-                      datetime: formatDatetime(startDate, selectedTimeIndex),
-                      valid: status?.valid ?? false,
-                      zoneStatus: status?.zoneStatus ?? "",
-                      dataState: status?.dataState ?? "missing",
-                      datasource: status?.datasource ?? "",
-                      isForecast: status?.isForecast ?? false,
-                    });
-                  } else {
-                    const touch = e.touches[0];
-                    setTooltip((prev) =>
-                      prev?.srcZone === arrow.srcZone &&
-                      prev?.destZone === arrow.destZone
-                        ? null
-                        : {
-                            x: touch.clientX,
-                            y: touch.clientY,
-                            srcZone: arrow.srcZone,
-                            destZone: arrow.destZone,
-                          },
-                    );
-                  }
-                }}
-              />
-            </g>
-          );
-        });
+              );
+            })}
+          </>
+        );
       })()}
     </svg>
   );
@@ -1006,6 +1181,96 @@ export default function FlowArrows({
   return (
     <>
       {createPortal(svgEl, mapContainer)}
+      {ghostTooltip && (
+        <div
+          style={{
+            position: "fixed",
+            left: ghostTooltip.x + 12,
+            top: ghostTooltip.y - 80,
+            zIndex: 9999,
+            pointerEvents: "none",
+            fontFamily: '"Red Hat Text", system-ui, sans-serif',
+            background: "color-mix(in srgb, var(--color-panel) 93%, transparent)",
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
+            border: "1px solid color-mix(in srgb, var(--color-foreground) 10%, transparent)",
+            borderRadius: 12,
+            boxShadow: "0 8px 32px rgba(0,0,0,0.3)",
+            padding: "14px 16px",
+            display: "flex",
+            flexDirection: "column",
+            gap: 5,
+            whiteSpace: "nowrap",
+          }}
+        >
+          {/* Datetime */}
+          <div
+            style={{
+              fontSize: 14,
+              fontWeight: 500,
+              color: "color-mix(in srgb, var(--color-foreground) 30%, transparent)",
+              letterSpacing: "0.03em",
+              lineHeight: 1,
+              fontVariantNumeric: "tabular-nums",
+            }}
+          >
+            {tooltipDatetime}
+          </div>
+
+          {/* Zone pair */}
+          <div style={{ display: "flex", gap: 10, margin: "2px 0" }}>
+            {/* Static bidirectional connector */}
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                width: 10,
+                paddingTop: 8,
+                paddingBottom: 8,
+              }}
+            >
+              <div style={{ width: 6, height: 6, borderRadius: "50%", background: "color-mix(in srgb, var(--color-foreground) 35%, transparent)", flexShrink: 0 }} />
+              <div style={{ flex: 1, width: 1.5, background: "color-mix(in srgb, var(--color-foreground) 18%, transparent)", margin: "3px 0" }} />
+              <div style={{ width: 6, height: 6, borderRadius: "50%", background: "color-mix(in srgb, var(--color-foreground) 35%, transparent)", flexShrink: 0 }} />
+            </div>
+
+            {/* Zone names */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1, minWidth: 0 }}>
+              <div style={{ height: 22, display: "flex", alignItems: "center", gap: 5 }}>
+                <span style={{ fontSize: 18, fontWeight: 600, color: "color-mix(in srgb, var(--color-foreground) 92%, transparent)", whiteSpace: "nowrap", lineHeight: 1 }}>
+                  {ghostTooltip.nameA}
+                </span>
+                <span style={{ fontSize: 12, fontWeight: 500, color: "color-mix(in srgb, var(--color-foreground) 42%, transparent)", lineHeight: 1 }}>
+                  ({ghostTooltip.zoneA})
+                </span>
+              </div>
+              <div style={{ height: 22, display: "flex", alignItems: "center", gap: 5 }}>
+                <span style={{ fontSize: 18, fontWeight: 600, color: "color-mix(in srgb, var(--color-foreground) 92%, transparent)", whiteSpace: "nowrap", lineHeight: 1 }}>
+                  {ghostTooltip.nameB}
+                </span>
+                <span style={{ fontSize: 12, fontWeight: 500, color: "color-mix(in srgb, var(--color-foreground) 42%, transparent)", lineHeight: 1 }}>
+                  ({ghostTooltip.zoneB})
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Divider */}
+          <div style={{ height: 1, background: "color-mix(in srgb, var(--color-foreground) 8%, transparent)", margin: "4px -2px 4px" }} />
+
+          {/* Explanatory text */}
+          <div
+            style={{
+              fontSize: 14,
+              fontWeight: 500,
+              color: "color-mix(in srgb, var(--color-foreground) 55%, transparent)",
+            }}
+          >
+            Power Exchange Data Not Yet Available
+          </div>
+        </div>
+      )}
       {tooltip && tooltipArrow && (
         <div
           ref={tooltipElRef}

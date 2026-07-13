@@ -207,7 +207,8 @@ export default function MapContainer({
         selectedTimeIndex,
       );
 
-      const map = mapInstance.current!;
+      const map = mapInstance.current;
+      if (!map) return;
       if (!map.getSource("world"))
         map.addSource("world", { type: "geojson", data: merged });
 

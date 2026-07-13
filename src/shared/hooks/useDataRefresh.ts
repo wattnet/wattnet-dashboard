@@ -112,6 +112,7 @@ export function useDataRefresh({
   });
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isProbingRef = useRef(false);
 
   const clearTimer = useCallback(() => {
     if (timerRef.current !== null) {
@@ -190,8 +191,14 @@ export function useDataRefresh({
    */
   const runProbeAndSchedule = useCallback(async () => {
     if (!stateRef.current.enabled) return;
+    if (isProbingRef.current) return;
 
+    isProbingRef.current = true;
     const status = await probe();
+    isProbingRef.current = false;
+
+    // Bail if disabled while probe was in flight
+    if (!stateRef.current.enabled) return;
 
     if (status === 'missing') {
       timerRef.current = setTimeout(runProbeAndSchedule, PROBE_RETRY_MS);
@@ -207,8 +214,15 @@ export function useDataRefresh({
         setSelectedTimeIndex,
       } = stateRef.current;
 
+      // Revalidate footprints
       const swrKey = buildSwrKey(params, dateKey, ephemeralToken);
       if (swrKey) await mutate(swrKey);
+
+      // Revalidate imports (its SWR key includes the token)
+      await mutate(
+        (key: unknown) =>
+          typeof key === 'string' && key.startsWith(`${dateKey}.imports.`),
+      );
 
       // ── Advance the slider only if the user is on the immediately preceding slot ──
       const newSlotIndex = currentFlatSlotIndex(stateRef.current.startDate);
@@ -224,6 +238,7 @@ export function useDataRefresh({
   useEffect(() => {
     if (!enabled) {
       clearTimer();
+      isProbingRef.current = false;
       return;
     }
 

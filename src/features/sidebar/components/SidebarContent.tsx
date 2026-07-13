@@ -371,61 +371,50 @@ export function SidebarHeader() {
         position: "relative",
       }}
     >
-      <Box
-        sx={{
-          display: "none",
-          '[data-theme="dark"] &': { display: "block" },
-        }}
-      >
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1, ml: "-6px", mb: 1.5 }}>
         <Image
-          src="/images/wattnet-logo-full-dark-transparent.svg"
+          src="/images/wattnet-logo-icon-color-transparent.svg"
           alt="wattnet"
-          width={160}
-          height={50}
+          width={40}
+          height={40}
           priority
         />
-      </Box>
-
-      <Box
-        sx={{
-          display: "none",
-          '[data-theme="light"] &': { display: "block" },
-          '[data-theme="colorblind"] &': { display: "block" },
-        }}
-      >
-        <Image
-          src="/images/wattnet-logo-full-light-transparent.svg"
-          alt="wattnet"
-          width={160}
-          height={50}
-          priority
-        />
-      </Box>
-
-      <Box
-        component="a"
-        href="https://github.com/wattnet/wattnet-dashboard/releases"
-        target="_blank"
-        rel="noopener noreferrer"
-        sx={{
-          position: "absolute",
-          top: 16,
-          right: 16,
-          bgcolor: ACCENT,
-          color: ACCENT_TEXT,
-          px: 1.25,
-          py: 0.25,
-          borderRadius: "99px",
-          fontSize: 10.5,
-          fontWeight: 600,
-          textDecoration: "none",
-          cursor: "pointer",
-          "&:hover": {
-            opacity: 0.85,
-          },
-        }}
-      >
-        v{packageInfo.version}
+        <Box
+          component="span"
+          sx={{
+            fontFamily: "var(--font-display)",
+            fontWeight: 800,
+            fontSize: 22,
+            letterSpacing: "-0.01em",
+            color: "var(--color-foreground)",
+            lineHeight: 1,
+          }}
+        >
+          wattnet
+        </Box>
+        <Box
+          component="a"
+          href="https://github.com/wattnet/wattnet-dashboard/releases"
+          target="_blank"
+          rel="noopener noreferrer"
+          sx={{
+            bgcolor: ACCENT,
+            color: ACCENT_TEXT,
+            px: 1.25,
+            py: 0.25,
+            borderRadius: "99px",
+            fontSize: 10.5,
+            fontWeight: 600,
+            textDecoration: "none",
+            cursor: "pointer",
+            alignSelf: "center",
+            flexShrink: 0,
+            ml: "auto",
+            "&:hover": { opacity: 0.85 },
+          }}
+        >
+          v{packageInfo.version}
+        </Box>
       </Box>
 
       <Typography
