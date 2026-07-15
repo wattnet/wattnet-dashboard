@@ -209,9 +209,18 @@ function getChipSx(key: ChipKey, colors: Record<string, string>) {
 function CollapseBtn({
   onClick,
   icon,
-}: Readonly<{ onClick: () => void; icon: React.ReactNode }>) {
+  ariaLabel = "Colapsar panel",
+  ariaExpanded,
+}: Readonly<{
+  onClick: () => void;
+  icon: React.ReactNode;
+  ariaLabel?: string;
+  ariaExpanded?: boolean;
+}>) {
   return (
     <IconButton
+      aria-label={ariaLabel}
+      aria-expanded={ariaExpanded}
       onClick={onClick}
       size="small"
       sx={{
@@ -377,6 +386,48 @@ function FlowDataContent() {
       </Typography>
     );
 
+  if (flowPanelData.noData) {
+    return (
+      <Box sx={{ display: "flex", flexDirection: "column" }}>
+        <Typography sx={{ fontSize: 13, fontWeight: 500, color: TEXT_DIM, letterSpacing: "0.03em", lineHeight: 1, fontVariantNumeric: "tabular-nums", mb: 2 }}>
+          {flowPanelData.datetime}
+        </Typography>
+
+        <Box sx={{ display: "flex", gap: 2, mb: 2.5 }}>
+          <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", width: 10, pt: "6px", pb: "6px" }}>
+            <Box sx={{ width: 6, height: 6, borderRadius: "50%", bgcolor: "color-mix(in srgb, var(--color-foreground) 35%, transparent)", flexShrink: 0 }} />
+            <Box sx={{ flex: 1, minHeight: 14, width: 1.5, bgcolor: "color-mix(in srgb, var(--color-foreground) 18%, transparent)", my: "4px" }} />
+            <Box sx={{ width: 6, height: 6, borderRadius: "50%", bgcolor: "color-mix(in srgb, var(--color-foreground) 35%, transparent)", flexShrink: 0 }} />
+          </Box>
+          <Box sx={{ display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 1.25, flex: 1, minWidth: 0 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}>
+              <Typography sx={{ fontSize: 17, fontWeight: 600, color: "color-mix(in srgb, var(--color-foreground) 92%, transparent)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: 1.2 }}>
+                {flowPanelData.srcName}
+              </Typography>
+              <Typography sx={{ fontSize: 12, fontWeight: 500, color: TEXT_DIM, lineHeight: 1, flexShrink: 0 }}>
+                ({flowPanelData.srcZone})
+              </Typography>
+            </Box>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}>
+              <Typography sx={{ fontSize: 17, fontWeight: 600, color: "color-mix(in srgb, var(--color-foreground) 92%, transparent)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: 1.2 }}>
+                {flowPanelData.destName}
+              </Typography>
+              <Typography sx={{ fontSize: 12, fontWeight: 500, color: TEXT_DIM, lineHeight: 1, flexShrink: 0 }}>
+                ({flowPanelData.destZone})
+              </Typography>
+            </Box>
+          </Box>
+        </Box>
+
+        <Box sx={{ height: "1px", bgcolor: BORDER, mb: 2 }} />
+
+        <Typography sx={{ fontSize: 14, fontWeight: 500, color: "color-mix(in srgb, var(--color-foreground) 55%, transparent)" }}>
+          Power Exchange Data Not Yet Available
+        </Typography>
+      </Box>
+    );
+  }
+
   const finalKey: ChipKey = flowPanelData.valid ? "final" : "notFinal";
   const finalLabel = flowPanelData.valid ? "Final" : "Not Final";
 
@@ -407,12 +458,18 @@ function FlowDataContent() {
         {flowPanelData.datetime}
       </Typography>
 
-      {/* Zones + animated connector */}
+      {/* Zones + animated connector — same structure as the desktop hover
+          tooltip in FlowArrows.tsx (dot/line/chevron/line/dot in one flex
+          column), so the line stays visibly continuous through the chevron
+          instead of relying on a separately-positioned overlay. The adjacent
+          name column uses justifyContent: space-between (which the tooltip
+          doesn't need, since it isn't height-constrained by a parent sheet)
+          so its two rows stay flush with the connector's top/bottom dots. */}
       <Box sx={{ display: "flex", gap: 2, mb: 2.5 }}>
         <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", width: 10, pt: "6px", pb: "6px" }}>
           <Box sx={{ width: 6, height: 6, borderRadius: "50%", bgcolor: "color-mix(in srgb, var(--color-foreground) 35%, transparent)", flexShrink: 0 }} />
           <Box sx={{ flex: 1, minHeight: 6, width: 1.5, bgcolor: "color-mix(in srgb, var(--color-foreground) 18%, transparent)", my: "4px" }} />
-          <Box component="svg" width="8" height="12" viewBox="0 0 8 12" fill="none" sx={{ flexShrink: 0 }}>
+          <Box component="svg" viewBox="0 0 8 12" fill="none" sx={{ width: 8, height: 12, flexShrink: 0 }}>
             <path d="M1 1L4 4.5L7 1" stroke="color-mix(in srgb, var(--color-foreground) 32%, transparent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <animate attributeName="opacity" values="0.15;1;0.15" dur="1.2s" begin="0s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" />
             </path>
@@ -423,7 +480,7 @@ function FlowDataContent() {
           <Box sx={{ flex: 1, minHeight: 6, width: 1.5, bgcolor: "color-mix(in srgb, var(--color-foreground) 18%, transparent)", my: "4px" }} />
           <Box sx={{ width: 6, height: 6, borderRadius: "50%", bgcolor: "color-mix(in srgb, var(--color-foreground) 35%, transparent)", flexShrink: 0 }} />
         </Box>
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 1.25, flex: 1, minWidth: 0 }}>
+        <Box sx={{ display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 1.25, flex: 1, minWidth: 0 }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}>
             <Typography sx={{ fontSize: 17, fontWeight: 600, color: "color-mix(in srgb, var(--color-foreground) 92%, transparent)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: 1.2 }}>
               {flowPanelData.srcName}
@@ -554,6 +611,7 @@ function Sidebar({ expandedWidth }: Readonly<{ expandedWidth: number }>) {
             expandSidebar();
           }}
           icon={<ChevronRightIcon fontSize="small" />}
+          ariaLabel="Expandir barra lateral"
         />
       </Box>
 
@@ -608,6 +666,7 @@ function Sidebar({ expandedWidth }: Readonly<{ expandedWidth: number }>) {
           <CollapseBtn
             onClick={toggleSidebar}
             icon={<ChevronLeftIcon fontSize="small" />}
+            ariaLabel="Colapsar barra lateral"
           />
         </Box>
       </Box>
@@ -994,6 +1053,8 @@ function MobileTopSheet({
 
   return (
     <Box
+      role="region"
+      aria-label="Menú de navegación"
       sx={{
         position: "absolute",
         top: 0,
@@ -1058,6 +1119,8 @@ function MobileTopSheet({
               <KeyboardArrowDownIcon sx={{ fontSize: 18 }} />
             )
           }
+          ariaLabel={expanded ? "Contraer menú" : "Expandir menú"}
+          ariaExpanded={expanded}
         />
       </Box>
 
@@ -1081,8 +1144,11 @@ function MobileBottomSheet() {
   const { bottomSheetState, setBottomSheetState } = useBottomSheet();
   const { selectedZone, zoneData, zonePanelOpen, openCount, closeZonePanel } = useZonePanel();
   const { flowPanelOpen, flowPanelData, closeFlowPanel } = useFlowPanel();
-  const sheetContentRef = React.useRef<HTMLDivElement>(null);
   const dragStartY = React.useRef<number | null>(null);
+  const dragRaf = React.useRef<number | null>(null);
+  const pendingDragY = React.useRef<number | null>(null);
+  const [dragOffset, setDragOffset] = React.useState(0);
+  const [isDragging, setIsDragging] = React.useState(false);
 
   const isFlow = flowPanelOpen;
   const isZone = zonePanelOpen;
@@ -1104,38 +1170,73 @@ function MobileBottomSheet() {
     }, 400);
   }, [setBottomSheetState, closeZonePanel, closeFlowPanel]);
 
+  // Close on Escape for keyboard users, matching the swipe-down/close-button paths.
+  React.useEffect(() => {
+    if (!isVisible) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") handleClose();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [isVisible, handleClose]);
+
+  const flushDrag = React.useCallback(() => {
+    dragRaf.current = null;
+    if (pendingDragY.current === null || dragStartY.current === null) return;
+    const raw = pendingDragY.current - dragStartY.current;
+    // Free-following drag downward (dismiss gesture); a light rubber-band cue upward,
+    // since the sheet can't actually grow past its current target height mid-gesture.
+    setDragOffset(raw > 0 ? Math.min(raw, 600) : Math.max(raw * 0.25, -20));
+  }, []);
+
   const handleTouchStart = (e: React.TouchEvent) => {
     dragStartY.current = e.touches[0].clientY;
+    setIsDragging(true);
+  };
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (dragStartY.current === null) return;
+    pendingDragY.current = e.touches[0].clientY;
+    if (dragRaf.current === null) {
+      dragRaf.current = requestAnimationFrame(flushDrag);
+    }
   };
   const handleTouchEnd = (e: React.TouchEvent) => {
     if (dragStartY.current === null) return;
+    if (dragRaf.current !== null) {
+      cancelAnimationFrame(dragRaf.current);
+      dragRaf.current = null;
+    }
     const delta = dragStartY.current - e.changedTouches[0].clientY;
     if (delta < -40) {
-      if (bottomSheetState === "full") setBottomSheetState("peek");
+      // The flow panel has no distinct "peek" height (it always opens full), so a
+      // single swipe-down should close it directly instead of requiring two swipes.
+      if (isFlow) handleClose();
+      else if (bottomSheetState === "full") setBottomSheetState("peek");
       else if (bottomSheetState === "peek") handleClose();
     } else if (delta > 40 && bottomSheetState === "peek" && isZone) {
       setBottomSheetState("full");
     }
     dragStartY.current = null;
+    pendingDragY.current = null;
+    setIsDragging(false);
+    setDragOffset(0);
   };
 
-  // Measure zone content for the "full" state (includes trend chart)
-  const [zoneFullH, setZoneFullH] = React.useState(0);
-  React.useLayoutEffect(() => {
-    if (!sheetContentRef.current || !isZone) return;
-    const ro = new ResizeObserver(() => {
-      if (sheetContentRef.current)
-        setZoneFullH(sheetContentRef.current.scrollHeight);
-    });
-    ro.observe(sheetContentRef.current);
-    return () => ro.disconnect();
-  }, [isZone, zonePanelOpen]);
+  const handleHandleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    e.preventDefault();
+    if (isFlow) {
+      handleClose();
+      return;
+    }
+    setBottomSheetState(bottomSheetState === "full" ? "peek" : "full");
+  };
 
   const sheetHeight = (() => {
     if (bottomSheetState === "hidden") return "0px";
-    if (isFlow) return "min(520px, 88vh)";
-    if (bottomSheetState === "full")
-      return zoneFullH > 0 ? `min(${zoneFullH + 24}px, 85vh)` : "85vh";
+    if (isFlow)
+      return flowPanelData?.noData ? "min(280px, 60vh)" : "min(520px, 88vh)";
+    if (bottomSheetState === "full") return "85vh";
     return `${MOBILE_PEEK_H}px`;
   })();
 
@@ -1146,6 +1247,10 @@ function MobileBottomSheet() {
 
   return (
     <Box
+      role="dialog"
+      aria-modal="true"
+      aria-hidden={!isVisible}
+      aria-label={headerTitle || "Panel de datos"}
       sx={{
         position: "absolute",
         bottom: 0,
@@ -1160,76 +1265,117 @@ function MobileBottomSheet() {
         flexDirection: "column",
         overflow: "hidden",
         paddingBottom: "env(safe-area-inset-bottom)",
-        transition: `height ${DURATION} ${EASING}`,
+        transform: `translateY(${dragOffset}px)`,
+        transition: isDragging
+          ? "none"
+          : `height ${DURATION} ${EASING}, transform 0.3s ${EASING}`,
       }}
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
     >
       {isVisible && (
         <>
-          {/* Drag handle */}
-          <Box sx={{ display: "flex", justifyContent: "center", pt: 0.75, pb: 0.5, flexShrink: 0 }}>
-            <Box sx={{ width: 36, height: 3, borderRadius: 2, bgcolor: "rgba(255,255,255,0.18)" }} />
-          </Box>
-
-          {/* Header */}
+          {/* Drag region — handle + header. Kept separate from the scrollable
+              content below it so swiping to scroll the trend chart doesn't get
+              misread as a resize/dismiss gesture. */}
           <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              px: 2,
-              pt: 0.75,
-              pb: 1,
-              flexShrink: 0,
-              borderBottom: `1px solid ${BORDER}`,
-              cursor: bottomSheetState === "peek" && isZone ? "pointer" : "default",
-            }}
-            onClick={bottomSheetState === "peek" && isZone ? () => setBottomSheetState("full") : undefined}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            sx={{ flexShrink: 0 }}
           >
-            <Box sx={{ display: "flex", alignItems: "baseline", gap: 1, minWidth: 0 }}>
-              <Typography
-                sx={{
-                  fontSize: 18,
-                  fontWeight: 600,
-                  color: "color-mix(in srgb, var(--color-foreground) 92%, transparent)",
-                  lineHeight: 1.2,
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                }}
-              >
-                {headerTitle}
-              </Typography>
-              {headerSubtitle && (
-                <Typography
-                  component="span"
-                  sx={{
-                    fontSize: 12,
-                    fontWeight: 500,
-                    color: "color-mix(in srgb, var(--color-foreground) 45%, transparent)",
-                    letterSpacing: "0.04em",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  ({headerSubtitle})
-                </Typography>
-              )}
-            </Box>
-            <IconButton
-              onClick={(e) => { e.stopPropagation(); handleClose(); }}
-              size="small"
+            {/* Drag handle */}
+            <Box
+              role="button"
+              tabIndex={0}
+              aria-label={
+                isFlow
+                  ? "Cerrar panel"
+                  : bottomSheetState === "full"
+                    ? "Contraer panel"
+                    : "Expandir panel"
+              }
+              onKeyDown={handleHandleKeyDown}
               sx={{
-                color: "color-mix(in srgb, var(--color-foreground) 30%, transparent)",
-                "&:hover": { color: "var(--color-foreground)" },
+                display: "flex",
+                justifyContent: "center",
+                pt: 0.75,
+                pb: 0.5,
+                cursor: "grab",
               }}
             >
-              <CloseIcon sx={{ fontSize: 16 }} />
-            </IconButton>
+              <Box sx={{ width: 36, height: 3, borderRadius: 2, bgcolor: "rgba(255,255,255,0.18)" }} />
+            </Box>
+
+            {/* Header */}
+            <Box
+              role={bottomSheetState === "peek" && isZone ? "button" : undefined}
+              tabIndex={bottomSheetState === "peek" && isZone ? 0 : undefined}
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                px: 2,
+                pt: 0.75,
+                pb: 1,
+                borderBottom: `1px solid ${BORDER}`,
+                cursor: bottomSheetState === "peek" && isZone ? "pointer" : "default",
+              }}
+              onClick={bottomSheetState === "peek" && isZone ? () => setBottomSheetState("full") : undefined}
+              onKeyDown={
+                bottomSheetState === "peek" && isZone
+                  ? (e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setBottomSheetState("full");
+                      }
+                    }
+                  : undefined
+              }
+            >
+              <Box sx={{ display: "flex", alignItems: "baseline", gap: 1, minWidth: 0 }}>
+                <Typography
+                  sx={{
+                    fontSize: 18,
+                    fontWeight: 600,
+                    color: "color-mix(in srgb, var(--color-foreground) 92%, transparent)",
+                    lineHeight: 1.2,
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  {headerTitle}
+                </Typography>
+                {headerSubtitle && (
+                  <Typography
+                    component="span"
+                    sx={{
+                      fontSize: 12,
+                      fontWeight: 500,
+                      color: "color-mix(in srgb, var(--color-foreground) 45%, transparent)",
+                      letterSpacing: "0.04em",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    ({headerSubtitle})
+                  </Typography>
+                )}
+              </Box>
+              <IconButton
+                aria-label="Cerrar panel"
+                onClick={(e) => { e.stopPropagation(); handleClose(); }}
+                size="small"
+                sx={{
+                  color: "color-mix(in srgb, var(--color-foreground) 30%, transparent)",
+                  "&:hover": { color: "var(--color-foreground)" },
+                }}
+              >
+                <CloseIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+            </Box>
           </Box>
 
           {/* Data content — always visible */}
-          <Box ref={sheetContentRef} sx={{ px: 2.5, pt: 2, pb: 2, flexShrink: 0 }}>
+          <Box sx={{ px: 2.5, pt: 2, pb: 2, flexShrink: 0 }}>
             {isFlow ? <FlowDataContent /> : <ZoneDataContent />}
           </Box>
 

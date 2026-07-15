@@ -23,23 +23,36 @@ export interface ZoneData {
   isForecast?: boolean;
 }
 
-export interface FlowPanelData {
+interface FlowPanelDataBase {
   srcZone: string;
   destZone: string;
   srcName: string;
   destName: string;
+  datetime: string;
+}
+
+// A tapped interconnector with no exchange value for the current slot (a "ghost"
+// arrow on the map) — the mobile bottom sheet needs its own no-data message
+// instead of the desktop hover tooltip, since touch devices have no hover.
+export interface FlowPanelDataNoData extends FlowPanelDataBase {
+  noData: true;
+}
+
+export interface FlowPanelDataWithValue extends FlowPanelDataBase {
+  noData?: false;
   mw: number;
   color: string;
   metricValue: number | null;
   metricUnit: string;
   metricTitle: string;
-  datetime: string;
   valid: boolean;
   zoneStatus: string;
   dataState: string;
   datasource: string;
   isForecast: boolean;
 }
+
+export type FlowPanelData = FlowPanelDataWithValue | FlowPanelDataNoData;
 
 export interface ZoneSeriesPoint {
   value: number | null;
@@ -82,6 +95,7 @@ interface DashboardState {
   updateZoneData: (data: ZoneData) => void;
   closeZonePanel: () => void;
   openFlowPanel: (data: FlowPanelData) => void;
+  updateFlowPanelData: (data: FlowPanelData) => void;
   closeFlowPanel: () => void;
   toggleSidebar: () => void;
   collapseSidebar: () => void;
@@ -165,6 +179,8 @@ export const useDashboardStore = create<DashboardState>((set) => ({
     }));
   },
 
+  updateFlowPanelData: (data) => set({ flowPanelData: data }),
+
   closeFlowPanel: () => {
     set({ flowPanelOpen: false });
     if (closeFlowPanelTimer !== null) clearTimeout(closeFlowPanelTimer);
@@ -224,6 +240,7 @@ export function useFlowPanel() {
       flowPanelData: state.flowPanelData,
       flowOpenCount: state.flowOpenCount,
       openFlowPanel: state.openFlowPanel,
+      updateFlowPanelData: state.updateFlowPanelData,
       closeFlowPanel: state.closeFlowPanel,
     })),
   );

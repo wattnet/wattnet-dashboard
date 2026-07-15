@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState, useMemo } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useMemo,
+} from "react";
 import { createPortal } from "react-dom";
 import type { Map as MapLibreMap } from "maplibre-gl";
 import type { FeatureCollection } from "geojson";
@@ -14,6 +21,7 @@ import {
   useMapControls,
   useFlowTracing,
   useFlowPanel,
+  FlowPanelData,
 } from "@/src/features/dashboard/store/useDashboardStore";
 import { formatDatasource } from "@/src/shared/utils/datasource";
 import zoneCrossingsJson from "@/src/features/map/data/zoneCrossings.json";
@@ -422,7 +430,11 @@ export default function FlowArrows({
   const { currentPalette } = useAppTheme();
   const { scope } = useMapControls();
   const { flowTracing } = useFlowTracing();
-  const { openFlowPanel } = useFlowPanel();
+  const { flowPanelOpen, openFlowPanel, updateFlowPanelData } = useFlowPanel();
+  const lastFlowClickRef = useRef<{
+    srcZone: string;
+    destZone: string;
+  } | null>(null);
   const [isMobile, setIsMobile] = useState(false);
   const geoJSONRef = useRef<FeatureCollection | null>(null);
   const [geoJSONLoaded, setGeoJSONLoaded] = useState(false);
@@ -454,6 +466,15 @@ export default function FlowArrows({
     mq.addEventListener("change", handler);
     return () => mq.removeEventListener("change", handler);
   }, []);
+
+  // Hover tooltips are mouse-only. Blocking the handlers above (rather than just
+  // ignoring their output) already stops them from ever loading on mobile — this
+  // only clears anything left over from crossing the breakpoint while one was open.
+  useEffect(() => {
+    if (!isMobile) return;
+    setTooltip(null);
+    setGhostTooltip(null);
+  }, [isMobile]);
 
   useEffect(() => {
     const container = mapRef.current?.getContainer();
@@ -870,6 +891,107 @@ export default function FlowArrows({
     ],
   );
 
+  // Rebuilds the mobile flow-panel payload for a given zone pair from the current
+  // arrows/importsData snapshot — shared by the initial tap and the refresh effect
+  // below, and is the single place that decides "has a value" vs "no data yet" so
+  // the panel can flip between the two as time advances (e.g. in play mode) instead
+  // of being two disconnected UIs that only differ in how they were opened.
+  const buildFlowPanelData = useCallback(
+    (srcZone: string, destZone: string): FlowPanelData | null => {
+      const datetime = formatDatetime(startDate, selectedTimeIndex);
+
+      const arrow =
+        arrows.find(
+          (a) => a.srcZone === srcZone && a.destZone === destZone,
+        ) ??
+        arrows.find(
+          (a) => a.srcZone === destZone && a.destZone === srcZone,
+        );
+
+      if (arrow) {
+        const targetMs = slotToTimestampMs(startDate, selectedTimeIndex);
+        const status = getImportStatus(
+          importsData,
+          arrow.srcZone,
+          arrow.destZone,
+          targetMs,
+        );
+
+        return {
+          srcZone: arrow.srcZone,
+          destZone: arrow.destZone,
+          srcName: arrow.srcName,
+          destName: arrow.destName,
+          mw: arrow.mw,
+          color: arrow.color,
+          metricValue: arrow.metricValue,
+          metricUnit: legendConfig.unit ?? "",
+          metricTitle: legendConfig.title,
+          datetime,
+          valid: status?.valid ?? false,
+          zoneStatus: status?.zoneStatus ?? "",
+          dataState: status?.dataState ?? "missing",
+          datasource: status?.datasource ?? "",
+          isForecast: status?.isForecast ?? false,
+        };
+      }
+
+      // No value for this pair at the current slot. `ghostPairs` lists every known
+      // interconnector (built from importsData's structure, not its values) regardless
+      // of whether ghost arrows are currently rendered on the map, so it's a reliable
+      // source of the zone names even when other pairs elsewhere still have data.
+      const ghost = ghostPairs.find(
+        (g) =>
+          (g.zoneA === srcZone && g.zoneB === destZone) ||
+          (g.zoneA === destZone && g.zoneB === srcZone),
+      );
+      if (ghost) {
+        return {
+          srcZone,
+          destZone,
+          srcName: zoneNames[srcZone] ?? srcZone,
+          destName: zoneNames[destZone] ?? destZone,
+          datetime,
+          noData: true,
+        };
+      }
+
+      return null;
+    },
+    [
+      arrows,
+      ghostPairs,
+      zoneNames,
+      importsData,
+      startDate,
+      selectedTimeIndex,
+      legendConfig,
+    ],
+  );
+
+  // Opens the mobile flow panel for a tapped pair and starts tracking it for the
+  // refresh effect below. Shared by the real-arrow and ghost-arrow tap handlers.
+  const openFlowPanelFor = useCallback(
+    (srcZone: string, destZone: string) => {
+      const data = buildFlowPanelData(srcZone, destZone);
+      if (!data) return;
+      lastFlowClickRef.current = { srcZone, destZone };
+      openFlowPanel(data);
+    },
+    [buildFlowPanelData, openFlowPanel],
+  );
+
+  // Keep the open mobile flow panel in sync with fresh data — mirrors the zone
+  // panel's refresh effect in useMapLayers.ts. Also handles the pair flipping
+  // between "has a value" and "no data yet" (and back) as time advances, since
+  // buildFlowPanelData is the single source of truth for that decision.
+  useEffect(() => {
+    if (!flowPanelOpen || !lastFlowClickRef.current) return;
+    const { srcZone, destZone } = lastFlowClickRef.current;
+    const data = buildFlowPanelData(srcZone, destZone);
+    if (data) updateFlowPanelData(data);
+  }, [flowPanelOpen, buildFlowPanelData, updateFlowPanelData]);
+
   if (!mapContainer) return null;
 
   const svgEl = (
@@ -984,15 +1106,60 @@ export default function FlowArrows({
                       strokeWidth={28}
                       strokeLinejoin="round"
                       style={{ pointerEvents: "auto", cursor: "default" }}
-                      onMouseEnter={(e) =>
-                        setGhostTooltip({ x: e.clientX, y: e.clientY, zoneA: ghost.zoneA, zoneB: ghost.zoneB, nameA: ghost.nameA, nameB: ghost.nameB })
+                      onMouseEnter={
+                        isMobile
+                          ? undefined
+                          : (e) =>
+                              setGhostTooltip({
+                                x: e.clientX,
+                                y: e.clientY,
+                                zoneA: ghost.zoneA,
+                                zoneB: ghost.zoneB,
+                                nameA: ghost.nameA,
+                                nameB: ghost.nameB,
+                              })
                       }
-                      onMouseMove={(e) =>
-                        setGhostTooltip((prev) =>
-                          prev ? { ...prev, x: e.clientX, y: e.clientY } : prev,
-                        )
+                      onMouseMove={
+                        isMobile
+                          ? undefined
+                          : (e) =>
+                              setGhostTooltip((prev) =>
+                                prev
+                                  ? { ...prev, x: e.clientX, y: e.clientY }
+                                  : prev,
+                              )
                       }
-                      onMouseLeave={() => setGhostTooltip(null)}
+                      onMouseLeave={
+                        isMobile ? undefined : () => setGhostTooltip(null)
+                      }
+                      onTouchStart={(e) => {
+                        // Hover never fires on touch, so without this a tap on a
+                        // no-data interconnector on mobile silently did nothing.
+                        e.stopPropagation();
+                        if (isMobile) {
+                          // A floating tooltip needs hover to dismiss, which mobile
+                          // doesn't have — show the message in the bottom sheet instead.
+                          // Routed the same way as real arrows so the refresh effect
+                          // keeps tracking this pair and can flip it to a real value
+                          // automatically once one appears.
+                          openFlowPanelFor(ghost.zoneA, ghost.zoneB);
+                        } else {
+                          const touch = e.touches[0];
+                          setGhostTooltip((prev) =>
+                            prev?.zoneA === ghost.zoneA &&
+                            prev?.zoneB === ghost.zoneB
+                              ? null
+                              : {
+                                  x: touch.clientX,
+                                  y: touch.clientY,
+                                  zoneA: ghost.zoneA,
+                                  zoneB: ghost.zoneB,
+                                  nameA: ghost.nameA,
+                                  nameB: ghost.nameB,
+                                },
+                          );
+                        }
+                      }}
                     />
                   </g>
                 );
@@ -1089,53 +1256,32 @@ export default function FlowArrows({
                     strokeWidth={28}
                     strokeLinejoin="round"
                     style={{ pointerEvents: "auto", cursor: "default" }}
-                    onMouseEnter={(e) =>
-                      setTooltip({
-                        x: e.clientX,
-                        y: e.clientY,
-                        srcZone: arrow.srcZone,
-                        destZone: arrow.destZone,
-                      })
+                    onMouseEnter={
+                      isMobile
+                        ? undefined
+                        : (e) =>
+                            setTooltip({
+                              x: e.clientX,
+                              y: e.clientY,
+                              srcZone: arrow.srcZone,
+                              destZone: arrow.destZone,
+                            })
                     }
-                    onMouseMove={(e) =>
-                      setTooltip((prev) =>
-                        prev ? { ...prev, x: e.clientX, y: e.clientY } : prev,
-                      )
+                    onMouseMove={
+                      isMobile
+                        ? undefined
+                        : (e) =>
+                            setTooltip((prev) =>
+                              prev
+                                ? { ...prev, x: e.clientX, y: e.clientY }
+                                : prev,
+                            )
                     }
-                    onMouseLeave={() => setTooltip(null)}
+                    onMouseLeave={isMobile ? undefined : () => setTooltip(null)}
                     onTouchStart={(e) => {
                       if (isMobile) {
                         e.stopPropagation();
-                        const targetMs = slotToTimestampMs(
-                          startDate,
-                          selectedTimeIndex,
-                        );
-                        const status = getImportStatus(
-                          importsData,
-                          arrow.srcZone,
-                          arrow.destZone,
-                          targetMs,
-                        );
-                        openFlowPanel({
-                          srcZone: arrow.srcZone,
-                          destZone: arrow.destZone,
-                          srcName: arrow.srcName,
-                          destName: arrow.destName,
-                          mw: arrow.mw,
-                          color: arrow.color,
-                          metricValue: arrow.metricValue,
-                          metricUnit: legendConfig.unit ?? "",
-                          metricTitle: legendConfig.title,
-                          datetime: formatDatetime(
-                            startDate,
-                            selectedTimeIndex,
-                          ),
-                          valid: status?.valid ?? false,
-                          zoneStatus: status?.zoneStatus ?? "",
-                          dataState: status?.dataState ?? "missing",
-                          datasource: status?.datasource ?? "",
-                          isForecast: status?.isForecast ?? false,
-                        });
+                        openFlowPanelFor(arrow.srcZone, arrow.destZone);
                       } else {
                         const touch = e.touches[0];
                         setTooltip((prev) =>

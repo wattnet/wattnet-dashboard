@@ -24,7 +24,7 @@ import GlobalTag from "@/src/features/map/components/GlobalTag";
 import MapContainer from "@/src/features/map/components/MapContainer";
 
 import { useTheme, useMediaQuery } from "@mui/material";
-import { MOBILE_TOP_BAR_H, MOBILE_PEEK_H } from "@/src/app/(dashboard)/layout";
+import { MOBILE_TOP_BAR_H } from "@/src/app/(dashboard)/layout";
 import type { Map } from "maplibre-gl";
 import {
   useMapControls,
@@ -306,10 +306,9 @@ function MapContent() {
   };
 
   const mobileTopOffset = MOBILE_TOP_BAR_H + 8;
-  const mobileLegendBot =
-    bottomSheetState === "peek" || bottomSheetState === "full"
-      ? `calc(${MOBILE_PEEK_H}px + ${LEGEND_MARGIN}px + env(safe-area-inset-bottom))`
-      : `calc(${LEGEND_MARGIN}px + env(safe-area-inset-bottom))`;
+  // Fixed position — the bottom sheet (zIndex 20, above this layer's zIndex 5)
+  // naturally covers the legend when it opens instead of the legend dodging it.
+  const mobileLegendBot = `calc(${LEGEND_MARGIN}px + env(safe-area-inset-bottom))`;
   const showDesktopOverlay = !isMobile && canvasRect.width > 0;
 
   const legendEl = (
@@ -403,9 +402,13 @@ function MapContent() {
               position: "absolute",
               bottom: mobileLegendBot,
               right: 16,
-              pointerEvents: "auto",
-              transition: "bottom 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
+              // Explicitly hidden (not just covered by the sheet's z-index) so it
+              // can't be focused/tapped through any gap while the sheet is open.
+              opacity: bottomSheetState === "hidden" ? 1 : 0,
+              pointerEvents: bottomSheetState === "hidden" ? "auto" : "none",
+              transition: "opacity 0.25s ease",
             }}
+            aria-hidden={bottomSheetState !== "hidden"}
           >
             {legendEl}
           </Box>
