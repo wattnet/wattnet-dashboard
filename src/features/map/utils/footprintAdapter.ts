@@ -6,12 +6,10 @@ import {
 } from '../types/footprints';
 import { dayCountInRange } from '@/src/shared/utils/dateManager';
 
-const generateRangeIntervals = (startDate: Date, endDate: Date): string[] => {
+const generateRangeIntervals = (startDate: Date, endDate: Date): number[] => {
   const N = dayCountInRange(startDate, endDate);
   const origin = Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate());
-  return Array.from({ length: N * 96 }, (_, i) =>
-    new Date(origin + i * 15 * 60 * 1000).toISOString()
-  );
+  return Array.from({ length: N * 96 }, (_, i) => origin + i * 15 * 60 * 1000);
 };
 
 export const processFootprints = (
@@ -45,10 +43,9 @@ export const processFootprints = (
     const fullIntervals = generateRangeIntervals(startDate, endDate);
 
     const completedSeries: FootprintItem[] = fullIntervals.map((ts) => {
-      const tMs = new Date(ts).getTime();
       return (
-        byTimestamp.get(tMs) ?? {
-          timestamp: ts,
+        byTimestamp.get(ts) ?? {
+          timestamp: new Date(ts).toISOString(),
           value: null,
           valid: false,
           zoneStatus: 'missing',

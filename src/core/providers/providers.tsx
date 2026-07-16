@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { SWRConfig } from "swr";
 import { I18nextProvider } from "react-i18next";
 import i18n from "../i18n/config";
@@ -16,6 +17,10 @@ export function Providers({
   readonly children: React.ReactNode;
 }) {
   const locale = i18n.language === "es" ? es : enGB;
+
+  useEffect(() => {
+    import("../analytics/PlausibleProvider");
+  }, []);
 
   return (
     <AppThemeProvider>

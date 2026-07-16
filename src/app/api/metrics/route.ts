@@ -39,7 +39,7 @@ export async function GET(request: Request) {
     start: url.searchParams.get('start') ?? new Date().toISOString(),
     end: url.searchParams.get('end') ?? new Date().toISOString(),
     zone: url.searchParams.get('zone') ?? '',
-    // aggregate, use_global and dimension are intentionally omitted for green-score
+    // dimension is intentionally omitted for green-score (no carbon/water split)
     ...(metric === 'footprint' && {
       aggregate: url.searchParams.get('aggregate') === 'true',
       use_global: url.searchParams.get('use_global') === 'true',
@@ -49,6 +49,10 @@ export async function GET(request: Request) {
       aggregate: url.searchParams.get('aggregate') === 'true',
       use_global: url.searchParams.get('use_global') === 'true',
       impact_type: url.searchParams.get('dimension') as 'water',
+    }),
+    ...(metric === 'green-score' && {
+      aggregate: url.searchParams.get('aggregate') === 'true',
+      use_global: url.searchParams.get('use_global') === 'true',
     }),
   };
 

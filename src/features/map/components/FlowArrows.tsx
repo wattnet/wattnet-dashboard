@@ -1,22 +1,36 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState, useMemo } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useMemo,
+} from "react";
 import { createPortal } from "react-dom";
 import type { Map as MapLibreMap } from "maplibre-gl";
-import type { FeatureCollection, Feature } from "geojson";
+import type { FeatureCollection } from "geojson";
 import { ZoneImports, ImportSeries } from "@/src/features/map/types/imports";
 import { computeZoneCentroids } from "@/src/features/map/utils/zoneCentroids";
 import { slotToTimestampMs } from "@/src/shared/utils/dateManager";
 import { ProcessedFootprint } from "@/src/features/map/types/footprints";
 import { ScaleConfig } from "@/src/features/map/hooks/useMapScales";
 import { useAppTheme } from "@/src/core/theme/ThemeContext";
-import { useMapControls, useFlowTracing, useFlowPanel } from "@/src/features/dashboard/store/useDashboardStore";
+import {
+  useMapControls,
+  useFlowTracing,
+  useFlowPanel,
+  FlowPanelData,
+} from "@/src/features/dashboard/store/useDashboardStore";
+import { formatDatasource } from "@/src/shared/utils/datasource";
 import zoneCrossingsJson from "@/src/features/map/data/zoneCrossings.json";
 
 const ARROW_LEN_BASE = 30;
 const SHAFT_W_BASE = 5;
 const HEAD_LEN_BASE = 13;
 const HEAD_W_BASE = 15;
+const N_CHEVRONS = 4;
 
 function arrowScale(zoom: number): number {
   return Math.max(0.5, (zoom - 2) * 0.35);
@@ -45,7 +59,8 @@ function interpolateZoneColor(
   colors: string[],
 ): string {
   if (value <= mapValues[0]) return colors[0];
-  if (value >= mapValues[mapValues.length - 1]) return colors[colors.length - 1];
+  if (value >= mapValues[mapValues.length - 1])
+    return colors[colors.length - 1];
   for (let i = 0; i < mapValues.length - 1; i++) {
     if (value >= mapValues[i] && value <= mapValues[i + 1]) {
       const t = (value - mapValues[i]) / (mapValues[i + 1] - mapValues[i]);
@@ -59,56 +74,6 @@ function lightenArrowColor(color: string): string {
   return lerpColor(color, "#ffffff", 0.55);
 }
 
-// ── Border crossing (point-in-polygon + binary search) ────────────────────
-function pointInRing(point: [number, number], ring: number[][]): boolean {
-  const [px, py] = point;
-  let inside = false;
-  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-    const [xi, yi] = ring[i];
-    const [xj, yj] = ring[j];
-    if ((yi > py) !== (yj > py) && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi)
-      inside = !inside;
-  }
-  return inside;
-}
-
-function pointInFeature(feature: Feature, point: [number, number]): boolean {
-  const g = feature.geometry;
-  if (g.type === "Polygon") {
-    const rings = g.coordinates as number[][][];
-    if (!pointInRing(point, rings[0])) return false;
-    for (let i = 1; i < rings.length; i++) if (pointInRing(point, rings[i])) return false;
-    return true;
-  }
-  if (g.type === "MultiPolygon") {
-    return (g.coordinates as number[][][][]).some((poly) => {
-      if (!pointInRing(point, poly[0])) return false;
-      for (let i = 1; i < poly.length; i++) if (pointInRing(point, poly[i])) return false;
-      return true;
-    });
-  }
-  return false;
-}
-
-function findBorderCrossing(
-  c1: [number, number],
-  c2: [number, number],
-  srcFeature: Feature,
-  iters = 18,
-): [number, number] {
-  if (!pointInFeature(srcFeature, c1)) {
-    return [(c1[0] + c2[0]) / 2, (c1[1] + c2[1]) / 2];
-  }
-  let lo = 0, hi = 1;
-  for (let k = 0; k < iters; k++) {
-    const mid = (lo + hi) / 2;
-    const pt: [number, number] = [c1[0] + (c2[0] - c1[0]) * mid, c1[1] + (c2[1] - c1[1]) * mid];
-    if (pointInFeature(srcFeature, pt)) lo = mid; else hi = mid;
-  }
-  const t = (lo + hi) / 2;
-  return [c1[0] + (c2[0] - c1[0]) * t, c1[1] + (c2[1] - c1[1]) * t];
-}
-
 // ── Arrow geometry ─────────────────────────────────────────────────────────
 interface ArrowGeometry {
   d: string;
@@ -117,7 +82,8 @@ interface ArrowGeometry {
 }
 
 function makeChevronPath(
-  cx: number, cy: number,
+  cx: number,
+  cy: number,
   angle: number,
   depth: number,
   span: number,
@@ -176,19 +142,20 @@ function makeArrowGeometry(
 
   const d = `M ${pts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" L ")} Z`;
 
-  // N chevrons evenly spaced along the full arrow length (tail → tip).
-  // The clipPath trims any chevron that extends beyond the arrowhead silhouette.
-  const N_CHEVRONS = 5;
-  const chDepth = Math.max(3, 5 * scale);
-  const chSpan = Math.max(6, HEAD_W_BASE * scale);
+  const chDepth = Math.max(3, shaftW * 1.2);
+  const chSpan = Math.max(6, headW);
+  const tStart = 0.1;
+  const tEnd = 0.75;
   const chevronPaths: string[] = [];
   for (let k = 1; k <= N_CHEVRONS; k++) {
-    const t = (k - 1) / N_CHEVRONS;
+    const t = tStart + ((k - 1) * (tEnd - tStart)) / (N_CHEVRONS - 1);
     chevronPaths.push(
       makeChevronPath(
         tailX + cos * arrowLen * t,
         tailY + sin * arrowLen * t,
-        angle, chDepth, chSpan,
+        angle,
+        chDepth,
+        chSpan,
       ),
     );
   }
@@ -198,6 +165,52 @@ function makeArrowGeometry(
     chevronPaths,
     chevronStrokeW: Math.max(2, 3 * scale),
   };
+}
+
+function makeGhostArrowPath(
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  scale: number,
+  cx: number,
+  cy: number,
+): string {
+  const arrowLen = ARROW_LEN_BASE * scale * 1.05;
+  const headLen = HEAD_LEN_BASE * scale * 0.85;
+  const headW = HEAD_W_BASE * scale * 0.85;
+  const shaftW = SHAFT_W_BASE * scale;
+
+  const angle = Math.atan2(y2 - y1, x2 - x1);
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  const px = -sin,
+    py = cos;
+  const hw = shaftW / 2,
+    hbw = headW / 2;
+
+  const tip1X = cx + cos * (arrowLen / 2),
+    tip1Y = cy + sin * (arrowLen / 2);
+  const neck1X = tip1X - cos * headLen,
+    neck1Y = tip1Y - sin * headLen;
+  const tip2X = cx - cos * (arrowLen / 2),
+    tip2Y = cy - sin * (arrowLen / 2);
+  const neck2X = tip2X + cos * headLen,
+    neck2Y = tip2Y + sin * headLen;
+
+  const pts: [number, number][] = [
+    [tip1X, tip1Y],
+    [neck1X + px * hbw, neck1Y + py * hbw],
+    [neck1X + px * hw, neck1Y + py * hw],
+    [neck2X + px * hw, neck2Y + py * hw],
+    [neck2X + px * hbw, neck2Y + py * hbw],
+    [tip2X, tip2Y],
+    [neck2X - px * hbw, neck2Y - py * hbw],
+    [neck2X - px * hw, neck2Y - py * hw],
+    [neck1X - px * hw, neck1Y - py * hw],
+    [neck1X - px * hbw, neck1Y - py * hbw],
+  ];
+  return `M ${pts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" L ")} Z`;
 }
 
 // ── Data helpers ───────────────────────────────────────────────────────────
@@ -255,10 +268,15 @@ function lookupValue(
 function formatDatetime(startDate: Date, timeIndex: number): string {
   const d = new Date(slotToTimestampMs(startDate, timeIndex));
   const datePart = d.toLocaleDateString("en-GB", {
-    timeZone: "UTC", day: "numeric", month: "short", year: "numeric",
+    timeZone: "UTC",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
   });
   const timePart = d.toLocaleTimeString("en-GB", {
-    timeZone: "UTC", hour: "2-digit", minute: "2-digit",
+    timeZone: "UTC",
+    hour: "2-digit",
+    minute: "2-digit",
   });
   return `${datePart} · ${timePart} UTC`;
 }
@@ -303,13 +321,15 @@ function getImportStatus(
   return null;
 }
 
-function formatDatasource(raw: string): string {
-  const colonIdx = raw.indexOf(":");
-  const s = colonIdx === -1 ? raw : raw.slice(colonIdx + 1);
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
-
-function Chip({ label, color, dashed = false }: { label: string; color: string; dashed?: boolean }) {
+function Chip({
+  label,
+  color,
+  dashed = false,
+}: {
+  label: string;
+  color: string;
+  dashed?: boolean;
+}) {
   return (
     <span
       style={{
@@ -341,24 +361,43 @@ interface ArrowItem {
   srcName: string;
   destName: string;
   mw: number;
-  d: string;
-  chevronPaths: string[];
-  chevronStrokeW: number;
   color: string;
   metricValue: number | null;
-  // geographic coords for frame-by-frame DOM re-projection
   srcCentroid: [number, number];
   destCentroid: [number, number];
   crossing: [number, number];
 }
 
-// Minimal data stored in a ref for direct DOM updates (avoids React re-renders on pan/zoom)
+// Cached element refs for direct DOM updates — avoids getElementById on every render frame
 interface ArrowDOMItem {
-  idx: number;
   srcCentroid: [number, number];
   destCentroid: [number, number];
   crossing: [number, number];
-  numChevrons: number;
+  clipEl: SVGPathElement | null;
+  bodyEl: SVGPathElement | null;
+  iglowEl: SVGPathElement | null;
+  hitEl: SVGPathElement | null;
+  chevGEls: (SVGPathElement | null)[];
+  chevSEls: (SVGPathElement | null)[];
+}
+
+interface GhostArrowItem {
+  key: string;
+  zoneA: string;
+  zoneB: string;
+  nameA: string;
+  nameB: string;
+  srcCentroid: [number, number];
+  destCentroid: [number, number];
+  crossing: [number, number];
+}
+
+interface GhostDOMItem {
+  srcCentroid: [number, number];
+  destCentroid: [number, number];
+  crossing: [number, number];
+  pathEl: SVGPathElement | null;
+  hitEl: SVGPathElement | null;
 }
 
 interface TooltipState {
@@ -391,7 +430,11 @@ export default function FlowArrows({
   const { currentPalette } = useAppTheme();
   const { scope } = useMapControls();
   const { flowTracing } = useFlowTracing();
-  const { openFlowPanel } = useFlowPanel();
+  const { flowPanelOpen, openFlowPanel, updateFlowPanelData } = useFlowPanel();
+  const lastFlowClickRef = useRef<{
+    srcZone: string;
+    destZone: string;
+  } | null>(null);
   const [isMobile, setIsMobile] = useState(false);
   const geoJSONRef = useRef<FeatureCollection | null>(null);
   const [geoJSONLoaded, setGeoJSONLoaded] = useState(false);
@@ -399,8 +442,22 @@ export default function FlowArrows({
   const [mapContainer, setMapContainer] = useState<HTMLElement | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const arrowDOMRef = useRef<ArrowDOMItem[]>([]);
+  const ghostDOMRef = useRef<GhostDOMItem[]>([]);
+  const [ghostTooltip, setGhostTooltip] = useState<{
+    x: number;
+    y: number;
+    zoneA: string;
+    zoneB: string;
+    nameA: string;
+    nameB: string;
+  } | null>(null);
   const tooltipElRef = useRef<HTMLDivElement>(null);
   const tooltipSizeRef = useRef<{ w: number; h: number } | null>(null);
+  // Stable animation delays keyed by `${arrow.key}:body` / `${arrow.key}:${ci}`.
+  // Computed once on first appearance and never updated, so re-renders (slider
+  // ticks, color changes) don't touch animation-delay in the DOM and the
+  // browser never restarts the animation mid-playback.
+  const animDelayRef = useRef<Map<string, string>>(new Map());
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 899px)");
@@ -409,6 +466,15 @@ export default function FlowArrows({
     mq.addEventListener("change", handler);
     return () => mq.removeEventListener("change", handler);
   }, []);
+
+  // Hover tooltips are mouse-only. Blocking the handlers above (rather than just
+  // ignoring their output) already stops them from ever loading on mobile — this
+  // only clears anything left over from crossing the breakpoint while one was open.
+  useEffect(() => {
+    if (!isMobile) return;
+    setTooltip(null);
+    setGhostTooltip(null);
+  }, [isMobile]);
 
   useEffect(() => {
     const container = mapRef.current?.getContainer();
@@ -441,35 +507,87 @@ export default function FlowArrows({
         setGeoJSONLoaded(true);
       })
       .catch((err) => {
-        if (err.name !== "AbortError") console.error("Failed to load zone GeoJSON:", err);
+        if (err.name !== "AbortError")
+          console.error("Failed to load zone GeoJSON:", err);
       });
     return () => controller.abort();
   }, [geoJSONProp]);
 
-  // Sync DOM arrow positions directly on every map render frame — no React re-render
+  // Sync DOM arrow positions directly on every map render frame — no React re-render, no getElementById
   useEffect((): (() => void) | void => {
     const map = mapRef.current;
     if (!map) return;
     const update = () => {
-      const svg = svgRef.current;
-      if (!svg || arrowDOMRef.current.length === 0) return;
+      const items = arrowDOMRef.current;
+      const ghosts = ghostDOMRef.current;
+      if (items.length === 0 && ghosts.length === 0) return;
       const scale = arrowScale(map.getZoom());
-      for (const { idx, srcCentroid, destCentroid, crossing, numChevrons } of arrowDOMRef.current) {
+      const shaftW = SHAFT_W_BASE * scale;
+      const sStr = String(Math.max(1, shaftW * 0.55));
+      const swStr = String(Math.max(2, shaftW * 0.55 + 1.8));
+      for (const {
+        srcCentroid,
+        destCentroid,
+        crossing,
+        clipEl,
+        bodyEl,
+        iglowEl,
+        hitEl,
+        chevGEls,
+        chevSEls,
+      } of items) {
         const p1 = map.project(srcCentroid);
         const p2 = map.project(destCentroid);
         const pX = map.project(crossing);
-        const { d, chevronPaths, chevronStrokeW } = makeArrowGeometry(
-          p1.x, p1.y, p2.x, p2.y, scale, pX.x, pX.y,
+        const { d, chevronPaths } = makeArrowGeometry(
+          p1.x,
+          p1.y,
+          p2.x,
+          p2.y,
+          scale,
+          pX.x,
+          pX.y,
         );
-        (svg.getElementById(`wn-clip-${idx}`) as SVGPathElement | null)?.setAttribute("d", d);
-        (svg.getElementById(`wn-body-${idx}`) as SVGPathElement | null)?.setAttribute("d", d);
-        (svg.getElementById(`wn-iglow-${idx}`) as SVGPathElement | null)?.setAttribute("d", d);
-        for (let ci = 0; ci < numChevrons; ci++) {
+        clipEl?.setAttribute("d", d);
+        bodyEl?.setAttribute("d", d);
+        iglowEl?.setAttribute("d", d);
+        hitEl?.setAttribute("d", d);
+        for (let ci = 0; ci < chevGEls.length; ci++) {
           const cp = chevronPaths[ci] ?? "";
-          const g = svg.getElementById(`wn-chev-g-${idx}-${ci}`) as SVGPathElement | null;
-          const s = svg.getElementById(`wn-chev-s-${idx}-${ci}`) as SVGPathElement | null;
-          if (g) { g.setAttribute("d", cp); g.setAttribute("stroke-width", String(chevronStrokeW * 2.5)); }
-          if (s) { s.setAttribute("d", cp); s.setAttribute("stroke-width", String(chevronStrokeW)); }
+          const g = chevGEls[ci];
+          const s = chevSEls[ci];
+          if (g) {
+            g.setAttribute("d", cp);
+            g.setAttribute("stroke-width", swStr);
+          }
+          if (s) {
+            s.setAttribute("d", cp);
+            s.setAttribute("stroke-width", sStr);
+          }
+        }
+      }
+      if (ghosts.length > 0) {
+        for (const {
+          srcCentroid,
+          destCentroid,
+          crossing,
+          pathEl,
+          hitEl,
+        } of ghosts) {
+          const p1 = map.project(srcCentroid);
+          const p2 = map.project(destCentroid);
+          const pX = map.project(crossing);
+          const d = makeGhostArrowPath(
+            p1.x,
+            p1.y,
+            p2.x,
+            p2.y,
+            scale,
+            pX.x,
+            pX.y,
+          );
+          pathEl?.setAttribute("d", d);
+          hitEl?.setAttribute("d", d);
         }
       }
     };
@@ -478,26 +596,50 @@ export default function FlowArrows({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const borderCrossingsRef = useRef<Map<string, [number, number]>>(new Map());
+  // Wheel events from hit paths bubble through the SVG but not into MapLibre's
+  // canvas container (they are siblings in the DOM). Re-dispatch to the canvas
+  // so scroll-zoom keeps working while hovering over an arrow.
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const handler = (e: WheelEvent) => {
+      const canvas = mapRef.current?.getCanvas();
+      if (!canvas) return;
+      canvas.dispatchEvent(
+        new WheelEvent("wheel", {
+          bubbles: true,
+          cancelable: e.cancelable,
+          deltaX: e.deltaX,
+          deltaY: e.deltaY,
+          deltaZ: e.deltaZ,
+          deltaMode: e.deltaMode,
+          ctrlKey: e.ctrlKey,
+          shiftKey: e.shiftKey,
+          altKey: e.altKey,
+          clientX: e.clientX,
+          clientY: e.clientY,
+        }),
+      );
+    };
+    svg.addEventListener("wheel", handler, { passive: true });
+    return () => svg.removeEventListener("wheel", handler);
+    // mapContainer gates when the SVG is actually in the DOM
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapContainer]);
 
-  const { centroids, zoneNames, zoneFeatures } = useMemo(() => {
+  const { centroids, zoneNames } = useMemo(() => {
     const geojson = geoJSONProp ?? geoJSONRef.current;
-    if (!geojson) return { centroids: {}, zoneNames: {}, zoneFeatures: {} };
-    borderCrossingsRef.current.clear();
+    if (!geojson) return { centroids: {}, zoneNames: {} };
     const c = computeZoneCentroids(geojson);
     const names: Record<string, string> = {};
-    const features: Record<string, Feature> = {};
     for (const f of geojson.features) {
       const { zoneName, countryName } = (f.properties ?? {}) as {
         zoneName?: string;
         countryName?: string;
       };
-      if (zoneName) {
-        names[zoneName] = countryName ?? zoneName;
-        features[zoneName] = f;
-      }
+      if (zoneName) names[zoneName] = countryName ?? zoneName;
     }
-    return { centroids: c, zoneNames: names, zoneFeatures: features };
+    return { centroids: c, zoneNames: names };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [geoJSONProp, geoJSONLoaded]);
 
@@ -511,12 +653,11 @@ export default function FlowArrows({
   }, [importsData]);
 
   const arrows = useMemo((): ArrowItem[] => {
-    const map = mapRef.current;
-    if (!map || importsData.length === 0 || Object.keys(centroids).length === 0)
+    if (importsData.length === 0 || Object.keys(centroids).length === 0)
       return [];
 
     const targetMs = slotToTimestampMs(startDate, selectedTimeIndex);
-    const scale = arrowScale(map.getZoom());
+    const isForecastSlot = targetMs > Date.now();
     const result: ArrowItem[] = [];
     const seen = new Set<string>();
     const fpByZone = new Map(processedData.map((d) => [d.zone, d]));
@@ -530,7 +671,10 @@ export default function FlowArrows({
         const pairKey = [destZone, srcZone].sort().join(":");
         if (seen.has(pairKey)) continue;
 
-        const value = lookupValue(tsMap, targetMs);
+        // For forecast timestamps: no tolerance — exchange data doesn't exist yet
+        const value = isForecastSlot
+          ? (tsMap.get(targetMs) ?? null)
+          : lookupValue(tsMap, targetMs);
         if (value === null || value <= 0) continue;
 
         seen.add(pairKey);
@@ -538,9 +682,6 @@ export default function FlowArrows({
         const srcCentroid = centroids[srcZone];
         const destCentroid = centroids[destZone];
         if (!srcCentroid || !destCentroid) continue;
-
-        const p1 = map.project(srcCentroid as [number, number]);
-        const p2 = map.project(destCentroid as [number, number]);
 
         const srcFp = fpByZone.get(srcZone);
         const metricValue = srcFp?.series?.[selectedTimeIndex]?.value ?? null;
@@ -554,37 +695,18 @@ export default function FlowArrows({
               )
             : "rgba(255,255,255,0.75)";
 
-        // Crossing lookup: static JSON first (run scripts/compute-zone-crossings.mjs),
-        // then runtime binary-search fallback cached in borderCrossingsRef.
         const [zA, zB] = [srcZone, destZone].sort();
         const crossKey = `${zA}:${zB}`;
-        const staticPt = (zoneCrossingsJson as unknown as Record<string, [number, number]>)[crossKey];
-        let crossingGeo: [number, number];
-        if (staticPt) {
-          crossingGeo = staticPt;
-        } else {
-          let cached = borderCrossingsRef.current.get(crossKey);
-          if (!cached) {
-            const cA = centroids[zA] as [number, number];
-            const cB = centroids[zB] as [number, number];
-            const fA = zoneFeatures[zA];
-            const fB = zoneFeatures[zB];
-            const cAB = fA ? findBorderCrossing(cA, cB, fA) : null;
-            const cBA = fB ? findBorderCrossing(cB, cA, fB) : null;
-            if (cAB && cBA) {
-              cached = [(cAB[0] + cBA[0]) / 2, (cAB[1] + cBA[1]) / 2];
-            } else {
-              cached = cAB ?? cBA ?? [(cA[0] + cB[0]) / 2, (cA[1] + cB[1]) / 2];
-            }
-            borderCrossingsRef.current.set(crossKey, cached);
-          }
-          crossingGeo = cached;
+        const crossingGeo = (
+          zoneCrossingsJson as unknown as Record<string, [number, number]>
+        )[crossKey];
+        if (!crossingGeo) {
+          if (process.env.NODE_ENV === "development")
+            console.warn(
+              `[FlowArrows] No crossing for ${crossKey} — run: yarn crossings`,
+            );
+          continue;
         }
-        const pCross = map.project(crossingGeo);
-
-        const { d, chevronPaths, chevronStrokeW } = makeArrowGeometry(
-          p1.x, p1.y, p2.x, p2.y, scale, pCross.x, pCross.y,
-        );
 
         result.push({
           key: `${srcZone}->${destZone}`,
@@ -593,9 +715,6 @@ export default function FlowArrows({
           srcName: zoneNames[srcZone] ?? srcZone,
           destName: zoneNames[destZone] ?? destZone,
           mw: value,
-          d,
-          chevronPaths,
-          chevronStrokeW,
           color,
           metricValue,
           srcCentroid: srcCentroid as [number, number],
@@ -606,13 +725,95 @@ export default function FlowArrows({
     }
     return result;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mergedImportsMap, importsData, selectedTimeIndex, startDate, centroids, zoneNames, zoneFeatures, processedData, legendConfig]);
+  }, [
+    mergedImportsMap,
+    importsData,
+    selectedTimeIndex,
+    startDate,
+    centroids,
+    zoneNames,
+    processedData,
+    legendConfig,
+  ]);
+
+  // Ghost pairs — all interconnectors known from importsData structure, regardless of current value
+  const ghostPairs = useMemo((): GhostArrowItem[] => {
+    if (importsData.length === 0 || Object.keys(centroids).length === 0)
+      return [];
+    const crossingsMap = zoneCrossingsJson as unknown as Record<
+      string,
+      [number, number]
+    >;
+    const seen = new Set<string>();
+    const pairs: GhostArrowItem[] = [];
+    for (const zoneImport of importsData) {
+      const destZone = zoneImport.zone;
+      const destCentroid = centroids[destZone];
+      if (!destCentroid) continue;
+      for (const series of zoneImport.series) {
+        for (const block of series.imports) {
+          const srcZone = block.source;
+          const [zA, zB] = [srcZone, destZone].sort();
+          const pairKey = `${zA}:${zB}`;
+          if (seen.has(pairKey)) continue;
+          const crossing = crossingsMap[pairKey];
+          if (!crossing) continue;
+          const srcCentroid = centroids[srcZone];
+          if (!srcCentroid) continue;
+          seen.add(pairKey);
+          pairs.push({
+            key: pairKey,
+            zoneA: zA,
+            zoneB: zB,
+            nameA: zoneNames[zA] ?? zA,
+            nameB: zoneNames[zB] ?? zB,
+            srcCentroid: srcCentroid as [number, number],
+            destCentroid: destCentroid as [number, number],
+            crossing,
+          });
+        }
+      }
+    }
+    return pairs;
+  }, [importsData, centroids, zoneNames]);
+
+  const showGhosts = arrows.length === 0 && ghostPairs.length > 0;
+
+  const ghostDOMItems = useMemo(
+    () =>
+      ghostPairs.map((g) => ({
+        ...g,
+        pathEl: null as SVGPathElement | null,
+        hitEl: null as SVGPathElement | null,
+      })),
+    [ghostPairs],
+  );
+
+  useLayoutEffect(() => {
+    const svg = svgRef.current;
+    if (!svg || !showGhosts) {
+      ghostDOMRef.current = [];
+      setGhostTooltip(null);
+      return;
+    }
+    ghostDOMRef.current = ghostDOMItems.map((item, i) => ({
+      ...item,
+      pathEl: svg.getElementById(`wn-ghost-${i}`) as SVGPathElement | null,
+      hitEl: svg.getElementById(`wn-ghost-hit-${i}`) as SVGPathElement | null,
+    }));
+    mapRef.current?.triggerRepaint();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ghostDOMItems, mapContainer, showGhosts]);
 
   // Look up arrow in both directions so the tooltip survives a direction flip
   const tooltipArrow = tooltip
-    ? (arrows.find((a) => a.srcZone === tooltip.srcZone && a.destZone === tooltip.destZone)
-        ?? arrows.find((a) => a.srcZone === tooltip.destZone && a.destZone === tooltip.srcZone)
-        ?? null)
+    ? (arrows.find(
+        (a) => a.srcZone === tooltip.srcZone && a.destZone === tooltip.destZone,
+      ) ??
+      arrows.find(
+        (a) => a.srcZone === tooltip.destZone && a.destZone === tooltip.srcZone,
+      ) ??
+      null)
     : null;
 
   useLayoutEffect(() => {
@@ -622,32 +823,174 @@ export default function FlowArrows({
     }
   }, [tooltipArrow?.srcZone, tooltipArrow?.destZone]);
 
-  // Recompute DOM items only when arrows change, not on every render (e.g. tooltip hover)
+  // Build skeleton DOM items when arrows change; element refs are populated in useLayoutEffect below
   const arrowDOMItems = useMemo(
-    () => arrows.map((a, i) => ({
-      idx: i,
-      srcCentroid: a.srcCentroid,
-      destCentroid: a.destCentroid,
-      crossing: a.crossing,
-      numChevrons: a.chevronPaths.length,
-    })),
+    () =>
+      arrows.map((a) => ({
+        srcCentroid: a.srcCentroid,
+        destCentroid: a.destCentroid,
+        crossing: a.crossing,
+        clipEl: null as SVGPathElement | null,
+        bodyEl: null as SVGPathElement | null,
+        iglowEl: null as SVGPathElement | null,
+        hitEl: null as SVGPathElement | null,
+        chevGEls: Array<SVGPathElement | null>(N_CHEVRONS).fill(null),
+        chevSEls: Array<SVGPathElement | null>(N_CHEVRONS).fill(null),
+      })),
     [arrows],
   );
-  arrowDOMRef.current = arrowDOMItems;
+
+  // Collect element refs into arrowDOMRef after React paints so the render loop can use them directly.
+  // mapContainer is included so this re-runs once the portal SVG is actually in the DOM — without it,
+  // the first run (while mapContainer is still null and the SVG hasn't rendered yet) finds svgRef.current
+  // null and exits early; if arrowDOMItems hasn't changed by the time the portal renders, the arrows stay
+  // with d="" forever (the "cache makes arrows disappear" bug).
+  useLayoutEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const items = arrowDOMItems.map((item, i) => ({
+      ...item,
+      clipEl: svg.getElementById(`wn-clip-${i}`) as SVGPathElement | null,
+      bodyEl: svg.getElementById(`wn-body-${i}`) as SVGPathElement | null,
+      iglowEl: svg.getElementById(`wn-iglow-${i}`) as SVGPathElement | null,
+      hitEl: svg.getElementById(`wn-hit-${i}`) as SVGPathElement | null,
+      chevGEls: Array.from(
+        { length: N_CHEVRONS },
+        (_, ci) =>
+          svg.getElementById(`wn-chev-g-${i}-${ci}`) as SVGPathElement | null,
+      ),
+      chevSEls: Array.from(
+        { length: N_CHEVRONS },
+        (_, ci) =>
+          svg.getElementById(`wn-chev-s-${i}-${ci}`) as SVGPathElement | null,
+      ),
+    }));
+    arrowDOMRef.current = items;
+    mapRef.current?.triggerRepaint();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [arrowDOMItems, mapContainer]);
 
   // Memoized so mousemove re-renders don't re-sort/re-scan series data
   const tooltipStatus = useMemo(
-    () => tooltipArrow
-      ? getImportStatus(
-          importsData,
-          tooltipArrow.srcZone,
-          tooltipArrow.destZone,
-          slotToTimestampMs(startDate, selectedTimeIndex),
-        )
-      : null,
+    () =>
+      tooltipArrow
+        ? getImportStatus(
+            importsData,
+            tooltipArrow.srcZone,
+            tooltipArrow.destZone,
+            slotToTimestampMs(startDate, selectedTimeIndex),
+          )
+        : null,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [tooltipArrow?.srcZone, tooltipArrow?.destZone, importsData, startDate, selectedTimeIndex],
+    [
+      tooltipArrow?.srcZone,
+      tooltipArrow?.destZone,
+      importsData,
+      startDate,
+      selectedTimeIndex,
+    ],
   );
+
+  // Rebuilds the mobile flow-panel payload for a given zone pair from the current
+  // arrows/importsData snapshot — shared by the initial tap and the refresh effect
+  // below, and is the single place that decides "has a value" vs "no data yet" so
+  // the panel can flip between the two as time advances (e.g. in play mode) instead
+  // of being two disconnected UIs that only differ in how they were opened.
+  const buildFlowPanelData = useCallback(
+    (srcZone: string, destZone: string): FlowPanelData | null => {
+      const datetime = formatDatetime(startDate, selectedTimeIndex);
+
+      const arrow =
+        arrows.find(
+          (a) => a.srcZone === srcZone && a.destZone === destZone,
+        ) ??
+        arrows.find(
+          (a) => a.srcZone === destZone && a.destZone === srcZone,
+        );
+
+      if (arrow) {
+        const targetMs = slotToTimestampMs(startDate, selectedTimeIndex);
+        const status = getImportStatus(
+          importsData,
+          arrow.srcZone,
+          arrow.destZone,
+          targetMs,
+        );
+
+        return {
+          srcZone: arrow.srcZone,
+          destZone: arrow.destZone,
+          srcName: arrow.srcName,
+          destName: arrow.destName,
+          mw: arrow.mw,
+          color: arrow.color,
+          metricValue: arrow.metricValue,
+          metricUnit: legendConfig.unit ?? "",
+          metricTitle: legendConfig.title,
+          datetime,
+          valid: status?.valid ?? false,
+          zoneStatus: status?.zoneStatus ?? "",
+          dataState: status?.dataState ?? "missing",
+          datasource: status?.datasource ?? "",
+          isForecast: status?.isForecast ?? false,
+        };
+      }
+
+      // No value for this pair at the current slot. `ghostPairs` lists every known
+      // interconnector (built from importsData's structure, not its values) regardless
+      // of whether ghost arrows are currently rendered on the map, so it's a reliable
+      // source of the zone names even when other pairs elsewhere still have data.
+      const ghost = ghostPairs.find(
+        (g) =>
+          (g.zoneA === srcZone && g.zoneB === destZone) ||
+          (g.zoneA === destZone && g.zoneB === srcZone),
+      );
+      if (ghost) {
+        return {
+          srcZone,
+          destZone,
+          srcName: zoneNames[srcZone] ?? srcZone,
+          destName: zoneNames[destZone] ?? destZone,
+          datetime,
+          noData: true,
+        };
+      }
+
+      return null;
+    },
+    [
+      arrows,
+      ghostPairs,
+      zoneNames,
+      importsData,
+      startDate,
+      selectedTimeIndex,
+      legendConfig,
+    ],
+  );
+
+  // Opens the mobile flow panel for a tapped pair and starts tracking it for the
+  // refresh effect below. Shared by the real-arrow and ghost-arrow tap handlers.
+  const openFlowPanelFor = useCallback(
+    (srcZone: string, destZone: string) => {
+      const data = buildFlowPanelData(srcZone, destZone);
+      if (!data) return;
+      lastFlowClickRef.current = { srcZone, destZone };
+      openFlowPanel(data);
+    },
+    [buildFlowPanelData, openFlowPanel],
+  );
+
+  // Keep the open mobile flow panel in sync with fresh data — mirrors the zone
+  // panel's refresh effect in useMapLayers.ts. Also handles the pair flipping
+  // between "has a value" and "no data yet" (and back) as time advances, since
+  // buildFlowPanelData is the single source of truth for that decision.
+  useEffect(() => {
+    if (!flowPanelOpen || !lastFlowClickRef.current) return;
+    const { srcZone, destZone } = lastFlowClickRef.current;
+    const data = buildFlowPanelData(srcZone, destZone);
+    if (data) updateFlowPanelData(data);
+  }, [flowPanelOpen, buildFlowPanelData, updateFlowPanelData]);
 
   if (!mapContainer) return null;
 
@@ -662,152 +1005,305 @@ export default function FlowArrows({
         pointerEvents: "none",
         overflow: "visible",
         zIndex: 2,
+        filter: "drop-shadow(0px 1px 2px rgba(0,0,0,0.3))",
       }}
     >
       <defs>
+        <style>{`
+          @keyframes wn-body-pulse  { 0%,100% { opacity:.85 } 50% { opacity:1 } }
+          @keyframes wn-chev-pulse  { 0%,100% { opacity:.08 } 50% { opacity:.88 } }
+          @keyframes wn-ghost-pulse     { 0%,100% { opacity:.45 } 50% { opacity:1 } }
+          .wn-body-pulse       { animation: wn-body-pulse     2.5s ease-in-out infinite; }
+          .wn-chev-pulse       { animation: wn-chev-pulse     1.4s cubic-bezier(.4,0,.6,1) infinite; }
+          .wn-ghost-pulse      { animation: wn-ghost-pulse    1.8s cubic-bezier(.4,0,.6,1) infinite; }
+        `}</style>
         {/* Inner glow: blur then composite "in" to keep effect inside shape */}
-        <filter id="wn-inner-glow" x="0%" y="0%" width="100%" height="100%" colorInterpolationFilters="sRGB">
+        <filter
+          id="wn-inner-glow"
+          x="0%"
+          y="0%"
+          width="100%"
+          height="100%"
+          colorInterpolationFilters="sRGB"
+        >
           <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="blur" />
           <feComposite in="blur" in2="SourceGraphic" operator="in" />
         </filter>
-        {/* Chevron glow: soft halo behind each chevron stroke */}
-        <filter id="wn-chev-glow" x="-80%" y="-80%" width="260%" height="260%" colorInterpolationFilters="sRGB">
-          <feGaussianBlur in="SourceGraphic" stdDeviation="1.8" result="blur" />
-          <feMerge>
-            <feMergeNode in="blur" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
+        <filter
+          id="wn-chev-shadow"
+          x="-50%"
+          y="-50%"
+          width="200%"
+          height="200%"
+        >
+          <feGaussianBlur in="SourceGraphic" stdDeviation="0.7" />
         </filter>
         {arrows.map((arrow, i) => (
           <clipPath key={`clip-${arrow.key}`} id={`wn-arrow-clip-${i}`}>
-            <path id={`wn-clip-${i}`} d={arrow.d} />
+            <path id={`wn-clip-${i}`} d="" />
           </clipPath>
         ))}
       </defs>
 
-      {arrows.map((arrow, i) => {
-        const phaseOffset = ((i * 0.45) % 2.5).toFixed(2);
+      {(() => {
+        // Snapshot time once — shared by ghost and real arrow delay seeds.
+        const nowSec = performance.now() / 1000;
+
+        // Prune cache: remove keys for arrows/ghosts no longer rendered.
+        const liveKeys = new Set([
+          ...arrows.flatMap((a) => [
+            `${a.key}:body`,
+            ...Array.from({ length: N_CHEVRONS }, (_, ci) => `${a.key}:${ci}`),
+          ]),
+          ...(showGhosts ? ghostPairs.map((g) => `ghost:${g.key}:body`) : []),
+        ]);
+        for (const k of animDelayRef.current.keys()) {
+          if (!liveKeys.has(k)) animDelayRef.current.delete(k);
+        }
+
+        // Helper: return cached delay, or compute+cache on first appearance.
+        // Using performance.now() as seed means each key gets a unique phase
+        // relative to real time — once cached it never changes, so React won't
+        // touch animationDelay in the DOM and the browser won't restart the animation.
+        const stableDelay = (key: string, cycle: number, offset: number) => {
+          if (!animDelayRef.current.has(key)) {
+            animDelayRef.current.set(
+              key,
+              `-${((nowSec - offset) % cycle).toFixed(3)}s`,
+            );
+          }
+          return animDelayRef.current.get(key)!;
+        };
+
         return (
-          <g
-            key={arrow.key}
-            style={{ filter: "drop-shadow(0px 1px 2px rgba(0,0,0,0.3))" }}
-          >
-            {/* Arrow body */}
-            <path
-              id={`wn-body-${i}`}
-              d={arrow.d}
-              fill={arrow.color}
-              stroke="rgba(0,0,0,0.55)"
-              strokeWidth={1.2}
-              strokeLinejoin="round"
-              style={{ pointerEvents: "auto", cursor: "default" }}
-              onMouseEnter={(e) =>
-                setTooltip({ x: e.clientX, y: e.clientY, srcZone: arrow.srcZone, destZone: arrow.destZone })
+          <>
+            {/* Ghost arrows — shown only when no real exchange data for this timestamp */}
+            {showGhosts &&
+              ghostPairs.map((ghost, i) => {
+                const phaseBase = (i * 0.45) % 2.5;
+                const bodyDelay = stableDelay(
+                  `ghost:${ghost.key}:body`,
+                  3,
+                  phaseBase,
+                );
+                return (
+                  <g key={ghost.key} style={{ pointerEvents: "none" }}>
+                    <path
+                      id={`wn-ghost-${i}`}
+                      d=""
+                      stroke="none"
+                      className="wn-ghost-pulse"
+                      style={{
+                        fill: "color-mix(in srgb, #334155 70%, transparent)",
+                        animationDelay: bodyDelay,
+                      }}
+                    />
+                    <path
+                      id={`wn-ghost-hit-${i}`}
+                      d=""
+                      fill="transparent"
+                      stroke="transparent"
+                      strokeWidth={28}
+                      strokeLinejoin="round"
+                      style={{ pointerEvents: "auto", cursor: "default" }}
+                      onMouseEnter={
+                        isMobile
+                          ? undefined
+                          : (e) =>
+                              setGhostTooltip({
+                                x: e.clientX,
+                                y: e.clientY,
+                                zoneA: ghost.zoneA,
+                                zoneB: ghost.zoneB,
+                                nameA: ghost.nameA,
+                                nameB: ghost.nameB,
+                              })
+                      }
+                      onMouseMove={
+                        isMobile
+                          ? undefined
+                          : (e) =>
+                              setGhostTooltip((prev) =>
+                                prev
+                                  ? { ...prev, x: e.clientX, y: e.clientY }
+                                  : prev,
+                              )
+                      }
+                      onMouseLeave={
+                        isMobile ? undefined : () => setGhostTooltip(null)
+                      }
+                      onTouchStart={(e) => {
+                        // Hover never fires on touch, so without this a tap on a
+                        // no-data interconnector on mobile silently did nothing.
+                        e.stopPropagation();
+                        if (isMobile) {
+                          // A floating tooltip needs hover to dismiss, which mobile
+                          // doesn't have — show the message in the bottom sheet instead.
+                          // Routed the same way as real arrows so the refresh effect
+                          // keeps tracking this pair and can flip it to a real value
+                          // automatically once one appears.
+                          openFlowPanelFor(ghost.zoneA, ghost.zoneB);
+                        } else {
+                          const touch = e.touches[0];
+                          setGhostTooltip((prev) =>
+                            prev?.zoneA === ghost.zoneA &&
+                            prev?.zoneB === ghost.zoneB
+                              ? null
+                              : {
+                                  x: touch.clientX,
+                                  y: touch.clientY,
+                                  zoneA: ghost.zoneA,
+                                  zoneB: ghost.zoneB,
+                                  nameA: ghost.nameA,
+                                  nameB: ghost.nameB,
+                                },
+                          );
+                        }
+                      }}
+                    />
+                  </g>
+                );
+              })}
+
+            {/* Real arrows */}
+            {arrows.map((arrow, i) => {
+              const phaseBase = (i * 0.45) % 2.5;
+
+              // Return cached delay, or compute+cache on first appearance.
+              // The value never changes after that, so React won't update the DOM
+              // style and the browser won't restart the animation.
+              const bodyDelayKey = `${arrow.key}:body`;
+              if (!animDelayRef.current.has(bodyDelayKey)) {
+                animDelayRef.current.set(
+                  bodyDelayKey,
+                  `-${((nowSec - phaseBase) % 2.5).toFixed(3)}s`,
+                );
               }
-              onMouseMove={(e) =>
-                setTooltip((prev) =>
-                  prev ? { ...prev, x: e.clientX, y: e.clientY } : prev,
-                )
-              }
-              onMouseLeave={() => setTooltip(null)}
-              onTouchStart={(e) => {
-                if (isMobile) {
-                  e.stopPropagation();
-                  const targetMs = slotToTimestampMs(startDate, selectedTimeIndex);
-                  const status = getImportStatus(importsData, arrow.srcZone, arrow.destZone, targetMs);
-                  openFlowPanel({
-                    srcZone: arrow.srcZone,
-                    destZone: arrow.destZone,
-                    srcName: arrow.srcName,
-                    destName: arrow.destName,
-                    mw: arrow.mw,
-                    color: arrow.color,
-                    metricValue: arrow.metricValue,
-                    metricUnit: legendConfig.unit ?? "",
-                    metricTitle: legendConfig.title,
-                    datetime: formatDatetime(startDate, selectedTimeIndex),
-                    valid: status?.valid ?? false,
-                    zoneStatus: status?.zoneStatus ?? "",
-                    dataState: status?.dataState ?? "missing",
-                    datasource: status?.datasource ?? "",
-                    isForecast: status?.isForecast ?? false,
-                  });
-                } else {
-                  const touch = e.touches[0];
-                  setTooltip((prev) =>
-                    prev?.srcZone === arrow.srcZone && prev?.destZone === arrow.destZone
-                      ? null
-                      : { x: touch.clientX, y: touch.clientY, srcZone: arrow.srcZone, destZone: arrow.destZone },
+              const bodyDelay = animDelayRef.current.get(bodyDelayKey)!;
+
+              const chevDelay = (ci: number) => {
+                const k = `${arrow.key}:${ci}`;
+                if (!animDelayRef.current.has(k)) {
+                  animDelayRef.current.set(
+                    k,
+                    `-${((nowSec - phaseBase - ci * 0.28) % 1.4).toFixed(3)}s`,
                   );
                 }
-              }}
-            >
-              <animate
-                attributeName="opacity"
-                values="0.85;1;0.85"
-                dur="2.5s"
-                repeatCount="indefinite"
-                begin={`${phaseOffset}s`}
-              />
-            </path>
-
-            {/* Inner glow */}
-            <path
-              id={`wn-iglow-${i}`}
-              d={arrow.d}
-              fill="rgba(255,255,255,0.22)"
-              stroke="none"
-              filter="url(#wn-inner-glow)"
-              style={{ pointerEvents: "none" }}
-            />
-
-            {/* Chevron ripple — glow halo + sharp stroke, clipped to arrow */}
-            {arrow.chevronPaths.map((chevPath, ci) => {
+                return animDelayRef.current.get(k)!;
+              };
               const chColor = lightenArrowColor(arrow.color);
               return (
-                <g
-                  key={ci}
-                  clipPath={`url(#wn-arrow-clip-${i})`}
-                  style={{ pointerEvents: "none", filter: "drop-shadow(0px 1px 3px rgba(0,0,0,0.5))" }}
-                >
-                  <animate
-                    attributeName="opacity"
-                    values="0.08;0.88;0.08"
-                    dur="1.4s"
-                    begin={`${(parseFloat(phaseOffset) + ci * 0.28).toFixed(2)}s`}
-                    repeatCount="indefinite"
-                    calcMode="spline"
-                    keyTimes="0;0.5;1"
-                    keySplines="0.4 0 0.6 1;0.4 0 0.6 1"
-                  />
-                  {/* glow halo */}
+                <g key={arrow.key}>
+                  {/* Arrow body */}
                   <path
-                    id={`wn-chev-g-${i}-${ci}`}
-                    d={chevPath}
-                    fill="none"
-                    stroke={chColor}
-                    strokeWidth={arrow.chevronStrokeW * 2.5}
-                    strokeLinecap="round"
+                    id={`wn-body-${i}`}
+                    d=""
+                    fill={arrow.color}
+                    stroke="rgba(100,100,100,0.45)"
+                    strokeWidth={1.2}
                     strokeLinejoin="round"
-                    filter="url(#wn-chev-glow)"
-                    opacity={0.2}
+                    className="wn-body-pulse"
+                    style={{ pointerEvents: "none", animationDelay: bodyDelay }}
                   />
-                  {/* sharp stroke — lightened arrow color */}
+
+                  {/* Inner glow */}
                   <path
-                    id={`wn-chev-s-${i}-${ci}`}
-                    d={chevPath}
-                    fill="none"
-                    stroke={chColor}
-                    strokeWidth={arrow.chevronStrokeW}
-                    strokeLinecap="round"
+                    id={`wn-iglow-${i}`}
+                    d=""
+                    fill="rgba(255,255,255,0.22)"
+                    stroke="none"
+                    filter="url(#wn-inner-glow)"
+                    style={{ pointerEvents: "none" }}
+                  />
+
+                  {/* Chevron ripple — clipped to arrow shape */}
+                  {Array.from({ length: N_CHEVRONS }, (_, ci) => (
+                    <g
+                      key={ci}
+                      clipPath={`url(#wn-arrow-clip-${i})`}
+                      className="wn-chev-pulse"
+                      style={{
+                        pointerEvents: "none",
+                        animationDelay: chevDelay(ci),
+                      }}
+                    >
+                      <path
+                        id={`wn-chev-g-${i}-${ci}`}
+                        d=""
+                        fill="none"
+                        stroke="rgba(0,0,0,0.14)"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        filter="url(#wn-chev-shadow)"
+                      />
+                      <path
+                        id={`wn-chev-s-${i}-${ci}`}
+                        d=""
+                        fill="none"
+                        stroke={chColor}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </g>
+                  ))}
+
+                  {/* Transparent hit area — wider than the visible arrow for easier hover/tap */}
+                  <path
+                    id={`wn-hit-${i}`}
+                    d=""
+                    fill="transparent"
+                    stroke="transparent"
+                    strokeWidth={28}
                     strokeLinejoin="round"
+                    style={{ pointerEvents: "auto", cursor: "default" }}
+                    onMouseEnter={
+                      isMobile
+                        ? undefined
+                        : (e) =>
+                            setTooltip({
+                              x: e.clientX,
+                              y: e.clientY,
+                              srcZone: arrow.srcZone,
+                              destZone: arrow.destZone,
+                            })
+                    }
+                    onMouseMove={
+                      isMobile
+                        ? undefined
+                        : (e) =>
+                            setTooltip((prev) =>
+                              prev
+                                ? { ...prev, x: e.clientX, y: e.clientY }
+                                : prev,
+                            )
+                    }
+                    onMouseLeave={isMobile ? undefined : () => setTooltip(null)}
+                    onTouchStart={(e) => {
+                      if (isMobile) {
+                        e.stopPropagation();
+                        openFlowPanelFor(arrow.srcZone, arrow.destZone);
+                      } else {
+                        const touch = e.touches[0];
+                        setTooltip((prev) =>
+                          prev?.srcZone === arrow.srcZone &&
+                          prev?.destZone === arrow.destZone
+                            ? null
+                            : {
+                                x: touch.clientX,
+                                y: touch.clientY,
+                                srcZone: arrow.srcZone,
+                                destZone: arrow.destZone,
+                              },
+                        );
+                      }
+                    }}
                   />
                 </g>
               );
             })}
-          </g>
+          </>
         );
-      })}
+      })()}
     </svg>
   );
 
@@ -818,13 +1314,109 @@ export default function FlowArrows({
   const tw = tooltipSizeRef.current?.w ?? 0;
   const th = tooltipSizeRef.current?.h ?? 0;
   const rawLeft = (tooltip?.x ?? 0) + 16;
-  const rawTop  = (tooltip?.y ?? 0) - 14;
-  const clampedLeft = Math.max(TOOLTIP_MARGIN, Math.min(rawLeft, window.innerWidth  - tw - TOOLTIP_MARGIN));
-  const clampedTop  = Math.max(TOOLTIP_MARGIN, Math.min(rawTop,  window.innerHeight - th - TOOLTIP_MARGIN));
+  const rawTop = (tooltip?.y ?? 0) - 14;
+  const clampedLeft = Math.max(
+    TOOLTIP_MARGIN,
+    Math.min(rawLeft, window.innerWidth - tw - TOOLTIP_MARGIN),
+  );
+  const clampedTop = Math.max(
+    TOOLTIP_MARGIN,
+    Math.min(rawTop, window.innerHeight - th - TOOLTIP_MARGIN),
+  );
 
   return (
     <>
       {createPortal(svgEl, mapContainer)}
+      {ghostTooltip && (
+        <div
+          style={{
+            position: "fixed",
+            left: ghostTooltip.x + 12,
+            top: ghostTooltip.y - 80,
+            zIndex: 9999,
+            pointerEvents: "none",
+            fontFamily: '"Red Hat Text", system-ui, sans-serif',
+            background: "color-mix(in srgb, var(--color-panel) 93%, transparent)",
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
+            border: "1px solid color-mix(in srgb, var(--color-foreground) 10%, transparent)",
+            borderRadius: 12,
+            boxShadow: "0 8px 32px rgba(0,0,0,0.3)",
+            padding: "14px 16px",
+            display: "flex",
+            flexDirection: "column",
+            gap: 5,
+            whiteSpace: "nowrap",
+          }}
+        >
+          {/* Datetime */}
+          <div
+            style={{
+              fontSize: 14,
+              fontWeight: 500,
+              color: "color-mix(in srgb, var(--color-foreground) 30%, transparent)",
+              letterSpacing: "0.03em",
+              lineHeight: 1,
+              fontVariantNumeric: "tabular-nums",
+            }}
+          >
+            {tooltipDatetime}
+          </div>
+
+          {/* Zone pair */}
+          <div style={{ display: "flex", gap: 10, margin: "2px 0" }}>
+            {/* Static bidirectional connector */}
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                width: 10,
+                paddingTop: 8,
+                paddingBottom: 8,
+              }}
+            >
+              <div style={{ width: 6, height: 6, borderRadius: "50%", background: "color-mix(in srgb, var(--color-foreground) 35%, transparent)", flexShrink: 0 }} />
+              <div style={{ flex: 1, width: 1.5, background: "color-mix(in srgb, var(--color-foreground) 18%, transparent)", margin: "3px 0" }} />
+              <div style={{ width: 6, height: 6, borderRadius: "50%", background: "color-mix(in srgb, var(--color-foreground) 35%, transparent)", flexShrink: 0 }} />
+            </div>
+
+            {/* Zone names */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1, minWidth: 0 }}>
+              <div style={{ height: 22, display: "flex", alignItems: "center", gap: 5 }}>
+                <span style={{ fontSize: 18, fontWeight: 600, color: "color-mix(in srgb, var(--color-foreground) 92%, transparent)", whiteSpace: "nowrap", lineHeight: 1 }}>
+                  {ghostTooltip.nameA}
+                </span>
+                <span style={{ fontSize: 12, fontWeight: 500, color: "color-mix(in srgb, var(--color-foreground) 42%, transparent)", lineHeight: 1 }}>
+                  ({ghostTooltip.zoneA})
+                </span>
+              </div>
+              <div style={{ height: 22, display: "flex", alignItems: "center", gap: 5 }}>
+                <span style={{ fontSize: 18, fontWeight: 600, color: "color-mix(in srgb, var(--color-foreground) 92%, transparent)", whiteSpace: "nowrap", lineHeight: 1 }}>
+                  {ghostTooltip.nameB}
+                </span>
+                <span style={{ fontSize: 12, fontWeight: 500, color: "color-mix(in srgb, var(--color-foreground) 42%, transparent)", lineHeight: 1 }}>
+                  ({ghostTooltip.zoneB})
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Divider */}
+          <div style={{ height: 1, background: "color-mix(in srgb, var(--color-foreground) 8%, transparent)", margin: "4px -2px 4px" }} />
+
+          {/* Explanatory text */}
+          <div
+            style={{
+              fontSize: 14,
+              fontWeight: 500,
+              color: "color-mix(in srgb, var(--color-foreground) 55%, transparent)",
+            }}
+          >
+            Power Exchange Data Not Yet Available
+          </div>
+        </div>
+      )}
       {tooltip && tooltipArrow && (
         <div
           ref={tooltipElRef}
@@ -836,10 +1428,12 @@ export default function FlowArrows({
             zIndex: 9999,
             pointerEvents: "none",
             fontFamily: '"Red Hat Text", system-ui, sans-serif',
-            background: "color-mix(in srgb, var(--color-panel) 93%, transparent)",
+            background:
+              "color-mix(in srgb, var(--color-panel) 93%, transparent)",
             backdropFilter: "blur(20px)",
             WebkitBackdropFilter: "blur(20px)",
-            border: "1px solid color-mix(in srgb, var(--color-foreground) 10%, transparent)",
+            border:
+              "1px solid color-mix(in srgb, var(--color-foreground) 10%, transparent)",
             borderRadius: 12,
             boxShadow: "0 8px 32px rgba(0,0,0,0.3)",
             overflow: "hidden",
@@ -848,77 +1442,355 @@ export default function FlowArrows({
           }}
         >
           {/* Left: main content */}
-          <div style={{ padding: "14px 16px", display: "flex", flexDirection: "column", gap: 5 }}>
-            <div style={{ fontSize: 14, fontWeight: 500, color: "color-mix(in srgb, var(--color-foreground) 30%, transparent)", letterSpacing: "0.03em", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
+          <div
+            style={{
+              padding: "14px 16px",
+              display: "flex",
+              flexDirection: "column",
+              gap: 5,
+            }}
+          >
+            <div
+              style={{
+                fontSize: 14,
+                fontWeight: 500,
+                color:
+                  "color-mix(in srgb, var(--color-foreground) 30%, transparent)",
+                letterSpacing: "0.03em",
+                lineHeight: 1,
+                fontVariantNumeric: "tabular-nums",
+              }}
+            >
               {tooltipDatetime}
             </div>
 
             {/* Zone names + animated connector
                 ROW_H=22px, padding = ROW_H/2 - dot_r = 11-3 = 8px → exact center alignment */}
             <div style={{ display: "flex", gap: 10, margin: "2px 0" }}>
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 10, paddingTop: 8, paddingBottom: 8 }}>
-                <div style={{ width: 6, height: 6, borderRadius: "50%", background: "color-mix(in srgb, var(--color-foreground) 35%, transparent)", flexShrink: 0 }} />
-                <div style={{ flex: 1, width: 1.5, background: "color-mix(in srgb, var(--color-foreground) 18%, transparent)", margin: "3px 0" }} />
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  width: 10,
+                  paddingTop: 8,
+                  paddingBottom: 8,
+                }}
+              >
+                <div
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: "50%",
+                    background:
+                      "color-mix(in srgb, var(--color-foreground) 35%, transparent)",
+                    flexShrink: 0,
+                  }}
+                />
+                <div
+                  style={{
+                    flex: 1,
+                    width: 1.5,
+                    background:
+                      "color-mix(in srgb, var(--color-foreground) 18%, transparent)",
+                    margin: "3px 0",
+                  }}
+                />
                 {/* Two-chevron ripple: opacity wave flows top→bottom suggesting downward transfer */}
-                <svg width="8" height="12" viewBox="0 0 8 12" fill="none" style={{ flexShrink: 0 }}>
-                  <path d="M1 1L4 4.5L7 1" stroke="color-mix(in srgb, var(--color-foreground) 32%, transparent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <animate attributeName="opacity" values="0.15;1;0.15" dur="1.2s" begin="0s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" />
+                <svg
+                  width="8"
+                  height="12"
+                  viewBox="0 0 8 12"
+                  fill="none"
+                  style={{ flexShrink: 0 }}
+                >
+                  <path
+                    d="M1 1L4 4.5L7 1"
+                    stroke="color-mix(in srgb, var(--color-foreground) 32%, transparent)"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <animate
+                      attributeName="opacity"
+                      values="0.15;1;0.15"
+                      dur="1.2s"
+                      begin="0s"
+                      repeatCount="indefinite"
+                      calcMode="spline"
+                      keyTimes="0;0.5;1"
+                      keySplines="0.4 0 0.6 1;0.4 0 0.6 1"
+                    />
                   </path>
-                  <path d="M1 7L4 10.5L7 7" stroke="color-mix(in srgb, var(--color-foreground) 32%, transparent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <animate attributeName="opacity" values="0.15;1;0.15" dur="1.2s" begin="0.4s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" />
+                  <path
+                    d="M1 7L4 10.5L7 7"
+                    stroke="color-mix(in srgb, var(--color-foreground) 32%, transparent)"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <animate
+                      attributeName="opacity"
+                      values="0.15;1;0.15"
+                      dur="1.2s"
+                      begin="0.4s"
+                      repeatCount="indefinite"
+                      calcMode="spline"
+                      keyTimes="0;0.5;1"
+                      keySplines="0.4 0 0.6 1;0.4 0 0.6 1"
+                    />
                   </path>
                 </svg>
-                <div style={{ flex: 1, width: 1.5, background: "color-mix(in srgb, var(--color-foreground) 18%, transparent)", margin: "3px 0" }} />
-                <div style={{ width: 6, height: 6, borderRadius: "50%", background: "color-mix(in srgb, var(--color-foreground) 35%, transparent)", flexShrink: 0 }} />
+                <div
+                  style={{
+                    flex: 1,
+                    width: 1.5,
+                    background:
+                      "color-mix(in srgb, var(--color-foreground) 18%, transparent)",
+                    margin: "3px 0",
+                  }}
+                />
+                <div
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: "50%",
+                    background:
+                      "color-mix(in srgb, var(--color-foreground) 35%, transparent)",
+                    flexShrink: 0,
+                  }}
+                />
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1, minWidth: 0 }}>
-                <div style={{ height: 22, display: "flex", alignItems: "center", gap: 5 }}>
-                  <span style={{ fontSize: 18, fontWeight: 600, color: "color-mix(in srgb, var(--color-foreground) 92%, transparent)", whiteSpace: "nowrap", lineHeight: 1 }}>{tooltipArrow.srcName}</span>
-                  <span style={{ fontSize: 12, fontWeight: 500, color: "color-mix(in srgb, var(--color-foreground) 42%, transparent)", lineHeight: 1 }}>({tooltipArrow.srcZone})</span>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 6,
+                  flex: 1,
+                  minWidth: 0,
+                }}
+              >
+                <div
+                  style={{
+                    height: 22,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 18,
+                      fontWeight: 600,
+                      color:
+                        "color-mix(in srgb, var(--color-foreground) 92%, transparent)",
+                      whiteSpace: "nowrap",
+                      lineHeight: 1,
+                    }}
+                  >
+                    {tooltipArrow.srcName}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 500,
+                      color:
+                        "color-mix(in srgb, var(--color-foreground) 42%, transparent)",
+                      lineHeight: 1,
+                    }}
+                  >
+                    ({tooltipArrow.srcZone})
+                  </span>
                 </div>
-                <div style={{ height: 22, display: "flex", alignItems: "center", gap: 5 }}>
-                  <span style={{ fontSize: 18, fontWeight: 600, color: "color-mix(in srgb, var(--color-foreground) 92%, transparent)", whiteSpace: "nowrap", lineHeight: 1 }}>{tooltipArrow.destName}</span>
-                  <span style={{ fontSize: 12, fontWeight: 500, color: "color-mix(in srgb, var(--color-foreground) 42%, transparent)", lineHeight: 1 }}>({tooltipArrow.destZone})</span>
+                <div
+                  style={{
+                    height: 22,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 18,
+                      fontWeight: 600,
+                      color:
+                        "color-mix(in srgb, var(--color-foreground) 92%, transparent)",
+                      whiteSpace: "nowrap",
+                      lineHeight: 1,
+                    }}
+                  >
+                    {tooltipArrow.destName}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 500,
+                      color:
+                        "color-mix(in srgb, var(--color-foreground) 42%, transparent)",
+                      lineHeight: 1,
+                    }}
+                  >
+                    ({tooltipArrow.destZone})
+                  </span>
                 </div>
               </div>
             </div>
 
-            <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 6 }}>
-              <span style={{ fontSize: 34, fontWeight: 700, color: "color-mix(in srgb, var(--color-foreground) 92%, transparent)", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "baseline",
+                gap: 6,
+                marginTop: 6,
+              }}
+            >
+              <span
+                style={{
+                  fontSize: 34,
+                  fontWeight: 700,
+                  color:
+                    "color-mix(in srgb, var(--color-foreground) 92%, transparent)",
+                  lineHeight: 1,
+                  fontVariantNumeric: "tabular-nums",
+                }}
+              >
                 {tooltipArrow.mw.toFixed(2)}
               </span>
-              <span style={{ fontSize: 14, fontWeight: 500, color: "color-mix(in srgb, var(--color-foreground) 40%, transparent)", lineHeight: 1 }}>MW</span>
+              <span
+                style={{
+                  fontSize: 14,
+                  fontWeight: 500,
+                  color:
+                    "color-mix(in srgb, var(--color-foreground) 40%, transparent)",
+                  lineHeight: 1,
+                }}
+              >
+                MW
+              </span>
             </div>
-            <div style={{ fontSize: 15, color: "color-mix(in srgb, var(--color-foreground) 50%, transparent)", lineHeight: 1 }}>Power exchange</div>
+            <div
+              style={{
+                fontSize: 15,
+                color:
+                  "color-mix(in srgb, var(--color-foreground) 50%, transparent)",
+                lineHeight: 1,
+              }}
+            >
+              Power exchange
+            </div>
 
             {tooltipArrow.metricValue !== null && (
-              <div style={{ fontSize: 14, color: "color-mix(in srgb, var(--color-foreground) 50%, transparent)", display: "flex", alignItems: "center", gap: 6, lineHeight: 1, marginTop: 12 }}>
-                <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: tooltipArrow.color, border: "1px solid rgba(0,0,0,0.2)", flexShrink: 0 }} />
+              <div
+                style={{
+                  fontSize: 14,
+                  color:
+                    "color-mix(in srgb, var(--color-foreground) 50%, transparent)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  lineHeight: 1,
+                  marginTop: 12,
+                }}
+              >
+                <span
+                  style={{
+                    display: "inline-block",
+                    width: 8,
+                    height: 8,
+                    borderRadius: "50%",
+                    background: tooltipArrow.color,
+                    border: "1px solid rgba(0,0,0,0.2)",
+                    flexShrink: 0,
+                  }}
+                />
                 with a{" "}
-                <strong style={{ color: "color-mix(in srgb, var(--color-foreground) 85%, transparent)", fontVariantNumeric: "tabular-nums", fontSize: 15 }}>
-                  {tooltipArrow.metricValue.toFixed(2)} {legendConfig.unit ?? ""}
-                </strong>
-                {" "}{legendConfig.title.toLowerCase()}
+                <strong
+                  style={{
+                    color:
+                      "color-mix(in srgb, var(--color-foreground) 85%, transparent)",
+                    fontVariantNumeric: "tabular-nums",
+                    fontSize: 15,
+                  }}
+                >
+                  {tooltipArrow.metricValue.toFixed(2)}{" "}
+                  {legendConfig.unit ?? ""}
+                </strong>{" "}
+                {legendConfig.title.toLowerCase()}
               </div>
             )}
           </div>
 
           {/* Right: pills column — top Energy 2×2, full-width divider, bottom Environmental 2-col */}
-          <div style={{ borderLeft: "1px solid var(--color-border)", display: "flex", flexDirection: "column", minWidth: 156 }}>
+          <div
+            style={{
+              borderLeft: "1px solid var(--color-border)",
+              display: "flex",
+              flexDirection: "column",
+              minWidth: 156,
+            }}
+          >
             {tooltipStatus ? (
               <>
                 {/* ENERGY — 2×2 grid, flex:1 pushes Environmental to bottom */}
-                <div style={{ padding: "14px 12px", display: "flex", flexDirection: "column", gap: 6, flex: 1 }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", color: "color-mix(in srgb, var(--color-foreground) 28%, transparent)", textTransform: "uppercase" as const }}>Energy</span>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4 }}>
-                    <Chip label={tooltipStatus.valid ? "Final" : "Not Final"} color={tooltipStatus.valid ? cc.final : cc.notFinal} />
-                    {tooltipStatus.zoneStatus === "complete" && <Chip label="Complete" color={cc.complete} />}
-                    {tooltipStatus.zoneStatus === "preview" && <Chip label="Preview" color={cc.preview} />}
-                    {tooltipStatus.zoneStatus === "missing" && tooltipStatus.isForecast && <Chip label="Forecasted" color={cc.forecasted} dashed />}
-                    {tooltipStatus.zoneStatus === "missing" && !tooltipStatus.isForecast && <Chip label="Missing" color={cc.missing} />}
-                    {tooltipStatus.dataState === "official" && <Chip label="Official" color={cc.complete} />}
-                    {tooltipStatus.dataState === "estimated" && <Chip label="Estimated" color={cc.preview} />}
-                    {tooltipStatus.datasource && <Chip label={formatDatasource(tooltipStatus.datasource)} color={cc.neutral} />}
+                <div
+                  style={{
+                    padding: "14px 12px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 6,
+                    flex: 1,
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      letterSpacing: "0.08em",
+                      color:
+                        "color-mix(in srgb, var(--color-foreground) 28%, transparent)",
+                      textTransform: "uppercase" as const,
+                    }}
+                  >
+                    Energy
+                  </span>
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: 4,
+                    }}
+                  >
+                    <Chip
+                      label={tooltipStatus.valid ? "Final" : "Not Final"}
+                      color={tooltipStatus.valid ? cc.final : cc.notFinal}
+                    />
+                    {tooltipStatus.zoneStatus === "complete" && (
+                      <Chip label="Complete" color={cc.complete} />
+                    )}
+                    {tooltipStatus.zoneStatus === "preview" && (
+                      <Chip label="Preview" color={cc.preview} />
+                    )}
+                    {tooltipStatus.zoneStatus === "missing" &&
+                      tooltipStatus.isForecast && (
+                        <Chip label="Forecasted" color={cc.forecasted} dashed />
+                      )}
+                    {tooltipStatus.zoneStatus === "missing" &&
+                      !tooltipStatus.isForecast && (
+                        <Chip label="Missing" color={cc.missing} />
+                      )}
+                    {tooltipStatus.dataState === "official" && (
+                      <Chip label="Official" color={cc.complete} />
+                    )}
+                    {tooltipStatus.dataState === "estimated" && (
+                      <Chip label="Estimated" color={cc.preview} />
+                    )}
+                    {tooltipStatus.datasource && (
+                      <Chip
+                        label={formatDatasource(tooltipStatus.datasource)}
+                        color={cc.neutral}
+                      />
+                    )}
                   </div>
                 </div>
 
@@ -926,11 +1798,45 @@ export default function FlowArrows({
                 <div style={{ height: 1, background: "var(--color-border)" }} />
 
                 {/* ENVIRONMENTAL — same 2-col grid for aligned columns */}
-                <div style={{ padding: "10px 12px 14px", display: "flex", flexDirection: "column", gap: 6 }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", color: "color-mix(in srgb, var(--color-foreground) 28%, transparent)", textTransform: "uppercase" as const }}>Environmental</span>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4 }}>
-                    <Chip label={flowTracing ? "Global" : "Local"} color={flowTracing ? cc.global : cc.local} />
-                    <Chip label={scope === "life-cycle" ? "Life-cycle" : "Operational"} color={scope === "life-cycle" ? cc.lifecycle : cc.operational} />
+                <div
+                  style={{
+                    padding: "10px 12px 14px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 6,
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      letterSpacing: "0.08em",
+                      color:
+                        "color-mix(in srgb, var(--color-foreground) 28%, transparent)",
+                      textTransform: "uppercase" as const,
+                    }}
+                  >
+                    Environmental
+                  </span>
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: 4,
+                    }}
+                  >
+                    <Chip
+                      label={flowTracing ? "Global" : "Local"}
+                      color={flowTracing ? cc.global : cc.local}
+                    />
+                    <Chip
+                      label={
+                        scope === "life-cycle" ? "Life-cycle" : "Operational"
+                      }
+                      color={
+                        scope === "life-cycle" ? cc.lifecycle : cc.operational
+                      }
+                    />
                   </div>
                 </div>
               </>

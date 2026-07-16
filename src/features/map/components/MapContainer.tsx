@@ -12,7 +12,7 @@ import { mergeActiveMetricValues } from "@/src/features/map/utils/footprintAdapt
 import { MetricKey } from "../hooks/useMapScales";
 
 import { useAppTheme } from "@/src/core/theme/ThemeContext";
-import { useDashboardStore } from "@/src/features/dashboard/store/useDashboardStore";
+import { useDashboardStore, ZoneData } from "@/src/features/dashboard/store/useDashboardStore";
 
 function injectMapStyles() {
   if (document.getElementById("wn-map-style")) return;
@@ -33,7 +33,7 @@ interface MapContainerProps {
   selectedDate: Date;
   selectedTimeIndex: number;
   selectedDimension: string;
-  onZoneClick?: (zoneName: string) => void;
+  onZoneClick?: (zoneName: string, data: ZoneData) => void;
   onEmptyClick?: () => void;
   onMapReady?: (map: maplibregl.Map) => void;
   onGeoJSONLoad?: (geojson: FeatureCollection) => void;
@@ -72,7 +72,7 @@ export default function MapContainer({
     mapInstance.current,
     selectedDate,
     metric,
-    onZoneClick as any, // TODO: revisar
+    onZoneClick,
     selectedTimeIndex,
     data,
   );
@@ -207,7 +207,8 @@ export default function MapContainer({
         selectedTimeIndex,
       );
 
-      const map = mapInstance.current!;
+      const map = mapInstance.current;
+      if (!map) return;
       if (!map.getSource("world"))
         map.addSource("world", { type: "geojson", data: merged });
 

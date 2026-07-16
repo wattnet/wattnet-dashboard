@@ -20,20 +20,10 @@ function msUntilNextQuarter(): number {
   return nextQuarterMs === ms ? QUARTER_INTERVAL_MS : nextQuarterMs - ms;
 }
 
-function currentFlatSlotIndex(startDate: Date): number {
-  const now = new Date();
-  const dayOffset = Math.floor(
-    (Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) -
-      startDate.getTime()) /
-      86_400_000,
-  );
-  return dayOffset * 96 + now.getUTCHours() * 4 + Math.floor(now.getUTCMinutes() / 15);
-}
-
 /**
  * Builds the SWR cache key.
  */
-function buildSwrKey(
+export function buildSwrKey(
   params: FootprintQueryParams,
   dateKey: string,
   ephemeralToken: string | null,
@@ -112,6 +102,7 @@ export function useDataRefresh({
   });
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isProbingRef = useRef(false);
 
   const clearTimer = useCallback(() => {
     if (timerRef.current !== null) {
@@ -123,11 +114,15 @@ export function useDataRefresh({
   /**
    * Probes zone AT for the current 15-min slot only.
    * Returns "available" if any series is preview/complete, "missing" otherwise, null on fetch error.
+   * Also returns the flat slot index that was actually probed, so the caller never advances
+   * the slider to a slot whose readiness wasn't verified by this probe (e.g. if the probe
+   * and subsequent revalidation take long enough to cross into the next quarter-hour).
    */
-  const probe = useCallback(async (): Promise<
-    'available' | 'missing' | null
-  > => {
-    const { params, ephemeralToken, fetchToken } = stateRef.current;
+  const probe = useCallback(async (): Promise<{
+    status: 'available' | 'missing' | null;
+    slotIndex: number;
+  }> => {
+    const { params, ephemeralToken, fetchToken, startDate } = stateRef.current;
 
     let token = ephemeralToken;
     if (!token) token = await fetchToken();
@@ -160,6 +155,26 @@ export function useDataRefresh({
     probeParams.set('start', slotStart.toISOString());
     probeParams.set('end', slotEnd.toISOString());
 
+    // Flat slot index for the slot being probed — derived from slotStart (not a
+    // fresh `new Date()`), so it always matches the window that was queried above.
+    // `startDate` may carry a non-midnight time-of-day (e.g. it's `new Date()` at
+    // mount, not normalized), so compare calendar days only — never raw epoch ms.
+    const dayOffset = Math.floor(
+      (Date.UTC(
+        slotStart.getUTCFullYear(),
+        slotStart.getUTCMonth(),
+        slotStart.getUTCDate(),
+      ) -
+        Date.UTC(
+          startDate.getUTCFullYear(),
+          startDate.getUTCMonth(),
+          startDate.getUTCDate(),
+        )) /
+        86_400_000,
+    );
+    const slotIndex =
+      dayOffset * 96 + slotStart.getUTCHours() * 4 + slotMinutes / 15;
+
     const doFetch = (t: string) =>
       fetch(`/api/metrics?${probeParams.toString()}`, {
         headers: { 'x-dashboard-token': t },
@@ -171,18 +186,18 @@ export function useDataRefresh({
       res = await doFetch(token);
     }
 
-    if (!res.ok) return null;
+    if (!res.ok) return { status: null, slotIndex };
 
     const json = await res.json();
     const firstZone = Array.isArray(json) ? json[0] : null;
-    if (!firstZone?.series?.length) return 'missing';
+    if (!firstZone?.series?.length) return { status: 'missing', slotIndex };
 
     const hasData = firstZone.series.some(
       (s: { zone_status: string }) =>
         s.zone_status === 'complete' || s.zone_status === 'preview',
     );
 
-    return hasData ? 'available' : 'missing';
+    return { status: hasData ? 'available' : 'missing', slotIndex };
   }, []);
 
   /**
@@ -190,8 +205,14 @@ export function useDataRefresh({
    */
   const runProbeAndSchedule = useCallback(async () => {
     if (!stateRef.current.enabled) return;
+    if (isProbingRef.current) return;
 
-    const status = await probe();
+    isProbingRef.current = true;
+    const { status, slotIndex: newSlotIndex } = await probe();
+    isProbingRef.current = false;
+
+    // Bail if disabled while probe was in flight
+    if (!stateRef.current.enabled) return;
 
     if (status === 'missing') {
       timerRef.current = setTimeout(runProbeAndSchedule, PROBE_RETRY_MS);
@@ -207,11 +228,13 @@ export function useDataRefresh({
         setSelectedTimeIndex,
       } = stateRef.current;
 
+      // Revalidate footprints
       const swrKey = buildSwrKey(params, dateKey, ephemeralToken);
       if (swrKey) await mutate(swrKey);
 
-      // ── Advance the slider only if the user is on the immediately preceding slot ──
-      const newSlotIndex = currentFlatSlotIndex(stateRef.current.startDate);
+      // ── Advance the slider only if the user is on the slot immediately preceding
+      // the one that was just verified as available (never a slot re-derived from
+      // wall-clock time after the awaits above, which could have drifted ahead) ──
       if (selectedTimeIndex === newSlotIndex - 1) {
         setSelectedTimeIndex(newSlotIndex);
       }
@@ -224,6 +247,7 @@ export function useDataRefresh({
   useEffect(() => {
     if (!enabled) {
       clearTimer();
+      isProbingRef.current = false;
       return;
     }
 

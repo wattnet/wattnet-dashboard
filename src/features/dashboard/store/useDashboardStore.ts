@@ -23,23 +23,36 @@ export interface ZoneData {
   isForecast?: boolean;
 }
 
-export interface FlowPanelData {
+interface FlowPanelDataBase {
   srcZone: string;
   destZone: string;
   srcName: string;
   destName: string;
+  datetime: string;
+}
+
+// A tapped interconnector with no exchange value for the current slot (a "ghost"
+// arrow on the map) — the mobile bottom sheet needs its own no-data message
+// instead of the desktop hover tooltip, since touch devices have no hover.
+export interface FlowPanelDataNoData extends FlowPanelDataBase {
+  noData: true;
+}
+
+export interface FlowPanelDataWithValue extends FlowPanelDataBase {
+  noData?: false;
   mw: number;
   color: string;
   metricValue: number | null;
   metricUnit: string;
   metricTitle: string;
-  datetime: string;
   valid: boolean;
   zoneStatus: string;
   dataState: string;
   datasource: string;
   isForecast: boolean;
 }
+
+export type FlowPanelData = FlowPanelDataWithValue | FlowPanelDataNoData;
 
 export interface ZoneSeriesPoint {
   value: number | null;
@@ -82,11 +95,16 @@ interface DashboardState {
   updateZoneData: (data: ZoneData) => void;
   closeZonePanel: () => void;
   openFlowPanel: (data: FlowPanelData) => void;
+  updateFlowPanelData: (data: FlowPanelData) => void;
   closeFlowPanel: () => void;
   toggleSidebar: () => void;
   collapseSidebar: () => void;
   expandSidebar: () => void;
 }
+
+// Module-level timer IDs so openZonePanel / openFlowPanel can cancel pending clear timeouts.
+let closeZonePanelTimer: ReturnType<typeof setTimeout> | null = null;
+let closeFlowPanelTimer: ReturnType<typeof setTimeout> | null = null;
 
 // --- STORE CREATION ---
 export const useDashboardStore = create<DashboardState>((set) => ({
@@ -121,36 +139,55 @@ export const useDashboardStore = create<DashboardState>((set) => ({
   setInitialDataReady: () => set({ initialDataReady: true }),
 
   // Complex actions
-  openZonePanel: (zoneName, data) =>
+  openZonePanel: (zoneName, data) => {
+    // Cancel any pending post-close clear so it doesn't wipe the new zone's data.
+    if (closeZonePanelTimer !== null) {
+      clearTimeout(closeZonePanelTimer);
+      closeZonePanelTimer = null;
+    }
     set((state) => ({
       selectedZone: zoneName,
       zoneData: data ?? state.zoneData,
       zonePanelOpen: true,
       openCount: state.openCount + 1,
       flowPanelOpen: false,
-    })),
+    }));
+  },
 
   updateZoneData: (data) => set({ zoneData: data }),
 
   closeZonePanel: () => {
     set({ zonePanelOpen: false, zoneSeries: null, zoneSeriesIndex: 0 });
-    setTimeout(() => {
+    if (closeZonePanelTimer !== null) clearTimeout(closeZonePanelTimer);
+    closeZonePanelTimer = setTimeout(() => {
+      closeZonePanelTimer = null;
       set({ selectedZone: undefined, zoneData: null });
     }, 500);
   },
 
-  openFlowPanel: (data) =>
+  openFlowPanel: (data) => {
+    if (closeFlowPanelTimer !== null) {
+      clearTimeout(closeFlowPanelTimer);
+      closeFlowPanelTimer = null;
+    }
     set((state) => ({
       flowPanelData: data,
       flowPanelOpen: true,
       flowOpenCount: state.flowOpenCount + 1,
       zonePanelOpen: false,
       bottomSheetState: 'full',
-    })),
+    }));
+  },
+
+  updateFlowPanelData: (data) => set({ flowPanelData: data }),
 
   closeFlowPanel: () => {
     set({ flowPanelOpen: false });
-    setTimeout(() => set({ flowPanelData: null }), 500);
+    if (closeFlowPanelTimer !== null) clearTimeout(closeFlowPanelTimer);
+    closeFlowPanelTimer = setTimeout(() => {
+      closeFlowPanelTimer = null;
+      set({ flowPanelData: null });
+    }, 500);
   },
 
   toggleSidebar: () =>
@@ -203,6 +240,7 @@ export function useFlowPanel() {
       flowPanelData: state.flowPanelData,
       flowOpenCount: state.flowOpenCount,
       openFlowPanel: state.openFlowPanel,
+      updateFlowPanelData: state.updateFlowPanelData,
       closeFlowPanel: state.closeFlowPanel,
     })),
   );

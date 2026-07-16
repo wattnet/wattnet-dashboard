@@ -132,7 +132,10 @@ export default function DateSelector({
   const timeIndexRef = useRef(selectedTimeIndex);
   timeIndexRef.current = selectedTimeIndex;
 
-  const maxIndex = useMemo(() => Math.max(1, (data?.[0]?.series?.length ?? 1) - 1), [data]);
+  const maxIndex = useMemo(
+    () => Math.max(1, (data?.[0]?.series?.length ?? 1) - 1),
+    [data],
+  );
   const maxIndexRef = useRef(maxIndex);
   maxIndexRef.current = maxIndex;
 
@@ -190,7 +193,8 @@ export default function DateSelector({
     if (selectedTimeIndex > 0) setSelectedTimeIndex(selectedTimeIndex - 1);
   };
   const stepForward = () => {
-    if (selectedTimeIndex < maxIndex) setSelectedTimeIndex(selectedTimeIndex + 1);
+    if (selectedTimeIndex < maxIndex)
+      setSelectedTimeIndex(selectedTimeIndex + 1);
   };
   stepBackRef.current = stepBack;
   stepForwardRef.current = stepForward;
@@ -612,7 +616,11 @@ export default function DateSelector({
 
                 "& .MuiYearCalendar-root": { width: "100%" },
 
-                "& .MuiPickersCalendarHeader-root": { px: "12px", mt: 0, mb: 0 },
+                "& .MuiPickersCalendarHeader-root": {
+                  px: "12px",
+                  mt: 0,
+                  mb: 0,
+                },
                 "& .MuiDayCalendar-header": {
                   px: "12px",
                   justifyContent: "space-between",
@@ -693,7 +701,8 @@ export default function DateSelector({
                     fontWeight: 500,
                   }}
                 >
-                  Click the same day to confirm, or pick an end date (max 7 days)
+                  Click the same day to confirm, or pick an end date (max 7
+                  days)
                 </Typography>
               )}
               <DateCalendar
@@ -751,7 +760,7 @@ export default function DateSelector({
                   sx={{
                     position: "absolute",
                     left: `${(tick.value / maxIndex) * 100}%`,
-                    top: -3.5,
+                    top: -3,
                     transform: "translateX(-50%)",
                     width: "1.5px",
                     height: 15,
@@ -778,6 +787,7 @@ export default function DateSelector({
               height: 4,
               px: 0,
               py: "6px",
+              transform: "translateY(1px)",
               "& .MuiSlider-thumb": {
                 width: 12,
                 height: 12,
