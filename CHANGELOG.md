@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.6.0](https://github.com/wattnet/wattnet-dashboard/compare/v1.5.2...v1.6.0) (2026-07-16)
+
+
+### Features
+
+* adjust SidebarHeader styling for improved layout and visual consistency ([6925795](https://github.com/wattnet/wattnet-dashboard/commit/69257955bab38db008226aff51e99b0900096c7b))
+* enhance mobile flow panel with no-data handling and accessibility improvements ([6920448](https://github.com/wattnet/wattnet-dashboard/commit/69204489c341e7a46bc688a7950fe3993c0ff4cc))
+* enhance useDataRefresh to return flat slot index and improve probing logic ([938aff0](https://github.com/wattnet/wattnet-dashboard/commit/938aff0508ae847594ece9d25e779b0a45316f56))
+* optimize arrows ([63fe2ac](https://github.com/wattnet/wattnet-dashboard/commit/63fe2ac988f715594983f1d0373c02ffd65a45a0))
+* update MobileTopSheet and SidebarContent for logo display and styling ([7bbe176](https://github.com/wattnet/wattnet-dashboard/commit/7bbe176c6136efdd7380284858b3dfc37633a190))
+* update zone crossings data with additional geographic pairs and adjust nearby degree threshold ([aaf885c](https://github.com/wattnet/wattnet-dashboard/commit/aaf885cd62c742afc0612ed0d249a2cd7ecefba5))
+
+
+### Bug Fixes
+
+* ensure map instance is valid before usage in MapContainer ([7bbe176](https://github.com/wattnet/wattnet-dashboard/commit/7bbe176c6136efdd7380284858b3dfc37633a190))
+* flow arrows polish and stability improvements ([31ac5cd](https://github.com/wattnet/wattnet-dashboard/commit/31ac5cdfcde91e902eaa1f05119ce5569c9d73ae))
+* remove Isle of Man feature from geojson map ([67fa4f3](https://github.com/wattnet/wattnet-dashboard/commit/67fa4f3c35ca3681e6268e7ec44750829487f269))
+* send use_global for green-score requests so flow tracing toggle updates data ([7df862e](https://github.com/wattnet/wattnet-dashboard/commit/7df862e5a80442ca762011063c7425c1aca98a56))
+
 ## [1.5.2](https://github.com/wattnet/wattnet-dashboard/compare/v1.5.1...v1.5.2) (2026-06-22)
 
 
