@@ -1,6 +1,6 @@
 {
   "name": "wattnet-dashboard",
-  "version": "1.5.2",
+  "version": "1.6.0",
   "private": true,
   "scripts": {
     "crossings": "node scripts/compute-zone-crossings.mjs",
