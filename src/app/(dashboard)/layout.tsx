@@ -259,25 +259,43 @@ function DragHandle() {
 // ── ZoneDataContent ────────────────────────────────────────────────────────
 function ZoneDataContent() {
   const { zoneData } = useZonePanel();
+  const { zoneSeries, zoneSeriesIndex } = useZoneChart();
   const { scope } = useMapControls();
   const { flowTracing } = useFlowTracing();
 
   const { currentPalette } = useAppTheme();
   const colors = currentPalette.chipColors;
 
-  if (!zoneData)
+  if (!zoneData) {
     return (
-      <Typography
-        sx={{
-          fontSize: 13,
-          color: TEXT_DIM,
-        }}
-      >
+      <Typography sx={{ fontSize: 13, color: TEXT_DIM }}>
         No data available.
       </Typography>
     );
+  }
 
-  const valStr = zoneData.value != null ? zoneData.value.toFixed(2) : "—";
+  const activePoint = zoneSeries?.[zoneSeriesIndex]; // active point on the timeline graph
+
+  const currentVal = activePoint?.value !== undefined ? activePoint.value : zoneData.value;
+  const valStr = currentVal != null ? currentVal.toFixed(2) : "—";
+
+  const displayDate = activePoint?.timestamp
+    ? (() => {
+        const d = new Date(activePoint.timestamp);
+        const datePart = d.toLocaleDateString("en-GB", {
+      timeZone: "UTC",
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+    const timePart = d.toLocaleTimeString("en-GB", {
+      timeZone: "UTC",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+        return `${datePart} · ${timePart} UTC`;
+      })()
+    : zoneData.date;
 
   // 1. Final / Not Final
   const finalKey: ChipKey = zoneData.valid ? "final" : "notFinal";
@@ -314,7 +332,7 @@ function ZoneDataContent() {
     <Box sx={{ display: "flex", gap: 3, alignItems: "flex-start" }}>
       {/* Left: data */}
       <Box sx={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
-        {zoneData.date && (
+        {displayDate && (
           <Typography
             sx={{
               fontSize: 13,
@@ -326,7 +344,7 @@ function ZoneDataContent() {
               mb: 1.5,
             }}
           >
-            {zoneData.date}
+            {displayDate}
           </Typography>
         )}
         <Box sx={{ display: "flex", alignItems: "baseline", gap: 1 }}>
