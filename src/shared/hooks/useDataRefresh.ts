@@ -30,7 +30,7 @@ export function buildSwrKey(
 ): string | null {
   if (!ephemeralToken) return null;
   const dimensionPart =
-    params.metric === 'green-score' ? '' : `-${params.dimension}`;
+    params.metric === 'environmental-score' ? '' : `-${params.dimension}`;
   return `${dateKey}.${params.metric}${dimensionPart}-${params.scope}-${params.use_global}`;
 }
 
@@ -129,8 +129,8 @@ export function useDataRefresh({
 
     const probeParams = new URLSearchParams();
     Object.entries(params).forEach(([key, value]) => {
-      // Skip dimension for green-score (matches useMetricData behaviour)
-      if (key === 'dimension' && params.metric === 'green-score') return;
+      // Skip dimension for environmental-score (matches useMetricData behaviour)
+      if (key === 'dimension' && params.metric === 'environmental-score') return;
       // Skip start/end — we'll set a tighter window below
       if (key === 'start' || key === 'end') return;
       if (value !== undefined) probeParams.append(key, String(value));
