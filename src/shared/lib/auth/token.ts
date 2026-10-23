@@ -1,42 +1,57 @@
 type TokenResponse = {
   access_token: string;
-  expires_at: string;
+  expires_in: number;
 };
 
+const RENEW_FRACTION = 0.8;
+const MIN_MARGIN_MS = 60_000;
+
 let cachedToken: string | null = null;
-let tokenExpiresAt: number | null = null;
+// performance.now() value: monotonic, so a clock change cannot extend a token.
+let renewAt = 0;
+let inFlight: Promise<string> | null = null;
 
-const TOKEN_ENDPOINT = process.env.API_TOKEN_ENDPOINT!;
-if (!TOKEN_ENDPOINT)
-  throw new Error('Missing TOKEN_ENDPOINT in environment variables');
-
-const EMAIL = process.env.API_EMAIL!;
-if (!EMAIL) throw new Error('Missing EMAIL in environment variables');
-
-const PASSWORD = process.env.API_PASSWORD!;
-if (!PASSWORD) throw new Error('Missing PASSWORD in environment variables');
+function requiredEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) throw new Error(`Missing ${name} in environment variables`);
+  return value;
+}
 
 async function requestNewToken(): Promise<string> {
-  const res = await fetch(TOKEN_ENDPOINT, {
+  const started = performance.now();
+  const res = await fetch(requiredEnv('API_TOKEN_ENDPOINT'), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: EMAIL, password: PASSWORD }),
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'client_credentials',
+      client_id: requiredEnv('API_CLIENT_ID'),
+      client_secret: requiredEnv('API_CLIENT_SECRET'),
+    }),
   });
 
-  if (!res.ok) throw new Error('Error requesting new token');
+  if (!res.ok) throw new Error(`Error requesting new token: ${res.status}`);
 
   const data: TokenResponse = await res.json();
+  const lifetimeMs = data.expires_in * 1000;
   cachedToken = data.access_token;
-  tokenExpiresAt = new Date(data.expires_at).getTime();
+  renewAt =
+    started +
+    Math.max(
+      Math.min(lifetimeMs * RENEW_FRACTION, lifetimeMs - MIN_MARGIN_MS),
+      0,
+    );
   return cachedToken;
 }
 
-function isTokenExpired(): boolean {
-  if (!cachedToken || !tokenExpiresAt) return true;
-  return Date.now() > tokenExpiresAt - 30_000;
+export async function getAccessToken(): Promise<string> {
+  if (cachedToken && performance.now() < renewAt) return cachedToken;
+  // One request at a time: concurrent callers share the same token request.
+  inFlight ??= requestNewToken().finally(() => {
+    inFlight = null;
+  });
+  return inFlight;
 }
 
-export async function getAccessToken(): Promise<string> {
-  if (isTokenExpired()) return requestNewToken();
-  return cachedToken!;
+export function invalidateAccessToken(): void {
+  cachedToken = null;
 }
