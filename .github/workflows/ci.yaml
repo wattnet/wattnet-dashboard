@@ -28,9 +28,6 @@ jobs:
         run: |
           docker build \
             --build-arg API_URL=${{ secrets.API_URL }} \
-            --build-arg API_TOKEN_ENDPOINT=${{ secrets.API_TOKEN_ENDPOINT }} \
-            --build-arg API_EMAIL=${{ secrets.API_EMAIL }} \
-            --build-arg API_PASSWORD=${{ secrets.API_PASSWORD }} \
             --build-arg DASHBOARD_API_KEY=${{ secrets.DASHBOARD_API_KEY }} \
             --build-arg NEXT_PUBLIC_DASHBOARD_API_KEY=${{ secrets.NEXT_PUBLIC_DASHBOARD_API_KEY }} \
             -t wattnet/wattnet-dashboard:${{ steps.version.outputs.VERSION }} \
