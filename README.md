@@ -68,8 +68,6 @@ The dashboard reads its settings from environment variables or from a `.env` fil
 
 The credential of the dashboard asks for every zone, the forecast and the shares, so it has to belong to an account with a tier that allows it.
 
-The Docker build also accepts `API_URL`, `DASHBOARD_API_KEY` and `NEXT_PUBLIC_DASHBOARD_API_KEY` as build arguments.
-
 ## Usage
 
 Start the development server, which listens on [http://localhost:3000](http://localhost:3000):
@@ -93,13 +91,21 @@ Each release is published as a multi-architecture image (`linux/amd64` and `linu
 
 ```bash
 docker pull wattnet/wattnet-dashboard:<version>
-docker run -p 3000:3000 -e API_URL=<api-url> wattnet/wattnet-dashboard:<version>
+docker run -p 3000:3000 \
+  -e API_URL=<api-url> \
+  -e API_TOKEN_ENDPOINT=<token-endpoint> \
+  -e API_CLIENT_ID=<client-id> \
+  -e API_CLIENT_SECRET=<client-secret> \
+  -e DASHBOARD_TOKEN_SECRET=<random-secret> \
+  wattnet/wattnet-dashboard:<version>
 ```
 
-The image serves the dashboard on port 3000, and the server reads `API_URL` when it runs. To build the image yourself, pass the same address as a build argument:
+The image serves the dashboard on port 3000 and holds no secret: every setting of the [Configuration](#configuration) section is read when it runs, so the same image works in any environment. It runs as the user `10001` and works with a read only root filesystem, as long as `/app/.next/cache` is a writable volume. When it runs in more than one replica, all of them must have the same `DASHBOARD_TOKEN_SECRET`. The health check of the image asks `/api/core`, which fails when that secret is missing.
+
+To build the image yourself, no build argument is needed:
 
 ```bash
-docker build --build-arg API_URL=<api-url> -t wattnet-dashboard .
+docker build -t wattnet-dashboard .
 ```
 
 ## Development

@@ -1,0 +1,15 @@
+# What the build of the image does not need. The important one is .env: a local file with credentials must not
+# be copied into the image.
+node_modules
+.next
+.git
+.github
+.vscode
+.env
+.env.*
+!.env.example
+*.tsbuildinfo
+npm-debug.log*
+yarn-error.log*
+Dockerfile
+.dockerignore
