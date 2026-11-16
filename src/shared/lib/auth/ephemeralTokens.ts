@@ -5,7 +5,12 @@ import { createHmac, timingSafeEqual } from 'crypto';
 // it and several valid tokens can exist at the same time (a token held in memory lives in one process, and
 // the next one replaced it). It only tells the routes of the dashboard that the request comes from a page
 // of the dashboard; the real protection of the data is the API of Wattnet.
-const TOKEN_TTL_MS = 60_000;
+//
+// It lives five seconds, as it always did: a token that is copied from a request is of no use a moment later.
+// The page asks for a new one when a route answers 401 and tries again, so a token that has grown old costs
+// one more request and nothing else. It is not a barrier against a script, which can ask /api/core as often
+// as it wants: it only makes sure that a token is not kept and used again.
+const TOKEN_TTL_MS = 5_000;
 
 function secret(): string {
   const value = process.env.DASHBOARD_TOKEN_SECRET;
