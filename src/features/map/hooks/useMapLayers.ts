@@ -93,8 +93,8 @@ function isTouchDevice(): boolean {
   return globalThis.matchMedia('(hover: none) and (pointer: coarse)').matches;
 }
 
-function formatDatetime(date: Date, timeIndex: number): string {
-  const d = new Date(slotToTimestampMs(date, timeIndex));
+function formatDatetime(timestampMs: number): string {
+  const d = new Date(timestampMs);
   const datePart = d.toLocaleDateString('en-GB', {
     timeZone: 'UTC',
     day: 'numeric',
@@ -109,8 +109,8 @@ function formatDatetime(date: Date, timeIndex: number): string {
   return `${datePart} · ${timePart} UTC`;
 }
 
-function calcIsForecast(date: Date, timeIndex: number): boolean {
-  return slotToTimestampMs(date, timeIndex) > Date.now();
+function calcIsForecast(timestampMs: number): boolean {
+  return timestampMs > Date.now();
 }
 
 interface ChipDef {
@@ -251,7 +251,12 @@ export function useMapLayers(
         (d) => d.zone === props.zoneName,
       );
       const currentItem = fp?.series[timeIndexRef.current];
-      const forecast = calcIsForecast(dateRef.current, timeIndexRef.current);
+
+      const timestampMs = currentItem?.timestamp
+        ? new Date(currentItem.timestamp).getTime()
+        : slotToTimestampMs(dateRef.current, timeIndexRef.current % 96);
+
+      const forecast = calcIsForecast(timestampMs);
 
       return {
         zoneName: props.countryName ?? 'Unknown',
@@ -261,7 +266,7 @@ export function useMapLayers(
         label: scaleConfigRef.current.title,
         zoneStatus: currentItem?.zoneStatus ?? props.zone_status ?? 'missing',
         valid: currentItem?.valid ?? props.valid ?? false,
-        date: formatDatetime(dateRef.current, timeIndexRef.current),
+        date: formatDatetime(timestampMs),
         isForecast: forecast,
       };
     },
@@ -278,13 +283,12 @@ export function useMapLayers(
     if (!lastHoverRef.current || !popupRef.current?.isOpen()) return;
     const { props, type } = lastHoverRef.current;
     const data = buildZoneData(props, type);
-    const datetime = formatDatetime(dateRef.current, timeIndexRef.current);
     const chips = buildPopupChips(
       data,
       scopeRef.current,
       flowTracingRef.current,
     );
-    popupRef.current.setHTML(buildHTML(data, datetime, chips));
+    popupRef.current.setHTML(buildHTML(data, data.date as string, chips));
   }, [selectedTimeIndex, selectedDate, buildZoneData]);
 
   const renderLayers = useCallback(
@@ -364,10 +368,17 @@ export function useMapLayers(
           const props = e.features[0].properties as ZoneFeatureProperties;
           lastHoverRef.current = { props, type };
           const data = buildZoneData(props, type);
-          const datetime = formatDatetime(
-            dateRef.current,
-            timeIndexRef.current,
+
+          const fp = processedDataRef.current.find(
+            (d) => d.zone === props.zoneName,
           );
+          const currentItem = fp?.series[timeIndexRef.current];
+
+          const timestampMs = currentItem?.timestamp
+            ? new Date(currentItem.timestamp).getTime()
+            : slotToTimestampMs(dateRef.current, timeIndexRef.current % 96);
+
+          const datetime = formatDatetime(timestampMs);
           const chips = buildPopupChips(
             data,
             scopeRef.current,
