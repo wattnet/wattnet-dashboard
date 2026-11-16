@@ -3,7 +3,7 @@ import { FootprintQueryParams } from '@/src/shared/types/queryParams';
 import {
   fetchFootprints,
   fetchImpacts,
-  fetchGreenScore,
+  fetchEnvironmentalScore,
 } from '@/src/shared/lib/api/api';
 import { getCurrentToken } from '@/src/shared/lib/auth/ephemeralTokens';
 
@@ -13,7 +13,7 @@ const FETCHER_BY_METRIC: Record<
 > = {
   footprint: fetchFootprints,
   impact: fetchImpacts,
-  'green-score': fetchGreenScore,
+  'environmental-score': fetchEnvironmentalScore,
 };
 
 export async function GET(request: Request) {
@@ -39,7 +39,7 @@ export async function GET(request: Request) {
     start: url.searchParams.get('start') ?? new Date().toISOString(),
     end: url.searchParams.get('end') ?? new Date().toISOString(),
     zone: url.searchParams.get('zone') ?? '',
-    // dimension is intentionally omitted for green-score (no carbon/water split)
+    // dimension is intentionally omitted for environmental-score (no carbon/water split)
     ...(metric === 'footprint' && {
       aggregate: url.searchParams.get('aggregate') === 'true',
       use_global: url.searchParams.get('use_global') === 'true',
@@ -50,7 +50,7 @@ export async function GET(request: Request) {
       use_global: url.searchParams.get('use_global') === 'true',
       impact_type: url.searchParams.get('dimension') as 'water',
     }),
-    ...(metric === 'green-score' && {
+    ...(metric === 'environmental-score' && {
       aggregate: url.searchParams.get('aggregate') === 'true',
       use_global: url.searchParams.get('use_global') === 'true',
     }),

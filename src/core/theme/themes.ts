@@ -13,7 +13,7 @@ export interface ThemePalette {
     carbonFootprint: string[];
     waterFootprint: string[];
     waterImpact: string[];
-    greenScore: string[];
+    environmentalScore: string[];
     noData: string;
     mapBorder: string;
   };
@@ -69,7 +69,7 @@ const BASE_MAP_SCALES = {
     '#3A2F66',
     '#241A3D',
   ],
-  greenScore: [
+  environmentalScore: [
     '#C41E3Aff',
     '#D42E3Eff',
     '#E23E42ff',
@@ -120,7 +120,7 @@ const COLORBLIND_MAP_SCALES = {
     '#420854',
     '#2B002E',
   ],
-  greenScore: [
+  environmentalScore: [
     '#B2182B',
     '#D6604D',
     '#F4A582',

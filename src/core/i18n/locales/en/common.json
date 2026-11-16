@@ -12,8 +12,8 @@
           "label": "Impact",
           "tooltip": "The real environmental damage caused by that consumption. Carbon impact equals carbon footprint, while water impact is adjusted for local water scarcity."
         },
-        "greenScore": {
-          "label": "Green Score",
+        "environmentalScore": {
+          "label": "Score",
           "tooltip": "Overall environmental performance score that takes into account the region's carbon and water impact (the higher the better)"
         }
       },

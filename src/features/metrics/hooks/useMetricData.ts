@@ -27,7 +27,7 @@ export function useMetricData(params: FootprintQueryParams, dateKey: string) {
 
       const query = new URLSearchParams();
       Object.entries(params).forEach(([key, value]) => {
-        if (key === 'dimension' && params.metric === 'green-score') return;
+        if (key === 'dimension' && params.metric === 'environmental-score') return;
         if (value !== undefined) query.append(key, String(value));
       });
 

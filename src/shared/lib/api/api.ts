@@ -40,13 +40,13 @@ export async function fetchImpacts(
   }
 }
 
-export async function fetchGreenScore(
+export async function fetchEnvironmentalScore(
   params: FootprintQueryParams,
 ): Promise<Footprint[]> {
   try {
-    return await fetchFromApi(endpoints.greenScore(params), 'green-score');
+    return await fetchFromApi(endpoints.environmentalScore(params), 'environmental-score');
   } catch (err) {
-    console.error('fetchGreenScore error:', err);
+    console.error('fetchEnvironmentalScore error:', err);
     return [];
   }
 }

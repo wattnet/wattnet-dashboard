@@ -20,7 +20,7 @@ const buildUrl = (
 export const endpoints = {
   footprints: (params: FootprintQueryParams) => buildUrl('footprints', params),
   impacts: (params: FootprintQueryParams) => buildUrl('impacts', params),
-  greenScore: (params: FootprintQueryParams) =>
-    buildUrl('green-score', params, ['dimension']),
+  environmentalScore: (params: FootprintQueryParams) =>
+    buildUrl('environmental-score', params, ['dimension']),
   imports: (params: ImportsQueryParams) => buildUrl('imports', params),
 };

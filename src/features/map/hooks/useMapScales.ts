@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import { useAppTheme } from '@/src/core/theme/ThemeContext';
 
-export type MetricKey = 'footprint' | 'impact' | 'green-score';
+export type MetricKey = 'footprint' | 'impact' | 'environmental-score';
 export type DimensionKey = 'carbon' | 'water';
 
 export interface ScaleConfig {
@@ -32,8 +32,8 @@ export function useMapScales(
     const waterValues = [0, 0.5, 1, 3, 7, 13, 21, 33, 45, 200];
     const waterLabels = [0, 1, 7, 21, 45, 200];
 
-    const greenScoreValues = [0, 11, 20, 33, 40, 55, 60, 77, 80, 100];
-    const greenScoreLabels = [0, 20, 40, 60, 80, 100];
+    const environmentalScoreValues = [0, 11, 20, 33, 40, 55, 60, 77, 80, 100];
+    const environmentalScoreLabels = [0, 20, 40, 60, 80, 100];
 
     const getLegendColors = (colors: string[]) => [
       colors[0],
@@ -44,15 +44,15 @@ export function useMapScales(
       colors[9],
     ];
 
-    if (metric === 'green-score') {
+    if (metric === 'environmental-score') {
       return {
         stops: {
-          mapValues: greenScoreValues,
-          labels: greenScoreLabels,
-          colors: scales.greenScore,
+          mapValues: environmentalScoreValues,
+          labels: environmentalScoreLabels,
+          colors: scales.environmentalScore,
         },
-        legendColors: getLegendColors(scales.greenScore),
-        title: 'Green Score',
+        legendColors: getLegendColors(scales.environmentalScore),
+        title: 'Environmental Score',
       };
     }
 

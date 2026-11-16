@@ -20,7 +20,7 @@ export function parsePlayParam(raw: string | null): boolean {
   return raw !== null;
 }
 
-const VALID_METRICS: MetricKey[] = ["footprint", "impact", "green-score"];
+const VALID_METRICS: MetricKey[] = ["footprint", "impact", "environmental-score"];
 const VALID_DIMENSIONS: DimensionKey[] = ["carbon", "water"];
 const VALID_SCOPES = ["life-cycle", "operational"] as const;
 

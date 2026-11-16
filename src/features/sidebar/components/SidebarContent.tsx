@@ -166,7 +166,7 @@ function OptionsBody() {
     if (metric === "impact") {
       setDimension("water");
       setScope("operational");
-    } else if (metric == "green-score") {
+    } else if (metric == "environmental-score") {
       setScope("operational");
     }
   }, [metric]);
@@ -195,9 +195,9 @@ function OptionsBody() {
             tooltip: t("sidebar.options.metric.impact.tooltip"),
           },
           {
-            value: "green-score",
-            label: t("sidebar.options.metric.greenScore.label"),
-            tooltip: t("sidebar.options.metric.greenScore.tooltip"),
+            value: "environmental-score",
+            label: t("sidebar.options.metric.environmentalScore.label"),
+            tooltip: t("sidebar.options.metric.environmentalScore.tooltip"),
           },
         ]}
       />
@@ -206,7 +206,7 @@ function OptionsBody() {
         label={t("sidebar.options.dimension.title")}
         value={dimension}
         onChange={setDimension}
-        disabled={metric === "green-score"}
+        disabled={metric === "environmental-score"}
         options={[
           {
             value: "carbon",
@@ -226,7 +226,7 @@ function OptionsBody() {
         label={t("sidebar.options.scope.title")}
         value={scope}
         onChange={setScope}
-        disabled={metric === "green-score"}
+        disabled={metric === "environmental-score"}
         options={[
           {
             value: "life-cycle",
