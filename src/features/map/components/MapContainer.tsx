@@ -82,6 +82,10 @@ export default function MapContainer({
     if (!mapContainer.current || mapInstance.current) return;
     injectMapStyles();
 
+    // MapLibre 6 cannot find its worker inside a bundle (its URL comes from import.meta.url, which is a file: URL there), so the page
+    // would be loaded as the worker. scripts/copy-maplibre-worker.mjs puts the worker in public/maplibre-gl/.
+    maplibregl.setWorkerUrl("/maplibre-gl/maplibre-gl-worker.mjs");
+
     const map = new maplibregl.Map({
       container: mapContainer.current,
       style: {

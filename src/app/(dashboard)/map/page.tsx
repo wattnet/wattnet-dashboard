@@ -427,7 +427,7 @@ function MapContent() {
                 fontSize: 12,
               }}
             >
-              Error: {error}
+              Error: {error instanceof Error ? error.message : String(error)}
             </Box>
           )}
         </Box>
@@ -496,7 +496,7 @@ function MapContent() {
                 fontSize: 12,
               }}
             >
-              Error: {error}
+              Error: {error instanceof Error ? error.message : String(error)}
             </Box>
           )}
         </Box>
