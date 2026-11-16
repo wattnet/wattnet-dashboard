@@ -12,6 +12,8 @@ RUN yarn install --immutable
 # No build arguments and no secrets: the settings of the dashboard (the URL of the API, its credential and the
 # secret of its tokens) are read when it runs, see the Configuration section of the README.
 COPY . .
+# The standalone output is for the image only, see next.config.ts.
+ENV NEXT_OUTPUT=standalone
 RUN yarn build
 
 
