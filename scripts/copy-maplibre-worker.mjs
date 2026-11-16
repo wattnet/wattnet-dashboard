@@ -7,6 +7,9 @@
 //
 // The worker imports maplibre-gl-shared.mjs by a relative path, so both files go in the same folder. They are copied from the
 // installed package every time (the folder is not in git) so that they are always the ones of the version that is installed.
+//
+// It is run by the scripts dev and build of package.json, and not by predev and prebuild: Yarn 3 does not run the hooks pre and post of the
+// scripts of the project, so a build from a clean checkout (the CI, the image) would not have the worker and the server would answer 404.
 import { copyFileSync, mkdirSync, existsSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";

@@ -4,10 +4,8 @@
   "private": true,
   "scripts": {
     "crossings": "node scripts/compute-zone-crossings.mjs",
-    "predev": "node scripts/ensure-zone-crossings.mjs && node scripts/copy-maplibre-worker.mjs",
-    "prebuild": "node scripts/ensure-zone-crossings.mjs && node scripts/copy-maplibre-worker.mjs",
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "node scripts/ensure-zone-crossings.mjs && node scripts/copy-maplibre-worker.mjs && next dev",
+    "build": "node scripts/ensure-zone-crossings.mjs && node scripts/copy-maplibre-worker.mjs && next build",
     "start": "next start",
     "lint": "eslint"
   },
