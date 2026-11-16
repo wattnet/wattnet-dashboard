@@ -43,6 +43,8 @@ export function useMetricData(params: FootprintQueryParams, dateKey: string) {
         res = await fetchWithToken(newToken);
       }
 
+      // An error is shown by the page (and the previous data is kept), not taken for the data.
+      if (!res.ok) throw new Error(`Error ${res.status} fetching ${params.metric}`);
       return res.json();
     },
     { keepPreviousData: true },

@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
-import { getCurrentToken } from "@/src/shared/lib/auth/ephemeralTokens";
+import { isValidToken } from "@/src/shared/lib/auth/ephemeralTokens";
 import { fetchImports } from "@/src/shared/lib/api/api";
 
 export async function GET(request: Request) {
-  const token = request.headers.get("x-dashboard-token");
-  if (!token || token !== getCurrentToken()) {
+  if (!isValidToken(request.headers.get("x-dashboard-token"))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -22,7 +21,9 @@ export async function GET(request: Request) {
   try {
     const data = await fetchImports({ start, end });
     return NextResponse.json(data);
-  } catch {
-    return NextResponse.json({ error: "Error fetching imports" }, { status: 500 });
+  } catch (err) {
+    // The API of Wattnet refused or failed: say so (502), do not show it as an empty map.
+    console.error("/api/imports:", err);
+    return NextResponse.json({ error: "Error fetching imports" }, { status: 502 });
   }
 }
