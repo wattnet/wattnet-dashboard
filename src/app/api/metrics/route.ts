@@ -1,15 +1,15 @@
 import { NextResponse } from 'next/server';
-import { FootprintQueryParams } from '@/src/shared/types/queryParams';
+import { ApiQueryParams } from '@/src/shared/types/queryParams';
 import {
   fetchFootprints,
   fetchImpacts,
   fetchEnvironmentalScore,
 } from '@/src/shared/lib/api/api';
-import { getCurrentToken } from '@/src/shared/lib/auth/ephemeralTokens';
+import { isValidToken } from '@/src/shared/lib/auth/ephemeralTokens';
 
 const FETCHER_BY_METRIC: Record<
   string,
-  (params: FootprintQueryParams) => Promise<unknown>
+  (params: ApiQueryParams) => Promise<unknown>
 > = {
   footprint: fetchFootprints,
   impact: fetchImpacts,
@@ -17,8 +17,7 @@ const FETCHER_BY_METRIC: Record<
 };
 
 export async function GET(request: Request) {
-  const token = request.headers.get('x-dashboard-token');
-  if (!token || token !== getCurrentToken()) {
+  if (!isValidToken(request.headers.get('x-dashboard-token'))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -33,13 +32,14 @@ export async function GET(request: Request) {
     );
   }
 
-  const params: FootprintQueryParams = {
-    metric: metric as FootprintQueryParams['metric'],
+  // Only what the API declares goes in here: the metric picks the endpoint and the dimension is sent as
+  // footprint_type or impact_type. The environmental score has no carbon/water split.
+  const params: ApiQueryParams = {
     scope: url.searchParams.get('scope') as 'life-cycle' | 'operational',
     start: url.searchParams.get('start') ?? new Date().toISOString(),
     end: url.searchParams.get('end') ?? new Date().toISOString(),
-    zone: url.searchParams.get('zone') ?? '',
-    // dimension is intentionally omitted for environmental-score (no carbon/water split)
+    // No zone means every zone, which the map needs: an empty string is left out when the URL is built.
+    zone: url.searchParams.get('zone') ?? undefined,
     ...(metric === 'footprint' && {
       aggregate: url.searchParams.get('aggregate') === 'true',
       use_global: url.searchParams.get('use_global') === 'true',
@@ -60,9 +60,11 @@ export async function GET(request: Request) {
     const data = await fetcher(params);
     return NextResponse.json(data);
   } catch (err) {
+    // The API of Wattnet refused or failed: say so (502), do not show it as an empty map.
+    console.error(`/api/metrics ${metric}:`, err);
     return NextResponse.json(
       { error: `Error fetching ${metric} data` },
-      { status: 500 },
+      { status: 502 },
     );
   }
 }

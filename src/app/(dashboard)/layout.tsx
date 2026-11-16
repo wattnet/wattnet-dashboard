@@ -34,9 +34,8 @@ import {
 } from "@/src/features/dashboard/store/useDashboardStore";
 import { useAppTheme } from "@/src/core/theme/ThemeContext";
 import { formatDatasource } from "@/src/shared/utils/datasource";
+import { MOBILE_TOP_BAR_H, MOBILE_PEEK_H } from "@/src/shared/constants/layout";
 
-export const MOBILE_TOP_BAR_H = 48;
-export const MOBILE_PEEK_H = 240;
 
 // ── Palette ─────────────────────────────────────────────────────
 const BORDER = "var(--color-border)";

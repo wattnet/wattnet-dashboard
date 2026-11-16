@@ -58,9 +58,15 @@ yarn install
 
 The dashboard reads its settings from environment variables or from a `.env` file.
 
-| Variable  | Description                                            |
-| --------- | ------------------------------------------------------ |
-| `API_URL` | Base URL of the Wattnet API that the dashboard queries |
+| Variable                 | Description                                                                                                                                              |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `API_URL`                | Base URL of the Wattnet API that the dashboard queries                                                                                                   |
+| `API_TOKEN_ENDPOINT`     | OAuth 2.0 token endpoint where the server asks for the access token of the API (the `client_credentials` grant)                                          |
+| `API_CLIENT_ID`          | Client ID of the credential that the dashboard uses to call the API                                                                                      |
+| `API_CLIENT_SECRET`      | Client secret of that credential. It never reaches the browser                                                                                           |
+| `DASHBOARD_TOKEN_SECRET` | Secret that signs the short-lived tokens that the pages send to the routes of the dashboard. It is required in production and every replica must share it |
+
+The credential of the dashboard asks for every zone, the forecast and the shares, so it has to belong to an account with a tier that allows it.
 
 The Docker build also accepts `API_URL`, `DASHBOARD_API_KEY` and `NEXT_PUBLIC_DASHBOARD_API_KEY` as build arguments.
 

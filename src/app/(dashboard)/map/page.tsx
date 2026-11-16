@@ -24,7 +24,7 @@ import GlobalTag from "@/src/features/map/components/GlobalTag";
 import MapContainer from "@/src/features/map/components/MapContainer";
 
 import { useTheme, useMediaQuery } from "@mui/material";
-import { MOBILE_TOP_BAR_H } from "@/src/app/(dashboard)/layout";
+import { MOBILE_TOP_BAR_H } from "@/src/shared/constants/layout";
 import type { Map } from "maplibre-gl";
 import {
   useMapControls,

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { DimensionKey, MetricKey } from '@/src/features/map/utils/mapScales';
+import { DimensionKey, MetricKey } from '@/src/features/map/hooks/useMapScales';
 import { useShallow } from 'zustand/react/shallow';
 
 export type BottomSheetState = 'hidden' | 'peek' | 'full';
