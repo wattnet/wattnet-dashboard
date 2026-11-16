@@ -1,53 +1,49 @@
 # Stage 1: Builder
-FROM node:20-alpine AS builder
+FROM node:24-alpine AS builder
 
 WORKDIR /app
 
 RUN corepack enable
 
-ARG API_URL
-ARG DASHBOARD_API_KEY
-ARG NEXT_PUBLIC_DASHBOARD_API_KEY
-
-ENV API_URL=$API_URL \
-    DASHBOARD_API_KEY=$DASHBOARD_API_KEY \
-    NEXT_PUBLIC_DASHBOARD_API_KEY=$NEXT_PUBLIC_DASHBOARD_API_KEY
-
-# Copia archivos de dependencias
+# The dependencies first, so that the layer is reused while only the code changes.
 COPY package.json yarn.lock .yarnrc.yml ./
-
-# Instala dependencias
 RUN yarn install --immutable
 
-# Copia el resto del código
+# No build arguments and no secrets: the settings of the dashboard (the URL of the API, its credential and the
+# secret of its tokens) are read when it runs, see the Configuration section of the README.
 COPY . .
-
-# Build
 RUN yarn build
 
 
 # Stage 2: Runner
-FROM node:20-alpine AS runner
+FROM node:24-alpine AS runner
 
 WORKDIR /app
 
-RUN addgroup -S app && adduser -S app -G app \
-    && chown app:app /app
+# A fixed numeric user, so that a cluster can ask for runAsNonRoot and a read only root filesystem.
+RUN addgroup -S -g 10001 app && adduser -S -u 10001 -G app app
 
-RUN corepack enable
+ENV NODE_ENV=production \
+    NEXT_TELEMETRY_DISABLED=1 \
+    PORT=3000 \
+    HOSTNAME=0.0.0.0
 
-ENV NODE_ENV=production
+# The standalone output has the server and only the modules that it needs: no yarn, no corepack and no
+# development dependencies at start. The static files and the public folder are not part of it.
+COPY --from=builder --chown=10001:10001 /app/.next/standalone ./
+COPY --from=builder --chown=10001:10001 /app/.next/static ./.next/static
+COPY --from=builder --chown=10001:10001 /app/public ./public
 
-COPY --from=builder --chown=app:app /app/package.json ./
-COPY --from=builder --chown=app:app /app/yarn.lock ./
-COPY --from=builder --chown=app:app /app/.yarnrc.yml ./ 
-COPY --from=builder --chown=app:app /app/.next ./.next
-COPY --from=builder --chown=app:app /app/public ./public
-COPY --from=builder --chown=app:app /app/node_modules ./node_modules
-COPY --from=builder --chown=app:app /app/next.config.ts ./next.config.ts
+# The cache of Next.js is written here: with a read only root filesystem, mount a volume on this folder.
+RUN mkdir -p .next/cache && chown 10001:10001 .next/cache
 
-USER app
+USER 10001
 
 EXPOSE 3000
 
-CMD ["yarn", "start"]
+# /api/core and not /: the page answers 200 even when DASHBOARD_TOKEN_SECRET is missing, and then every request
+# of the page to the dashboard fails. This one fails the same way, so the container is not healthy.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD wget -q -O /dev/null http://127.0.0.1:3000/api/core || exit 1
+
+CMD ["node", "server.js"]
