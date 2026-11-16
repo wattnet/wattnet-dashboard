@@ -1106,8 +1106,8 @@ function MobileTopSheet({
           <Image
             src="/images/wattnet-logo-icon-color-transparent.svg"
             alt="wattnet"
-            width={32}
-            height={32}
+            width={40}
+            height={40}
             priority
             style={{ display: "block" }}
           />
@@ -1116,7 +1116,7 @@ function MobileTopSheet({
             sx={{
               fontFamily: "var(--font-display)",
               fontWeight: 800,
-              fontSize: 18,
+              fontSize: 24,
               letterSpacing: "-0.01em",
               color: "var(--color-foreground)",
               lineHeight: 1,
@@ -1128,14 +1128,14 @@ function MobileTopSheet({
           <Box
             component="span"
             sx={{
-              ml: "4px",
+              ml: "2px",
               pl: "8px",
               borderLeft: "1px solid var(--color-border)",
               color: "color-mix(in srgb, var(--color-foreground) 60%, transparent)",
               fontFamily: "var(--font-display)",
               fontWeight: 400,
-              fontSize: 14,
-              lineHeight: 1,
+              fontSize: 16,
+              lineHeight: "28px",
               position: "relative",
               top: "-1px",
             }}

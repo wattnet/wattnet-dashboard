@@ -5,7 +5,7 @@ import Image from "next/image";
 import { Box, Typography } from "@mui/material";
 import MapIcon from "@mui/icons-material/Map";
 
-import packageInfo from "@/package.json";
+import { buildLabel, buildHref } from "@/src/shared/lib/version";
 import { SegmentedControl } from "../../../shared/components/SegmentedControl";
 import { useTranslation } from "react-i18next";
 import { useEffect } from "react";
@@ -375,8 +375,8 @@ export function SidebarHeader() {
         <Image
           src="/images/wattnet-logo-icon-color-transparent.svg"
           alt="wattnet"
-          width={38}
-          height={38}
+          width={40}
+          height={40}
           priority
         />
         <Box
@@ -384,7 +384,7 @@ export function SidebarHeader() {
           sx={{
             fontFamily: "var(--font-display)",
             fontWeight: 800,
-            fontSize: 25,
+            fontSize: 24,
             letterSpacing: "-0.01em",
             color: "var(--color-foreground)",
             lineHeight: 1,
@@ -397,14 +397,14 @@ export function SidebarHeader() {
         <Box
           component="span"
           sx={{
-            ml: "6px",
+            ml: "5px",
             pl: "10px",
             borderLeft: "1px solid var(--color-border)",
             color: "color-mix(in srgb, var(--color-foreground) 60%, transparent)",
             fontFamily: "var(--font-display)",
             fontWeight: 400,
-            fontSize: 19,
-            lineHeight: 1,
+            fontSize: 18,
+            lineHeight: "28px",
             position: "relative",
             top: "-1px",
           }}
@@ -413,7 +413,7 @@ export function SidebarHeader() {
         </Box>
         <Box
           component="a"
-          href="https://github.com/wattnet/wattnet-dashboard/releases"
+          href={buildHref}
           target="_blank"
           rel="noopener noreferrer"
           sx={{
@@ -434,7 +434,7 @@ export function SidebarHeader() {
             "&:hover": { opacity: 0.85 },
           }}
         >
-          v{packageInfo.version}
+          {buildLabel}
         </Box>
       </Box>
 
@@ -599,7 +599,7 @@ export function MobileSidebarContent() {
           </Typography>
           <Box
             component="a"
-            href="https://github.com/wattnet/wattnet-dashboard/releases"
+            href={buildHref}
             target="_blank"
             rel="noopener noreferrer"
             sx={{
@@ -619,7 +619,7 @@ export function MobileSidebarContent() {
               },
             }}
           >
-            v{packageInfo.version}
+            {buildLabel}
           </Box>
         </Box>
         <Box sx={{ mt: 1.5 }}>

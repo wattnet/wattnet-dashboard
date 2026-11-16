@@ -134,6 +134,12 @@ To build the image yourself, no build argument is needed:
 docker build -t wattnet-dashboard .
 ```
 
+The badge of the version in the header shows the version of `package.json`, which Release Please keeps, and links to the releases. An image of a commit (the snapshot) is built with the argument `BUILD_COMMIT`, and then the badge shows that commit and links to it, which tells what is deployed: the version of `package.json` is the one of the last release, whatever the commit is. The workflow `Snapshot` passes it, and a release does not.
+
+```bash
+docker build --build-arg BUILD_COMMIT=$(git rev-parse --short=7 HEAD) -t wattnet-dashboard .
+```
+
 ## Development
 
 Run the same checks as the CI before opening a pull request:
