@@ -89,7 +89,7 @@ yarn start
 
 ### With Docker
 
-The images are published to [Docker Hub](https://hub.docker.com/r/wattnet/wattnet-dashboard), with one tag for each version.
+Each release is published as a multi-architecture image (`linux/amd64` and `linux/arm64`) to [Docker Hub](https://hub.docker.com/r/wattnet/wattnet-dashboard) and to the GitHub Container Registry (`ghcr.io/wattnet/wattnet-dashboard`), tagged `<major>.<minor>.<patch>`, `<major>.<minor>`, `<major>` and `latest`. The image on GHCR is signed with cosign, and an SBOM is attached to the release.
 
 ```bash
 docker pull wattnet/wattnet-dashboard:<version>

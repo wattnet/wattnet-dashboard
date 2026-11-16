@@ -303,7 +303,7 @@ function FundingBody() {
         >
           GreenDIGIT
         </Box>{" "}
-        project, funded by the European Union's Horizon Europe research and
+        project, funded by the European Union&apos;s Horizon Europe research and
         innovation programme under grant agreement No.{" "}
         <Box
           component="a"

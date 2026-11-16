@@ -84,8 +84,8 @@ export const mergeActiveMetricValues = (
     };
   });
 
-  geojson.features = geojson.features.map((f: any) => {
-    const zoneData = mergedByZone[f.properties.zoneName];
+  geojson.features = geojson.features.map((f) => {
+    const zoneData = mergedByZone[f.properties?.zoneName];
     return {
       ...f,
       properties: {
