@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import maplibregl from "maplibre-gl";
+import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { FeatureCollection } from "geojson";
 import { Box, Fade } from "@mui/material";

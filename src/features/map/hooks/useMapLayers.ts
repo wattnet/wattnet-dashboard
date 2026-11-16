@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
-import maplibregl from 'maplibre-gl';
+import * as maplibregl from 'maplibre-gl';
 import { FeatureCollection } from 'geojson';
 
 import { useMapScales, MetricKey } from './useMapScales';
@@ -310,7 +310,7 @@ export function useMapLayers(
           ['get', property],
           ...stops.mapValues.flatMap((v, i) => [v, stops.colors[i]]),
         ],
-      ];
+      ] as maplibregl.ExpressionSpecification;
 
       if (map.getLayer(layerId)) {
         map.setPaintProperty(layerId, 'fill-color', fillColorExpr);
@@ -320,7 +320,7 @@ export function useMapLayers(
           type: 'fill',
           source: 'world',
           paint: {
-            'fill-color': fillColorExpr as maplibregl.ExpressionSpecification,
+            'fill-color': fillColorExpr,
             'fill-opacity': 0.85,
             'fill-outline-color': 'rgba(180,210,255,0.28)',
           },
