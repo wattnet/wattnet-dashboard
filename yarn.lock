@@ -151,7 +151,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@babel/runtime@npm:^7.12.5, @babel/runtime@npm:^7.18.3, @babel/runtime@npm:^7.28.4, @babel/runtime@npm:^7.28.6, @babel/runtime@npm:^7.29.2, @babel/runtime@npm:^7.5.5, @babel/runtime@npm:^7.8.7":
+"@babel/runtime@npm:^7.12.5, @babel/runtime@npm:^7.18.3, @babel/runtime@npm:^7.28.4, @babel/runtime@npm:^7.28.6, @babel/runtime@npm:^7.5.5, @babel/runtime@npm:^7.8.7":
   version: 7.29.7
   resolution: "@babel/runtime@npm:7.29.7"
   checksum: bc311855c6dbf5356030979584ca0f8b6cee39fe058175b02e85a73e246fc76ae30248b0d40e70c2652101faeb43279468ed2d086a670673eb9783c1fee1df2b
@@ -3249,12 +3249,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"html-parse-stringify@npm:^3.0.1":
-  version: 3.0.1
-  resolution: "html-parse-stringify@npm:3.0.1"
-  dependencies:
-    void-elements: 3.1.0
-  checksum: 334fdebd4b5c355dba8e95284cead6f62bf865a2359da2759b039db58c805646350016d2017875718bc3c4b9bf81a0d11be5ee0cf4774a3a5a7b97cde21cfd67
+"html-parse-stringify@npm:^4.0.1":
+  version: 4.0.1
+  resolution: "html-parse-stringify@npm:4.0.1"
+  checksum: 190d96883f6849098ca3fcbb76637f3a4f923d0ae902417d86db2ad2279b9ce19e4789945794ae2365a6a9e41da2dcf7c56b3f2dca67142487e51411eb1bf3ec
   languageName: node
   linkType: hard
 
@@ -4396,25 +4394,22 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-i18next@npm:^16.5.0":
-  version: 16.6.6
-  resolution: "react-i18next@npm:16.6.6"
+"react-i18next@npm:^18.0.1":
+  version: 18.0.1
+  resolution: "react-i18next@npm:18.0.1"
   dependencies:
-    "@babel/runtime": ^7.29.2
-    html-parse-stringify: ^3.0.1
-    use-sync-external-store: ^1.6.0
+    html-parse-stringify: ^4.0.1
   peerDependencies:
-    i18next: ">= 25.10.9"
-    react: ">= 16.8.0"
-    typescript: ^5 || ^6
+    "@types/react": "*"
+    i18next: ">= 27.0.1"
+    react: ">= 18.0.0"
+    typescript: ^5 || ^6 || ^7
   peerDependenciesMeta:
-    react-dom:
-      optional: true
-    react-native:
+    "@types/react":
       optional: true
     typescript:
       optional: true
-  checksum: 8d47ffafef731d8814a8d97900d2529a837d4444f0d65aa149457a18a8bd00cca10f852d04307dc1e4a69a182429c590f39a4b01d5ff0d7867793874911ecd4a
+  checksum: feade1c14ac0229b35dad0551555de6a9113cf74341b2dcae8975d72c1ea490d946b7bdcf06046776030d5990744bafd41de0f672ff6b942c161254c061d1765
   languageName: node
   linkType: hard
 
@@ -5325,13 +5320,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"void-elements@npm:3.1.0":
-  version: 3.1.0
-  resolution: "void-elements@npm:3.1.0"
-  checksum: 0390f818107fa8fce55bb0a5c3f661056001c1d5a2a48c28d582d4d847347c2ab5b7f8272314cac58acf62345126b6b09bea623a185935f6b1c3bbce0dfd7f7f
-  languageName: node
-  linkType: hard
-
 "wattnet-dashboard@workspace:.":
   version: 0.0.0-use.local
   resolution: "wattnet-dashboard@workspace:."
@@ -5356,7 +5344,7 @@ __metadata:
     next: ^15.5.28
     react: 19.2.0
     react-dom: 19.2.0
-    react-i18next: ^16.5.0
+    react-i18next: ^18.0.1
     swr: ^2.3.7
     tailwindcss: ^4.3.5
     typescript: ^5
