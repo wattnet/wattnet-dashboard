@@ -17,6 +17,9 @@
 /.next/
 /out/
 
+# the worker of maplibre-gl, copied from node_modules by scripts/copy-maplibre-worker.mjs
+/public/maplibre-gl/
+
 # production
 /build
 

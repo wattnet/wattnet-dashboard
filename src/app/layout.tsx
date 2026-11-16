@@ -20,7 +20,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Dashboard - wattnet.eu",
+  title: "Wattnet | Dashboard",
   description:
     "Interactive dashboard to explore electricity-related CO₂ emissions, water footprint, and sustainability metrics across Europe.",
 };
