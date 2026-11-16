@@ -1125,6 +1125,23 @@ function MobileTopSheet({
           >
             wattnet
           </Box>
+          <Box
+            component="span"
+            sx={{
+              ml: "4px",
+              pl: "8px",
+              borderLeft: "1px solid var(--color-border)",
+              color: "color-mix(in srgb, var(--color-foreground) 60%, transparent)",
+              fontFamily: "var(--font-display)",
+              fontWeight: 400,
+              fontSize: 14,
+              lineHeight: 1,
+              position: "relative",
+              top: "-1px",
+            }}
+          >
+            dashboard
+          </Box>
         </Box>
 
         <CollapseBtn

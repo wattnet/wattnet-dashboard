@@ -395,6 +395,23 @@ export function SidebarHeader() {
           wattnet
         </Box>
         <Box
+          component="span"
+          sx={{
+            ml: "6px",
+            pl: "10px",
+            borderLeft: "1px solid var(--color-border)",
+            color: "color-mix(in srgb, var(--color-foreground) 60%, transparent)",
+            fontFamily: "var(--font-display)",
+            fontWeight: 400,
+            fontSize: 19,
+            lineHeight: 1,
+            position: "relative",
+            top: "-1px",
+          }}
+        >
+          dashboard
+        </Box>
+        <Box
           component="a"
           href="https://github.com/wattnet/wattnet-dashboard/releases"
           target="_blank"
