@@ -16,7 +16,7 @@
     "@emotion/styled": "^11.14.1",
     "@mui/icons-material": "^7.3.0",
     "@mui/material": "^7.3.0",
-    "@mui/system": "^7.3.0",
+    "@mui/system": "^9.5.0",
     "@mui/x-date-pickers": "^8.28.0",
     "@plausible-analytics/tracker": "^0.4.5",
     "date-fns": "^4.1.0",
