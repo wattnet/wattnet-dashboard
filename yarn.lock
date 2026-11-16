@@ -842,7 +842,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@mapbox/tiny-sdf@npm:^2.2.0":
+"@mapbox/tiny-sdf@npm:^2.3.0":
   version: 2.3.0
   resolution: "@mapbox/tiny-sdf@npm:2.3.0"
   checksum: 631b78bcef390435026a6268282b2271f01b009138f805b43189cea05889a81e7b65393ca98af405c03ce1916437fc61a60e19139868522b2fe5851de54cfa47
@@ -867,7 +867,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@maplibre/geojson-vt@npm:^6.1.1":
+"@maplibre/geojson-vt@npm:^6.3.0":
   version: 6.3.1
   resolution: "@maplibre/geojson-vt@npm:6.3.1"
   dependencies:
@@ -876,7 +876,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@maplibre/maplibre-gl-style-spec@npm:^26.2.1":
+"@maplibre/maplibre-gl-style-spec@npm:^26.6.0":
   version: 26.8.0
   resolution: "@maplibre/maplibre-gl-style-spec@npm:26.8.0"
   dependencies:
@@ -894,7 +894,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@maplibre/mlt@npm:^1.1.12":
+"@maplibre/mlt@npm:^1.3.0":
   version: 1.3.0
   resolution: "@maplibre/mlt@npm:1.3.0"
   dependencies:
@@ -903,7 +903,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@maplibre/vt-pbf@npm:^4.3.2":
+"@maplibre/vt-pbf@npm:^4.3.3":
   version: 4.3.3
   resolution: "@maplibre/vt-pbf@npm:4.3.3"
   dependencies:
@@ -2072,6 +2072,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"bidi-js@npm:^1.1.0":
+  version: 1.1.0
+  resolution: "bidi-js@npm:1.1.0"
+  dependencies:
+    require-from-string: ^2.0.2
+  checksum: 2dba916f1e3a10da9f48673dc7f6e836162059edc9df66d057fe8e0b1fa116fc70413854744af754f8204e8b838d38e087505019d00695a80bda8d86d98b39c0
+  languageName: node
+  linkType: hard
+
 "brace-expansion@npm:^1.1.7":
   version: 1.1.22
   resolution: "brace-expansion@npm:1.1.22"
@@ -2401,7 +2410,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"earcut@npm:^3.2.3":
+"earcut@npm:^3.2.4":
   version: 3.2.4
   resolution: "earcut@npm:3.2.4"
   checksum: 9e9f55f219e8ce14dba1cd095fc94aac1836d4cd242846069b667517182b0f45ec6c185bccf6974d967f1ba32a25e504c9ca0760b9931175d30b48804145b4d9
@@ -3906,20 +3915,21 @@ __metadata:
   languageName: node
   linkType: hard
 
-"maplibre-gl@npm:^6.4.1":
-  version: 6.4.1
-  resolution: "maplibre-gl@npm:6.4.1"
+"maplibre-gl@npm:^6.18.0":
+  version: 6.18.0
+  resolution: "maplibre-gl@npm:6.18.0"
   dependencies:
     "@mapbox/point-geometry": ^1.1.0
-    "@mapbox/tiny-sdf": ^2.2.0
+    "@mapbox/tiny-sdf": ^2.3.0
     "@mapbox/unitbezier": ^1.0.0
     "@mapbox/vector-tile": ^3.0.0
-    "@maplibre/geojson-vt": ^6.1.1
-    "@maplibre/maplibre-gl-style-spec": ^26.2.1
-    "@maplibre/mlt": ^1.1.12
-    "@maplibre/vt-pbf": ^4.3.2
+    "@maplibre/geojson-vt": ^6.3.0
+    "@maplibre/maplibre-gl-style-spec": ^26.6.0
+    "@maplibre/mlt": ^1.3.0
+    "@maplibre/vt-pbf": ^4.3.3
     "@types/geojson": ^7946.0.16
-    earcut: ^3.2.3
+    bidi-js: ^1.1.0
+    earcut: ^3.2.4
     gl-matrix: ^3.4.4
     kdbush: ^4.1.0
     murmurhash-js: ^1.0.0
@@ -3927,7 +3937,7 @@ __metadata:
     potpack: ^2.1.0
     quickselect: ^3.0.0
     tinyqueue: ^3.0.0
-  checksum: 18c41d5079f57f1ebcd40d481ca53089d4a7a3b77a3a37c587abb40eada64e87e879266af4041915bbb4aa4ab7743df43dfd00c30afb1454340abc1ccd212b3a
+  checksum: c1d277bec0d80015ee78dc02d84b22ccf41710e2cb108db1fd24fc7332669597aa7d2d2f8b847a196fa78992abd0c964b9e062bf2bbbb5091130ce5bd9cb030b
   languageName: node
   linkType: hard
 
@@ -4471,6 +4481,13 @@ __metadata:
     gopd: ^1.2.0
     set-function-name: ^2.0.2
   checksum: 18cb667e56cb328d2dda569d7f04e3ea78f2683135b866d606538cf7b1d4271f7f749f09608c877527799e6cf350e531368f3c7a20ccd1bb41048a48926bdeeb
+  languageName: node
+  linkType: hard
+
+"require-from-string@npm:^2.0.2":
+  version: 2.0.2
+  resolution: "require-from-string@npm:2.0.2"
+  checksum: a03ef6895445f33a4015300c426699bc66b2b044ba7b670aa238610381b56d3f07c686251740d575e22f4c87531ba662d06937508f0f3c0f1ddc04db3130560b
   languageName: node
   linkType: hard
 
@@ -5335,7 +5352,7 @@ __metadata:
     eslint: ^9
     eslint-config-next: 16.0.4
     i18next: ^27.1.1
-    maplibre-gl: ^6.4.1
+    maplibre-gl: ^6.18.0
     next: ^15.5.28
     react: 19.2.0
     react-dom: 19.2.0
