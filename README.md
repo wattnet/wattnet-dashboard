@@ -101,7 +101,7 @@ yarn build
 yarn start
 ```
 
-`yarn dev` and `yarn build` first run `scripts/ensure-zone-crossings.mjs`, which prepares the zone crossings. `yarn crossings` computes them again.
+`yarn dev` and `yarn build` first run `scripts/ensure-zone-crossings.mjs`, which prepares the zone crossings, and `scripts/copy-maplibre-worker.mjs`, which copies the worker of MapLibre GL into `public/maplibre-gl/` (MapLibre 6 cannot find it inside the bundle, and `MapContainer` points it there). `yarn crossings` computes the crossings again.
 
 ### With Docker
 
