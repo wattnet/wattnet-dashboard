@@ -9,8 +9,22 @@ updates:
       prefix: "build(deps)"
     open-pull-requests-limit: 5
     groups:
+      # Only minor and patch updates are grouped: a major version of a tool of development can break the lint or the
+      # build, and has to arrive alone to be tried and, if it fails, to be left for later.
       dev-dependencies:
         dependency-type: development
+        update-types: ["minor", "patch"]
+      # The packages of MUI have to be on the same major version: they move together, in one pull request.
+      mui:
+        patterns:
+          - "@mui/*"
+    ignore:
+      # Follows the version of Node of the image, which is chosen by hand (see the Dockerfile).
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+      # typescript-eslint does not support TypeScript 7 yet: its lint step fails with it.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: docker
     directory: /
@@ -19,6 +33,11 @@ updates:
       day: monday
     commit-message:
       prefix: "build(deps)"
+    ignore:
+      # The Node of the image is chosen by hand: 24 (LTS) is what the CI tests. The next one needs corepack
+      # installed from npm, because the images of Node 25 and later no longer ship it.
+      - dependency-name: "node"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: /
