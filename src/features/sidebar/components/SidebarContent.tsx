@@ -5,7 +5,7 @@ import Image from "next/image";
 import { Box, Typography } from "@mui/material";
 import MapIcon from "@mui/icons-material/Map";
 
-import packageInfo from "@/package.json";
+import { buildLabel, buildHref } from "@/src/shared/lib/version";
 import { SegmentedControl } from "../../../shared/components/SegmentedControl";
 import { useTranslation } from "react-i18next";
 import { useEffect } from "react";
@@ -413,7 +413,7 @@ export function SidebarHeader() {
         </Box>
         <Box
           component="a"
-          href="https://github.com/wattnet/wattnet-dashboard/releases"
+          href={buildHref}
           target="_blank"
           rel="noopener noreferrer"
           sx={{
@@ -434,7 +434,7 @@ export function SidebarHeader() {
             "&:hover": { opacity: 0.85 },
           }}
         >
-          v{packageInfo.version}
+          {buildLabel}
         </Box>
       </Box>
 
@@ -599,7 +599,7 @@ export function MobileSidebarContent() {
           </Typography>
           <Box
             component="a"
-            href="https://github.com/wattnet/wattnet-dashboard/releases"
+            href={buildHref}
             target="_blank"
             rel="noopener noreferrer"
             sx={{
@@ -619,7 +619,7 @@ export function MobileSidebarContent() {
               },
             }}
           >
-            v{packageInfo.version}
+            {buildLabel}
           </Box>
         </Box>
         <Box sx={{ mt: 1.5 }}>

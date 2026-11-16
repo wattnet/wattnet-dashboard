@@ -14,6 +14,9 @@ RUN yarn install --immutable
 COPY . .
 # The standalone output is for the image only, see next.config.ts.
 ENV NEXT_OUTPUT=standalone
+# The commit of a snapshot, which the badge of the version shows (a release shows its version, see src/shared/lib/version.ts). It is not a secret.
+ARG BUILD_COMMIT=""
+ENV NEXT_PUBLIC_BUILD_COMMIT=$BUILD_COMMIT
 RUN yarn build
 
 

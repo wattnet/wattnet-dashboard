@@ -48,6 +48,9 @@ jobs:
           context: .
           push: true
           tags: ${{ steps.image.outputs.name }}:${{ steps.image.outputs.sha }}
+          # The badge of the version of the dashboard shows this commit instead of the version of package.json.
+          build-args: |
+            BUILD_COMMIT=${{ steps.image.outputs.sha }}
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ steps.image.outputs.revision }}
