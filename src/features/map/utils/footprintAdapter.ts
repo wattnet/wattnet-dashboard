@@ -20,7 +20,7 @@ export const processFootprints = (
   return data.map((fp) => {
     const flattened = fp.series
       .flatMap((s) =>
-        s.values.map<FootprintItem>(([timestamp, value]) => ({
+        s.points.map<FootprintItem>(({ timestamp, value }) => ({
           timestamp,
           value,
           valid: s.valid,
