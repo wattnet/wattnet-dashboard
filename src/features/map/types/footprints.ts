@@ -1,7 +1,13 @@
+export interface Point {
+  timestamp: string;
+  value: number;
+  updated_at: string;
+}
+
 export interface FootprintSeries {
   valid: boolean;
   zone_status: string;
-  values: [string, number][]; // [timestamp, value]
+  points: Point[];
 }
 
 export interface Footprint {

@@ -237,8 +237,8 @@ function buildMergedImports(
     for (const block of series.imports) {
       if (!result.has(block.source)) result.set(block.source, new Map());
       const tsMap = result.get(block.source)!;
-      for (const [ts, val] of block.values) {
-        tsMap.set(new Date(ts).getTime(), val);
+      for (const { timestamp, value } of block.points) {
+        tsMap.set(new Date(timestamp).getTime(), value);
       }
     }
   }
@@ -306,8 +306,9 @@ function getImportStatus(
   for (const series of sorted) {
     const block = series.imports.find((b) => b.source === srcZone);
     if (!block) continue;
-    const hasValue = block.values.some(
-      ([ts]) => Math.abs(new Date(ts).getTime() - targetMs) <= tolerance,
+    const hasValue = block.points.some(
+      ({ timestamp }) =>
+        Math.abs(new Date(timestamp).getTime() - targetMs) <= tolerance,
     );
     if (!hasValue) continue;
     return {

@@ -1,8 +1,10 @@
+import { Point } from "./footprints";
+
 export interface ImportBlock {
   source: string;
   data_state: "official" | "estimated" | "missing";
   datasource: string;
-  values: [string, number][];
+  points: Point[];
 }
 
 export interface ImportSeries {
