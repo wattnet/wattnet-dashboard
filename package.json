@@ -1,6 +1,29 @@
 {
   "name": "wattnet-dashboard",
   "version": "1.6.0",
+  "description": "Web dashboard of Wattnet: the environmental footprint of the electricity of Europe on a map",
+  "license": "Apache-2.0",
+  "author": "Marta Obregón Ruiz <obregonm@ifca.es>",
+  "contributors": [
+    "Jaime Iglesias Blanco <iglesias@ifca.es>"
+  ],
+  "homepage": "https://wattnet.eu",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wattnet/wattnet-dashboard.git"
+  },
+  "bugs": {
+    "url": "https://github.com/wattnet/wattnet-dashboard/issues"
+  },
+  "keywords": [
+    "energy",
+    "electricity",
+    "carbon-footprint",
+    "water-footprint",
+    "dashboard",
+    "sustainability",
+    "wattnet"
+  ],
   "private": true,
   "scripts": {
     "crossings": "node scripts/compute-zone-crossings.mjs",
