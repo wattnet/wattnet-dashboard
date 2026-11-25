@@ -1,5 +1,45 @@
 # Changelog
 
+## [1.7.0](https://github.com/wattnet/wattnet-dashboard/compare/v1.6.1...v1.7.0) (2026-11-25)
+
+
+### Features
+
+* read the points of the API ([#57](https://github.com/wattnet/wattnet-dashboard/issues/57)) ([6e84d75](https://github.com/wattnet/wattnet-dashboard/commit/6e84d75158240d46feab126d3dadb7196bca6adf))
+* request the API token with client_credentials ([36b30b0](https://github.com/wattnet/wattnet-dashboard/commit/36b30b007a5eda6e774db32176bfc3d2e1d4b258))
+* show the commit in the badge of the version of a snapshot, and give the header the sizes of the developer portal ([#55](https://github.com/wattnet/wattnet-dashboard/issues/55)) ([071db55](https://github.com/wattnet/wattnet-dashboard/commit/071db55210e95f83cebabf06059dc2a28778112f))
+
+
+### Bug Fixes
+
+* copy the worker of maplibre-gl in dev and build, which Yarn does not run as hooks ([#51](https://github.com/wattnet/wattnet-dashboard/issues/51)) ([bb9109f](https://github.com/wattnet/wattnet-dashboard/commit/bb9109fbd1e3c09689be59101600a571841606d3))
+* load the worker of maplibre-gl 6, show the error of the page and write the name as wattnet | dashboard ([#50](https://github.com/wattnet/wattnet-dashboard/issues/50)) ([faa8f5a](https://github.com/wattnet/wattnet-dashboard/commit/faa8f5ae48ae969a0603334d06eab0d020847ed7))
+* make the dashboard work with the API of the cluster ([#31](https://github.com/wattnet/wattnet-dashboard/issues/31)) ([21b6ea0](https://github.com/wattnet/wattnet-dashboard/commit/21b6ea0d48be9fc9194ceedd5da6bfde64961afa))
+* make the tokens of the routes of the dashboard live five seconds again ([#48](https://github.com/wattnet/wattnet-dashboard/issues/48)) ([9721f89](https://github.com/wattnet/wattnet-dashboard/commit/9721f89281812cd5682a4e3770b90c3f4616877c))
+* repair the map for maplibre-gl 6 and fix the vulnerable dependencies ([#33](https://github.com/wattnet/wattnet-dashboard/issues/33)) ([bcd5724](https://github.com/wattnet/wattnet-dashboard/commit/bcd5724ff41514e4a08797940ef8d9de9dc1170a))
+* zone panel timeline bug ([bda14e1](https://github.com/wattnet/wattnet-dashboard/commit/bda14e1a6f590109502852b1aac2b850d13fdc58))
+
+
+### Documentation
+
+* rewrite the README for the dashboard ([bab4f61](https://github.com/wattnet/wattnet-dashboard/commit/bab4f61bd7aab052a4bcce66470714d2f1bf3c59))
+* update the README and its badges to the scheme of the other repositories ([#49](https://github.com/wattnet/wattnet-dashboard/issues/49)) ([1290dba](https://github.com/wattnet/wattnet-dashboard/commit/1290dba96dac54cce05ff0677d81fd40cb87008d))
+
+
+### Build System
+
+* **deps:** bump @plausible-analytics/tracker from 0.4.5 to 0.4.7 ([#39](https://github.com/wattnet/wattnet-dashboard/issues/39)) ([b264586](https://github.com/wattnet/wattnet-dashboard/commit/b264586559d132ff5dd43e189310cb1f8490213d))
+* **deps:** bump brace-expansion from 1.1.15 to 1.1.16 in the npm_and_yarn group across 1 directory ([39e1bcd](https://github.com/wattnet/wattnet-dashboard/commit/39e1bcdf7a9049205335d90d8b9449fead31e0d5))
+* **deps:** bump eslint ([#58](https://github.com/wattnet/wattnet-dashboard/issues/58)) ([10088b9](https://github.com/wattnet/wattnet-dashboard/commit/10088b9b19f3acddeba26a9502e76440f486cbd8))
+* **deps:** bump eslint from 9.39.4 to 10.14.0 ([#47](https://github.com/wattnet/wattnet-dashboard/issues/47)) ([f7e81ee](https://github.com/wattnet/wattnet-dashboard/commit/f7e81ee8ba727dcd6a1b3a4822e9591e912a5172))
+* **deps:** bump eslint-config-next ([#43](https://github.com/wattnet/wattnet-dashboard/issues/43)) ([7a635af](https://github.com/wattnet/wattnet-dashboard/commit/7a635afc3cecfe8ab0b777188f1af70559177a01))
+* **deps:** bump i18next from 25.10.10 to 27.1.1 ([#37](https://github.com/wattnet/wattnet-dashboard/issues/37)) ([d0ee19f](https://github.com/wattnet/wattnet-dashboard/commit/d0ee19f519c41fcd800528faeb82f5b903e3215c))
+* **deps:** bump maplibre-gl from 6.4.1 to 6.18.0 ([#40](https://github.com/wattnet/wattnet-dashboard/issues/40)) ([60dac4b](https://github.com/wattnet/wattnet-dashboard/commit/60dac4b8eb9ace8114434eaa1eb7da08e7c556ea))
+* **deps:** bump react-i18next from 16.6.6 to 18.0.1 ([#45](https://github.com/wattnet/wattnet-dashboard/issues/45)) ([1fff7f2](https://github.com/wattnet/wattnet-dashboard/commit/1fff7f2da08520917806e7e5aa42abdd2b942d0f))
+* **deps:** bump swr from 2.4.1 to 2.5.1 ([#53](https://github.com/wattnet/wattnet-dashboard/issues/53)) ([632c464](https://github.com/wattnet/wattnet-dashboard/commit/632c464a32c0ee8237594f03d4fcab21f16732df))
+* **deps:** bump the npm_and_yarn group across 1 directory with 9 updates ([#30](https://github.com/wattnet/wattnet-dashboard/issues/30)) ([e8ebbef](https://github.com/wattnet/wattnet-dashboard/commit/e8ebbef3a81798c9fe320be8ff2dfdb31b90efca))
+* run the dashboard from a standalone image on Node 24, as a fixed user and with no secrets ([#41](https://github.com/wattnet/wattnet-dashboard/issues/41)) ([dd84b57](https://github.com/wattnet/wattnet-dashboard/commit/dd84b57c9e9e907289af93d90f8366e218dad59d))
+
 ## [1.6.0](https://github.com/wattnet/wattnet-dashboard/compare/v1.5.2...v1.6.0) (2026-07-16)
 
 

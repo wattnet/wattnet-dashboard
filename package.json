@@ -1,6 +1,6 @@
 {
   "name": "wattnet-dashboard",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "description": "Web dashboard of Wattnet: the environmental footprint of the electricity of Europe on a map",
   "license": "Apache-2.0",
   "author": "Marta Obregón Ruiz <obregonm@ifca.es>",
